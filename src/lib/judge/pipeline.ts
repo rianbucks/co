@@ -97,7 +97,7 @@ async function callAiWithRetry(
 export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeResponse> {
   const { audio, questionSetId } = input;
 
-  // 서버 검사: 파일, 크기(2MB), 형식. 길이는 검사하지 않는다.
+  // 서버 검사: 파일, 크기(2MB), 형식. 녹음 길이(합계 40초)는 화면에서 지키므로 검사하지 않는다.
   if (audio === null || typeof audio === "string") return errorResponse("invalid_audio");
   if (audio.size > MAX_AUDIO_BYTES) return errorResponse("too_large");
 

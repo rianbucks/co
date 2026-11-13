@@ -40,10 +40,13 @@ MOCK 모드에서 API 호출 예:
 curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/api/judge
 ```
 
-## API 계약에서 명세 7장과 다른 점
+## API
 
-- 성공 응답에 `transcript`(받아쓰기)가 있다. 서버는 저장하지 않는다.
-- 오류 코드 `invalid_request`(400, questionSetId가 없거나 등록되지 않음)와 `server_error`(500)가 있다.
+`POST /api/judge`는 명세 7장의 요청, 응답, 오류 형식을 따릅니다.
+
+- 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`(지금은 `set-a`만 등록)를 보냅니다.
+- 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
+- 성공 응답의 `transcript`(받아쓰기)는 서버에 저장하지 않습니다.
 
 ## 코드 위치
 

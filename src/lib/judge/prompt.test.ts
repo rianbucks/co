@@ -1,14 +1,34 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildSystemInstruction, findQuestionSet } from "./prompt";
 
+const SET_A = [
+  "오랜만에 고향 친구에게서 전화가 왔습니다. 받자마자 뭐라고 하시겠습니까?",
+  "친구가 약속에 한 시간 늦게 와서는 웃고 있습니다. 한마디 해 주십시오.",
+  "동생이 한겨울에 반팔만 입고 나가려 합니다. 말려 보십시오.",
+  "할머니가 차려 주신 밥이 정말 맛있습니다. 할머니께 뭐라고 하시겠습니까?",
+];
+
+/** docs/SPEC.md 8장 문항 표의 '화면 문구' 열 */
+function specScreenTexts(): string[] {
+  const spec = readFileSync(fileURLToPath(new URL("../../../docs/SPEC.md", import.meta.url)), "utf8");
+  const start = spec.indexOf("## 8. 녹음 문항 설계");
+  const end = spec.indexOf("\n## 9.", start);
+  return spec
+    .slice(start, end)
+    .split("\n")
+    .filter((line) => /^\| Q\d \|/.test(line))
+    .map((line) => line.split("|")[3].trim());
+}
+
 describe("findQuestionSet", () => {
-  it("set-a는 명세 8장 Q1~Q4다", () => {
-    expect(findQuestionSet("set-a")).toEqual([
-      '다음 문장을 친구에게 평소 말투로 말해 주십시오: "너 지금 뭐 하고 있어? 밥은 먹었어?"',
-      '다음 문장을 친구에게 평소 말투로 말해 주십시오: "그거 내가 했다고 했잖아. 왜 자꾸 물어봐."',
-      "친구가 약속에 한 시간 늦었습니다. 뭐라고 하시겠습니까?",
-      "부추, 옥수수, 가위를 고향에서는 뭐라고 부릅니까? 문장으로 답해 주십시오.",
-    ]);
+  it("set-a는 명세 8장 Q1~Q4 화면 문구다", () => {
+    expect(findQuestionSet("set-a")).toEqual(SET_A);
+  });
+
+  it("set-a가 docs/SPEC.md 8장 문항 표와 같다(명세가 바뀌면 이 테스트가 실패한다)", () => {
+    expect(findQuestionSet("set-a")).toEqual(specScreenTexts());
   });
 
   it.each(["set-b", "", "SET-A", "__proto__", "constructor"])("등록되지 않은 ID는 null: '%s'", (id) => {
@@ -19,12 +39,19 @@ describe("findQuestionSet", () => {
 describe("buildSystemInstruction", () => {
   const instruction = buildSystemInstruction(findQuestionSet("set-a")!);
 
-  it("명세 4장 초안의 첫 문장으로 시작하고 문항에 번호를 붙인다", () => {
+  it("명세 4장 초안의 첫 문장으로 시작하고 문항 4개에 순서대로 번호를 붙인다", () => {
     expect(instruction.startsWith("너는 한국어 방언 감정위원이다.")).toBe(true);
     expect(instruction).toContain(
-      '[문항 목록]\n1. 다음 문장을 친구에게 평소 말투로 말해 주십시오: "너 지금 뭐 하고 있어? 밥은 먹었어?"',
+      [
+        "[문항 목록]",
+        "1. 오랜만에 고향 친구에게서 전화가 왔습니다. 받자마자 뭐라고 하시겠습니까?",
+        "2. 친구가 약속에 한 시간 늦게 와서는 웃고 있습니다. 한마디 해 주십시오.",
+        "3. 동생이 한겨울에 반팔만 입고 나가려 합니다. 말려 보십시오.",
+        "4. 할머니가 차려 주신 밥이 정말 맛있습니다. 할머니께 뭐라고 하시겠습니까?",
+        "",
+        "규칙",
+      ].join("\n"),
     );
-    expect(instruction).toContain("\n4. 부추, 옥수수, 가위를 고향에서는");
   });
 
   it("규칙 7개를 모두 담는다", () => {
