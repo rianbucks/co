@@ -52,13 +52,13 @@ export default function Home() {
     <div className="relative min-h-screen w-full bg-black text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
       {/* Desktop Ambient Background Orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-600/10 blur-[140px]" />
-        <div className="absolute top-1/3 left-1/4 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-[130px]" />
-        <div className="absolute bottom-10 right-1/4 h-[400px] w-[400px] rounded-full bg-blue-600/10 blur-[130px]" />
+        <div className="absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-600/10 blur-[160px]" />
+        <div className="absolute top-1/3 left-1/4 h-[500px] w-[500px] rounded-full bg-purple-600/10 blur-[150px]" />
+        <div className="absolute bottom-10 right-1/4 h-[500px] w-[500px] rounded-full bg-blue-600/10 blur-[150px]" />
       </div>
 
-      {/* Main Responsive Wrapper */}
-      <div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col justify-between border-x border-zinc-800/60 bg-zinc-950/70 shadow-2xl backdrop-blur-2xl">
+      {/* Main Responsive Wrapper: Mobile (full-width) / Desktop (max-w-5xl/6xl 2-column) */}
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md lg:max-w-5xl xl:max-w-6xl flex-col justify-between border-x border-zinc-800/60 bg-zinc-950/70 shadow-2xl backdrop-blur-2xl transition-all duration-300">
         <div>
           {/* iOS Frosted Header */}
           <Header
@@ -108,8 +108,8 @@ export default function Home() {
         </div>
 
         {/* Minimal Clean Footer */}
-        <footer className="border-t border-zinc-900/80 px-6 py-4 text-center text-xs text-zinc-400">
-          <div>원산지증명서 (C/O) · Voice Dialect Analysis</div>
+        <footer className="border-t border-zinc-900/80 px-6 py-5 text-center text-xs text-zinc-400">
+          <div>원산지증명서 (C/O) · Voice Dialect Analysis System</div>
         </footer>
       </div>
     </div>

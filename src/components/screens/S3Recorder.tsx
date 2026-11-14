@@ -234,148 +234,168 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   };
 
   return (
-    <div className="flex flex-col gap-6 p-5 sm:p-7">
-      <div className="relative overflow-hidden rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-        {/* Dynamic Island Style Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 items-center rounded-full bg-zinc-800 px-2.5 text-[11px] font-bold text-zinc-300">
-              {currentIdx + 1} / {QUESTIONS.length}
-            </span>
-            <span className="text-xs font-semibold text-zinc-400">
-              상황극 질문
-            </span>
+    <div className="p-5 sm:p-7 lg:p-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
+
+        {/* Left Column: Situation Prompt & Instructions */}
+        <div className="flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-6">
+          <div>
+            {/* Step Counter Pill & Reset */}
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 items-center rounded-full bg-indigo-500/20 px-3 text-xs font-bold text-indigo-300">
+                  문항 {currentIdx + 1} / {QUESTIONS.length}
+                </span>
+                <span className="text-xs font-medium text-zinc-400">
+                  상황극 녹음
+                </span>
+              </div>
+
+              <button
+                onClick={handleReset}
+                className="rounded-full border border-zinc-700/60 bg-zinc-800/60 px-3 py-1 text-xs font-medium text-zinc-400 transition hover:bg-zinc-700 hover:text-white"
+              >
+                처음부터 다시
+              </button>
+            </div>
+
+            {/* Target & Situation Card */}
+            <div className="mt-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 text-xs font-semibold text-purple-300">
+                <span>상대방:</span>
+                <span className="font-bold text-white">{currentQuestion.target}</span>
+              </div>
+
+              <h3 className="mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
+                {currentQuestion.situation}
+              </h3>
+
+              {currentQuestion.hint && (
+                <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-xs text-zinc-400">
+                  <span className="font-semibold text-zinc-300">💡 힌트 예시:</span> {currentQuestion.hint}
+                </div>
+              )}
+            </div>
           </div>
 
-          <button
-            onClick={handleReset}
-            className="rounded-full border border-zinc-700/60 bg-zinc-800/60 px-3 py-1 text-[11px] font-medium text-zinc-400 transition hover:bg-zinc-700 hover:text-white"
-          >
-            처음부터 다시
-          </button>
-        </div>
-
-        {/* Question Card */}
-        <div className="mt-5">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">
-            <span>대화 상대:</span>
-            <span className="font-bold text-white">{currentQuestion.target}</span>
+          <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs font-medium text-amber-300/90">
+            ※ 설명하지 마시고, 실제로 그 사람에게 말하듯이 답변해 주십시오.
           </div>
-
-          <h3 className="mt-3 text-lg font-bold leading-snug tracking-tight text-white sm:text-xl">
-            {currentQuestion.situation}
-          </h3>
-
-          {currentQuestion.hint && (
-            <p className="mt-2 text-xs text-zinc-400">
-              💡 {currentQuestion.hint}
-            </p>
-          )}
         </div>
 
-        {/* Live Audio Visualizer / Waveform Display */}
-        <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-zinc-800/80 bg-black/50 p-6">
-          <div className="flex h-12 items-center justify-center gap-1.5">
-            {[...Array(12)].map((_, i) => {
-              const active = phase === 'recording';
-              const height = active ? Math.max(15, Math.min(100, audioLevel * (1 + (i % 3) * 0.3))) : 15;
-              return (
+        {/* Right Column: Studio Waveform & Controls */}
+        <div className="flex flex-col justify-between gap-6 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-xl sm:p-8 lg:col-span-6">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-zinc-300">오디오 레코딩 콘솔</span>
+              <span className={`flex items-center gap-1.5 text-xs font-semibold ${phase === 'recording' ? 'text-red-400' : 'text-zinc-500'}`}>
+                <span className={`h-2 w-2 rounded-full ${phase === 'recording' ? 'bg-red-500 animate-ping' : 'bg-zinc-600'}`} />
+                {phase === 'recording' ? 'ON AIR (녹음 중)' : phase === 'paused' ? '일시정지 상태' : '녹음 대기'}
+              </span>
+            </div>
+
+            {/* Large Audio Waveform Visualizer */}
+            <div className="mt-6 flex flex-col items-center justify-center rounded-3xl border border-zinc-800/80 bg-black/60 p-8 shadow-inner">
+              <div className="flex h-20 items-center justify-center gap-2">
+                {[...Array(16)].map((_, i) => {
+                  const active = phase === 'recording';
+                  const height = active ? Math.max(15, Math.min(100, audioLevel * (0.8 + (i % 4) * 0.25))) : 12;
+                  return (
+                    <div
+                      key={i}
+                      className={`w-1.5 rounded-full transition-all duration-75 ${
+                        active ? 'bg-gradient-to-t from-indigo-500 via-purple-400 to-pink-400 shadow-sm shadow-indigo-500/40' : 'bg-zinc-800'
+                      }`}
+                      style={{ height: `${height}%` }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Digital Countdown Timer */}
+              <div className="mt-6 text-center">
+                <div className="font-mono text-3xl font-black tracking-widest text-white sm:text-4xl">
+                  00:{secLeft < 10 ? `0${secLeft}` : secLeft}
+                </div>
+                <div className="mt-1 text-[11px] font-medium text-zinc-500">
+                  {secLeft > 0 ? `${secLeft}초 후 자동으로 다음 문항 이동` : '시간 종료'}
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mt-5 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-800">
                 <div
-                  key={i}
-                  className={`w-1 rounded-full transition-all duration-75 ${
-                    active ? 'bg-gradient-to-t from-indigo-500 to-purple-400' : 'bg-zinc-700'
-                  }`}
-                  style={{ height: `${height}%` }}
+                  className={`h-full rounded-full transition-all duration-300 ${secLeft <= 3 ? 'bg-red-500' : 'bg-white'}`}
+                  style={{ width: `${(secLeft / 10) * 100}%` }}
                 />
-              );
-            })}
+              </div>
+            </div>
+
+            {errorMessage && (
+              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
+                <p className="font-semibold">⚠️ {errorMessage}</p>
+              </div>
+            )}
           </div>
 
-          {/* Timer Display */}
-          <div className="mt-4 flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${phase === 'recording' ? 'bg-red-500 animate-ping' : 'bg-zinc-600'}`} />
-            <span className="font-mono text-xl font-black tracking-wider text-white">
-              00:{secLeft < 10 ? `0${secLeft}` : secLeft}
-            </span>
-          </div>
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {phase === 'ready' && (
+              <button
+                onClick={handleStartFirstRecording}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+                <span>문항 1 녹음 시작 (10초)</span>
+              </button>
+            )}
 
-          {/* Progress bar */}
-          <div className="mt-3 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className={`h-full transition-all duration-300 ${secLeft <= 3 ? 'bg-red-500' : 'bg-white'}`}
-              style={{ width: `${(secLeft / 10) * 100}%` }}
-            />
+            {phase === 'recording' && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handlePauseSegment(currentIdx)}
+                  className="flex-1 rounded-full border border-zinc-700/60 bg-zinc-800/80 py-4 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 active:scale-95"
+                >
+                  수동 일시정지
+                </button>
+                <button
+                  onClick={() => {
+                    if (currentIdx < 3) handlePauseSegment(currentIdx);
+                    else handleFinalStop();
+                  }}
+                  className="flex-1 rounded-full bg-white py-4 text-xs font-bold text-black shadow-md transition hover:bg-zinc-200 active:scale-95"
+                >
+                  {currentIdx < 3 ? '다음 문항으로' : '녹음 완료 및 최종 제출'}
+                </button>
+              </div>
+            )}
+
+            {phase === 'paused' && (
+              <button
+                onClick={handleResumeNext}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 py-4 text-sm font-bold text-white shadow-xl shadow-indigo-500/20 transition hover:opacity-90 active:scale-[0.98]"
+              >
+                <span>문항 {currentIdx + 2} 이어 녹음하기</span>
+                <span>→</span>
+              </button>
+            )}
+
+            {phase === 'processing' && (
+              <div className="flex items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-4 text-xs font-medium text-zinc-300">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>음성 데이터 처리 중...</span>
+              </div>
+            )}
+
+            <button
+              onClick={onResetAll}
+              className="w-full text-center text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              첫 화면으로 나가기
+            </button>
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-zinc-400">
-          ※ 설명하지 말고, 실제로 그 사람에게 말하듯이 답해 주십시오.
-        </p>
-
-        {errorMessage && (
-          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
-            <p className="font-semibold">⚠️ {errorMessage}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col gap-3">
-        {phase === 'ready' && (
-          <button
-            onClick={handleStartFirstRecording}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-lg shadow-white/10 transition hover:bg-zinc-200 active:scale-95"
-          >
-            <span className="flex h-2.5 w-2.5 rounded-full bg-red-500" />
-            <span>문항 1 녹음 시작 (10초)</span>
-          </button>
-        )}
-
-        {phase === 'recording' && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => handlePauseSegment(currentIdx)}
-              className="flex-1 rounded-full border border-zinc-700/60 bg-zinc-800/80 py-3.5 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 active:scale-95"
-            >
-              일시정지
-            </button>
-            <button
-              onClick={() => {
-                if (currentIdx < 3) handlePauseSegment(currentIdx);
-                else handleFinalStop();
-              }}
-              className="flex-1 rounded-full bg-white py-3.5 text-xs font-bold text-black shadow-md transition hover:bg-zinc-200 active:scale-95"
-            >
-              {currentIdx < 3 ? '다음 문항으로' : '녹음 완료 및 심사 제출'}
-            </button>
-          </div>
-        )}
-
-        {phase === 'paused' && (
-          <button
-            onClick={handleResumeNext}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 py-4 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition hover:opacity-90 active:scale-95"
-          >
-            <span>문항 {currentIdx + 2} 이어 녹음하기</span>
-            <span>→</span>
-          </button>
-        )}
-
-        {phase === 'processing' && (
-          <div className="flex items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-4 text-xs font-medium text-zinc-300">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            <span>음성 데이터 처리 중...</span>
-          </div>
-        )}
-      </div>
-
-      <div className="text-center">
-        <button
-          onClick={onResetAll}
-          className="text-xs text-zinc-400 transition hover:text-zinc-200"
-        >
-          첫 화면으로 나가기
-        </button>
       </div>
     </div>
   );
