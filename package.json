@@ -6,8 +6,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "predev": "node scripts/build-css.js",
+    "dev": "next dev",
+    "prebuild": "node scripts/build-css.js",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
