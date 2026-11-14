@@ -1,4 +1,6 @@
-export type ScreenStep = 'S1' | 'S2' | 'S3';
+import { JudgeResult } from '@/lib/judge/contract';
+
+export type ScreenStep = 'S1' | 'S2' | 'S3' | 'S4' | 'S5';
 
 export interface QuestionItem {
   id: number;
@@ -33,3 +35,19 @@ export const QUESTIONS: QuestionItem[] = [
     hint: "예: 할매 밥 억수로 맛있네예, 한 그릇 더 주이소!",
   },
 ];
+
+export const REGION_KOREAN_NAMES: Record<string, string> = {
+  seoul_gyeonggi: "서울·경기",
+  gangwon: "강원",
+  chungcheong: "충청",
+  gyeongsang: "경상",
+  jeolla: "전라",
+  jeju: "제주",
+};
+
+export const PART_KOREAN_NAMES: Record<string, string> = {
+  vocabulary: "어휘",
+  endings: "어미",
+  phonology: "음운",
+  intonation: "억양",
+};

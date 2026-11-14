@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { QUESTIONS, QuestionItem } from '@/types/screen';
 
 interface S3RecorderProps {
+  onComplete: (blob: Blob) => void;
   onResetAll: () => void;
 }
 
@@ -15,16 +16,15 @@ const MIME_CANDIDATES = [
   'audio/aac',
 ];
 
-type RecordingPhase = 'ready' | 'recording' | 'paused' | 'submitting' | 'done' | 'error';
+type RecordingPhase = 'ready' | 'recording' | 'paused' | 'processing' | 'error';
 
-export default function S3Recorder({ onResetAll }: S3RecorderProps) {
+export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) {
   const [currentIdx, setCurrentIdx] = useState(0); // 0, 1, 2, 3 (문항 1~4)
   const [phase, setPhase] = useState<RecordingPhase>('ready');
   const [secLeft, setSecLeft] = useState(10);
   const [supportedMime, setSupportedMime] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
-  const [apiResponse, setApiResponse] = useState<Record<string, unknown> | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -133,7 +133,6 @@ export default function S3Recorder({ onResetAll }: S3RecorderProps) {
       setSecLeft((prev) => {
         if (prev <= 1) {
           clearTimer();
-          // 10초 완료 시 다음 처리
           if (questionIdx < 3) {
             handlePauseSegment(questionIdx);
           } else {
@@ -161,11 +160,11 @@ export default function S3Recorder({ onResetAll }: S3RecorderProps) {
   const handleFinalStop = () => {
     clearTimer();
     stopVolumeVisualizer();
+    setPhase('processing');
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
     }
-    setPhase('submitting');
   };
 
   // 첫 문항 녹음 시작
@@ -192,23 +191,23 @@ export default function S3Recorder({ onResetAll }: S3RecorderProps) {
         }
       };
 
-      recorder.onstop = async () => {
+      recorder.onstop = () => {
         const finalType = recorder.mimeType || supportedMime || 'audio/mp4';
         const blob = new Blob(chunksRef.current, { type: finalType });
-        console.log(`[원산지증명서] 최종 녹음 완료 | 타입: ${blob.type} | 크기: ${(blob.size / 1024).toFixed(1)} KB`);
+        console.log(`[원산지증명서] 4문항 녹음 완료 | 타입: ${blob.type} | 크기: ${(blob.size / 1024).toFixed(1)} KB`);
 
         // 스트림 해제
         stream.getTracks().forEach((track) => track.stop());
 
-        // 2MB 용량 검사
+        // 2MB 초과 검사
         if (blob.size > 2 * 1024 * 1024) {
           setPhase('error');
           setErrorMessage('녹음 파일 용량이 2MB를 초과하여 접수할 수 없습니다.');
           return;
         }
 
-        // POST /api/judge 자동 전송
-        await submitToJudgeApi(blob);
+        // S4 심사 화면으로 전환 및 Blob 전달
+        onComplete(blob);
       };
 
       recorder.start();
@@ -242,48 +241,6 @@ export default function S3Recorder({ onResetAll }: S3RecorderProps) {
     startCountdown(nextIdx);
   };
 
-  // 서버 API 전송 (명세 6장, 7장 및 8번 지침)
-  const submitToJudgeApi = async (blob: Blob) => {
-    setPhase('submitting');
-    try {
-      const ext = blob.type.includes('webm') ? 'webm' : 'm4a';
-      const fileName = `voice-test-${Date.now()}.${ext}`;
-      const file = new File([blob], fileName, { type: blob.type });
-
-      const formData = new FormData();
-      formData.append('audio', file);
-      formData.append('questionSetId', 'set-a');
-
-      console.log('[원산지증명서] POST /api/judge 요청 전송 중...', {
-        fileName,
-        type: blob.type,
-        size: blob.size,
-        questionSetId: 'set-a',
-      });
-
-      const response = await fetch('/api/judge', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      console.log('[POST /api/judge 응답 결과 수신]', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || `서버 응답 오류 (상태 코드: ${response.status})`);
-      }
-
-      setApiResponse(data);
-      setPhase('done');
-    } catch (err) {
-      console.error('감정 요청 실패:', err);
-      setPhase('error');
-      setErrorMessage(
-        err instanceof Error ? err.message : '서버와의 통신에 실패하였습니다.'
-      );
-    }
-  };
-
   // 처음부터 다시 하기
   const handleReset = () => {
     cleanupAudio();
@@ -292,7 +249,6 @@ export default function S3Recorder({ onResetAll }: S3RecorderProps) {
     setPhase('ready');
     setSecLeft(10);
     setErrorMessage('');
-    setApiResponse(null);
   };
 
   return (
@@ -420,45 +376,11 @@ export default function S3Recorder({ onResetAll }: S3RecorderProps) {
           </button>
         )}
 
-        {phase === 'submitting' && (
-          <div className="flex flex-col items-center justify-center gap-2 rounded border border-stone-300 bg-stone-100 py-5 text-center">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-stone-800 border-t-transparent" />
+        {phase === 'processing' && (
+          <div className="flex flex-col items-center justify-center gap-2 rounded border border-stone-300 bg-stone-100 py-4 text-center">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-800 border-t-transparent" />
             <div className="text-xs font-bold text-stone-800">
-              구술 음성 접수 완료: AI 감정위원회 심사 요청 중...
-            </div>
-            <p className="text-[11px] text-stone-500">
-              (POST /api/judge 전송 중입니다)
-            </p>
-          </div>
-        )}
-
-        {phase === 'done' && apiResponse && (
-          <div className="space-y-3 rounded border border-emerald-400 bg-emerald-50 p-4">
-            <div className="flex items-center justify-between border-b border-emerald-300 pb-2">
-              <span className="text-xs font-bold text-emerald-900">
-                ✅ 감정 심사 접수 및 응답 수신 성공!
-              </span>
-              <span className="text-[11px] text-emerald-700 font-mono">
-                {String(apiResponse.certificateNo || '')}
-              </span>
-            </div>
-            <p className="text-xs text-emerald-800 leading-relaxed">
-              성공적으로 판정 응답을 수신하였으며, 세부 결과가 <b>브라우저 개발자 도구(F12) 콘솔</b>에 출력되었습니다.
-            </p>
-            {/* 응답 핵심 프리뷰 */}
-            <div className="rounded bg-white p-3 text-xs text-stone-800 space-y-1 font-mono">
-              <div>• 판정지역: <b>{(apiResponse.region as { label?: string })?.label || '판정 완료'}</b></div>
-              <div>• 농도점수: <b>{(apiResponse.intensity as { score?: number })?.score ?? '-'}점</b></div>
-              <div>• 판정등급: <b>{(apiResponse.intensity as { gradeName?: string })?.gradeName || '-'}</b></div>
-              <div>• 소견문구: <span className="text-stone-600 font-sans">{String(apiResponse.opinion || '-')}</span></div>
-            </div>
-            <div className="pt-1">
-              <button
-                onClick={handleReset}
-                className="w-full rounded bg-stone-800 py-2.5 text-xs font-bold text-white hover:bg-stone-900"
-              >
-                새로운 감정 다시 신청하기
-              </button>
+              녹음 데이터 취합 중...
             </div>
           </div>
         )}
