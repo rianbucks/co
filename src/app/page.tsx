@@ -18,15 +18,15 @@ export default function Home() {
   const getStepLabel = (s: ScreenStep) => {
     switch (s) {
       case 'S1':
-        return '1단계: 감정신청';
+        return '시작';
       case 'S2':
-        return '2단계: 안내및동의';
+        return '안내';
       case 'S3':
-        return '3단계: 구술녹음';
+        return '녹음';
       case 'S4':
-        return '4단계: 전문심사';
+        return '분석 중';
       case 'S5':
-        return '5단계: 결과통지';
+        return '결과';
       default:
         return '';
     }
@@ -49,60 +49,69 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen w-full justify-center bg-stone-200">
-      <main className="flex min-h-screen w-full max-w-[430px] flex-col justify-between border-x border-stone-300 bg-stone-100 shadow-lg">
+    <div className="relative min-h-screen w-full bg-black text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
+      {/* Desktop Ambient Background Orbs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-600/10 blur-[140px]" />
+        <div className="absolute top-1/3 left-1/4 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-[130px]" />
+        <div className="absolute bottom-10 right-1/4 h-[400px] w-[400px] rounded-full bg-blue-600/10 blur-[130px]" />
+      </div>
+
+      {/* Main Responsive Wrapper */}
+      <div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col justify-between border-x border-zinc-800/60 bg-zinc-950/70 shadow-2xl backdrop-blur-2xl">
         <div>
-          {/* 공공기관 서식 헤더 */}
-          <Header currentStep={getStepLabel(step)} />
+          {/* iOS Frosted Header */}
+          <Header
+            currentStep={getStepLabel(step)}
+            onHomeClick={handleResetAll}
+          />
 
-          {/* 화면 단계별 컴포넌트 */}
-          {step === 'S1' && (
-            <S1Intro onNext={() => setStep('S2')} />
-          )}
+          {/* Main Screens */}
+          <main className="w-full">
+            {step === 'S1' && (
+              <S1Intro onNext={() => setStep('S2')} />
+            )}
 
-          {step === 'S2' && (
-            <S2Consent
-              onNext={() => setStep('S3')}
-              onPrev={() => setStep('S1')}
-            />
-          )}
+            {step === 'S2' && (
+              <S2Consent
+                onNext={() => setStep('S3')}
+                onPrev={() => setStep('S1')}
+              />
+            )}
 
-          {step === 'S3' && (
-            <S3Recorder
-              onComplete={handleRecordingComplete}
-              onResetAll={handleResetAll}
-            />
-          )}
+            {step === 'S3' && (
+              <S3Recorder
+                onComplete={handleRecordingComplete}
+                onResetAll={handleResetAll}
+              />
+            )}
 
-          {step === 'S4' && audioBlob && (
-            <S4Judging
-              audioBlob={audioBlob}
-              onSuccess={handleJudgingSuccess}
-              onRetry={() => {
-                // S4 재시도: 강제 리렌더링
-                setStep('S3');
-                setTimeout(() => setStep('S4'), 50);
-              }}
-              onReset={handleResetAll}
-            />
-          )}
+            {step === 'S4' && audioBlob && (
+              <S4Judging
+                audioBlob={audioBlob}
+                onSuccess={handleJudgingSuccess}
+                onRetry={() => {
+                  setStep('S3');
+                  setTimeout(() => setStep('S4'), 50);
+                }}
+                onReset={handleResetAll}
+              />
+            )}
 
-          {step === 'S5' && judgeResult && (
-            <S5Result
-              result={judgeResult}
-              onResetAll={handleResetAll}
-            />
-          )}
+            {step === 'S5' && judgeResult && (
+              <S5Result
+                result={judgeResult}
+                onResetAll={handleResetAll}
+              />
+            )}
+          </main>
         </div>
 
-        {/* 하단 공공서식 푸터 */}
-        <footer className="border-t border-stone-300 bg-stone-200/80 px-4 py-3 text-center text-[10px] text-stone-500">
-          <div>국립방언품질평가원 행정정보망 · 원산지증명서(C/O) 시스템</div>
-          <div className="mt-0.5 font-mono text-stone-400">
-            2026 바보톤 출품작 [주제: 쓸데없이 진지한 방언 검정소]
-          </div>
+        {/* Minimal Clean Footer */}
+        <footer className="border-t border-zinc-900/80 px-6 py-4 text-center text-xs text-zinc-400">
+          <div>원산지증명서 (C/O) · Voice Dialect Analysis</div>
         </footer>
-      </main>
+      </div>
     </div>
   );
 }

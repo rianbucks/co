@@ -14,7 +14,7 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
 
   const handleRequestMicAndProceed = async () => {
     if (!agreed) {
-      alert('음성 처리 방침 및 절차 안내에 동의해 주셔야 진행이 가능합니다.');
+      alert('안내 사항을 확인하고 동의를 체크해 주십시오.');
       return;
     }
 
@@ -23,114 +23,114 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('현재 브라우저에서는 음성 녹음 기능을 지원하지 않습니다. (HTTPS 환경 필요)');
+        throw new Error('현재 브라우저 환경에서 마이크 녹음을 지원하지 않습니다. (HTTPS 환경 필요)');
       }
 
-      // 마이크 권한 확인
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // 확인 후 스트림 임시 정지 (S3에서 실제 녹음 시 다시 획득)
       stream.getTracks().forEach((track) => track.stop());
 
       setMicState('idle');
       onNext();
     } catch (err) {
-      console.error('마이크 권한 획득 실패:', err);
+      console.error('마이크 권한 실패:', err);
       setMicState('denied');
       setErrorMessage(
         err instanceof Error && err.name === 'NotAllowedError'
-          ? '마이크 사용 권한이 거부되었습니다. 주소창 좌측의 권한/자물쇠 아이콘을 눌러 마이크 권한을 [허용]으로 변경 후 다시 시도해 주십시오.'
-          : '마이크 장치에 접근할 수 없습니다. 장치 연결 상태 및 브라우저 설정을 확인해 주십시오.'
+          ? '마이크 접근 권한이 거부되었습니다. 브라우저 주소창 설정에서 마이크를 [허용]으로 변경해 주십시오.'
+          : '마이크 장치에 접근할 수 없습니다. 장치 연결 상태를 확인해 주십시오.'
       );
     }
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 text-stone-900">
-      <div className="border border-stone-400 bg-white p-4 shadow-xs">
-        <div className="border-b border-stone-300 pb-2">
-          <div className="text-[11px] font-semibold text-stone-600">감정 절차 제2단계</div>
-          <h2 className="text-lg font-bold tracking-tight text-stone-900">
-            신청인 사전 고지 및 동의서
-          </h2>
-        </div>
-
-        {/* 1. 절차 고지 */}
-        <div className="mt-3 space-y-3 text-xs leading-relaxed text-stone-700">
-          <div className="rounded bg-stone-50 p-3 border border-stone-200">
-            <h3 className="font-bold text-stone-900">[제1조] 감정 진행 절차</h3>
-            <p className="mt-1">
-              신청인은 제시되는 4개 문항에 대해 상황극 형식으로 각 10초간 음성을 구술 녹음합니다.
-              문항 간 일시정지가 가능하며, 총 40초의 단일 음성 데이터가 서버로 전송됩니다.
-            </p>
+    <div className="flex flex-col gap-6 p-5 sm:p-7">
+      <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 text-xl text-indigo-400">
+            🎙️
           </div>
-
-          {/* 2. 개인정보 및 음성 처리 방침 */}
-          <div className="rounded bg-stone-50 p-3 border border-stone-200">
-            <h3 className="font-bold text-stone-900">[제2조] 음성 데이터 처리 및 파기 원칙</h3>
-            <ul className="mt-1 list-disc space-y-1 pl-4">
-              <li>
-                <span className="font-semibold text-stone-900">일회성 판정 후 즉시 파기:</span> 수집된 녹음 음성은 AI(Google Gemini)를 통한 방언 판정 처리에만 즉각 활용되며, 판정 완료 즉시 메모리에서 폐기됩니다.
-              </li>
-              <li>
-                <span className="font-semibold text-stone-900">서버 및 DB 미저장:</span> 기본 감정 단계에서는 신청인의 음성 원본을 영구 저장하지 않습니다.
-              </li>
-              <li>
-                <span className="font-semibold text-stone-900">랭킹 등록 시 선택적 저장:</span> 향후 전국 방언 랭킹에 본인 결과를 공개 등록하고자 할 때만 별도의 추가 동의 절차를 거칩니다.
-              </li>
-            </ul>
-          </div>
-
-          {/* 3. 장치 권한 안내 */}
-          <div className="rounded bg-stone-50 p-3 border border-stone-200">
-            <h3 className="font-bold text-stone-900">[제3조] 마이크 장비 사용 승인</h3>
-            <p className="mt-1">
-              음성 구술 녹음을 위하여 본 단말기의 마이크(Audio Capture) 권한 승인이 요구됩니다.
-            </p>
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-white sm:text-xl">
+              마이크 사용 및 안내
+            </h2>
+            <p className="text-xs text-zinc-400">원활한 감정을 위해 아래 내용을 확인해 주세요.</p>
           </div>
         </div>
 
-        {/* 동의 체크박스 */}
-        <div className="mt-4 border-t border-stone-300 pt-3">
-          <label className="flex cursor-pointer items-start gap-2 text-xs font-semibold text-stone-900">
+        {/* Grouped Info List (iOS Settings Style) */}
+        <div className="mt-5 space-y-2.5">
+          <div className="flex items-start gap-3 rounded-2xl border border-zinc-800/60 bg-black/40 p-3.5">
+            <span className="text-base">⏱️</span>
+            <div>
+              <div className="text-xs font-semibold text-zinc-200">상황극 4문항 구술 (각 10초)</div>
+              <p className="mt-0.5 text-[11px] text-zinc-400">
+                일상 상황에 맞춰 친한 친구나 가족에게 말하듯 편안하게 녹음합니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-2xl border border-zinc-800/60 bg-black/40 p-3.5">
+            <span className="text-base">🛡️</span>
+            <div>
+              <div className="text-xs font-semibold text-zinc-200">음성 즉시 폐기 (서버 미저장)</div>
+              <p className="mt-0.5 text-[11px] text-zinc-400">
+                수집된 음성은 AI 분석 후 즉시 메모리에서 삭제되며 서버에 보관되지 않습니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-2xl border border-zinc-800/60 bg-black/40 p-3.5">
+            <span className="text-base">🏆</span>
+            <div>
+              <div className="text-xs font-semibold text-zinc-200">랭킹 등록은 선택 사항</div>
+              <p className="mt-0.5 text-[11px] text-zinc-400">
+                전국 사투리 랭킹에 본인 음성을 공개할 경우에만 별도로 추가 동의를 받습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* iOS Toggle/Checkbox style */}
+        <div className="mt-6 border-t border-zinc-800/80 pt-4">
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-zinc-800/40 p-3 transition hover:bg-zinc-800/60">
+            <span className="text-xs font-medium text-zinc-200">
+              안내 사항을 모두 확인하였으며 마이크 사용에 동의합니다
+            </span>
             <input
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-stone-400 text-stone-900 focus:ring-stone-800"
+              className="h-5 w-5 rounded-md accent-white"
             />
-            <span>
-              [필수] 본인은 상기 음성 데이터 처리 방침 및 마이크 권한 사용 절차를 모두 확인하였으며 이에 동의합니다.
-            </span>
           </label>
         </div>
 
-        {/* 에러 메시지 (권한 거부 시) */}
         {errorMessage && (
-          <div className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-xs text-red-800">
-            <p className="font-bold">⚠️ 마이크 접근 제한 안내</p>
-            <p className="mt-1 leading-relaxed">{errorMessage}</p>
+          <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
+            <div className="font-semibold">⚠️ 마이크 권한 확인 필요</div>
+            <p className="mt-1 leading-relaxed text-[11px] text-red-400">{errorMessage}</p>
           </div>
         )}
       </div>
 
-      {/* 버튼 영역 */}
-      <div className="flex gap-2">
+      {/* Buttons */}
+      <div className="flex gap-3">
         <button
           onClick={onPrev}
-          className="w-1/3 rounded border border-stone-400 bg-white py-3 text-xs font-bold text-stone-700 shadow-xs hover:bg-stone-50"
+          className="w-1/3 rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3.5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700/60 active:scale-95"
         >
-          이전 단계
+          이전
         </button>
         <button
           onClick={handleRequestMicAndProceed}
           disabled={!agreed || micState === 'requesting'}
-          className={`flex-1 rounded py-3 text-xs font-bold text-white shadow-xs transition ${
+          className={`flex-1 rounded-full py-3.5 text-xs font-bold transition active:scale-95 ${
             agreed && micState !== 'requesting'
-              ? 'bg-stone-900 hover:bg-stone-800 active:scale-[0.99]'
-              : 'cursor-not-allowed bg-stone-400'
+              ? 'bg-white text-black shadow-lg shadow-white/10 hover:bg-zinc-200'
+              : 'cursor-not-allowed bg-zinc-800 text-zinc-500'
           }`}
         >
-          {micState === 'requesting' ? '권한 확인 중...' : '마이크 승인 및 녹음실 입장'}
+          {micState === 'requesting' ? '마이크 연결 중...' : '마이크 허용하고 녹음실 입장'}
         </button>
       </div>
     </div>

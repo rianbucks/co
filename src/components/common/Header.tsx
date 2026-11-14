@@ -2,23 +2,31 @@
 
 interface HeaderProps {
   currentStep?: string;
+  onHomeClick?: () => void;
 }
 
-export default function Header({ currentStep }: HeaderProps) {
+export default function Header({ currentStep, onHomeClick }: HeaderProps) {
   return (
-    <header className="border-b-2 border-stone-800 bg-stone-100 px-4 py-3 text-stone-900">
-      <div className="flex items-center justify-between text-[11px] font-mono text-stone-600">
-        <span>서식 제2026-CO호</span>
-        <span className="font-semibold text-stone-800">[공공서식 표준규격]</span>
-      </div>
-      <div className="mt-1 flex items-baseline justify-between">
-        <h1 className="text-base font-bold tracking-tight text-stone-900">
-          국립방언품질평가원 <span className="text-xs font-normal text-stone-600">| 원산지증명서</span>
-        </h1>
+    <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-black/60 px-5 py-3.5 backdrop-blur-xl transition-all">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onHomeClick}
+          className="flex items-center gap-2 text-left transition hover:opacity-80 active:scale-95"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 text-xs font-black text-white shadow-md shadow-indigo-500/20">
+            C/O
+          </div>
+          <div>
+            <div className="text-sm font-semibold tracking-tight text-zinc-100">원산지증명서</div>
+            <div className="text-[10px] font-medium text-zinc-400">사투리 AI 검정원</div>
+          </div>
+        </button>
+
         {currentStep && (
-          <span className="rounded border border-stone-400 bg-stone-200 px-1.5 py-0.5 text-[11px] font-medium text-stone-700">
+          <div className="flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/80 px-3 py-1 text-[11px] font-medium text-zinc-300 shadow-inner">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             {currentStep}
-          </span>
+          </div>
         )}
       </div>
     </header>
