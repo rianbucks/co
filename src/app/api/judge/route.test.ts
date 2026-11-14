@@ -100,4 +100,17 @@ describe("POST /api/judge", () => {
     expect(await response.json()).toEqual({ error: "server_error" });
     expect(consoleError).toHaveBeenCalled();
   });
+
+  it("Production에서 Upstash가 없으면 Gemini 호출 없이 요청을 닫는다", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MOCK_AI", "true");
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "server_error" });
+  });
 });

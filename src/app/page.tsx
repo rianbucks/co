@@ -1,69 +1,129 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import Header from '@/components/common/Header';
+import S1Intro from '@/components/screens/S1Intro';
+import S2Consent from '@/components/screens/S2Consent';
+import S3Recorder from '@/components/screens/S3Recorder';
+import S4Judging from '@/components/screens/S4Judging';
+import S5Result from '@/components/screens/S5Result';
+import S6Certificate from '@/components/screens/S6Certificate';
+import { ScreenStep } from '@/types/screen';
+import { JudgeResult } from '@/lib/judge/contract';
 
 export default function Home() {
+  const [step, setStep] = useState<ScreenStep>('S1');
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [judgeResult, setJudgeResult] = useState<JudgeResult | null>(null);
+
+  const getStepLabel = (s: ScreenStep) => {
+    switch (s) {
+      case 'S1':
+        return '시작';
+      case 'S2':
+        return '안내';
+      case 'S3':
+        return '녹음';
+      case 'S4':
+        return '분석 중';
+      case 'S5':
+        return '결과';
+      case 'S6':
+        return '감정서';
+      default:
+        return '';
+    }
+  };
+
+  const handleRecordingComplete = (blob: Blob) => {
+    setAudioBlob(blob);
+    setStep('S4');
+  };
+
+  const handleJudgingSuccess = (result: JudgeResult) => {
+    setJudgeResult(result);
+    setStep('S5');
+  };
+
+  const handleResetAll = () => {
+    setAudioBlob(null);
+    setJudgeResult(null);
+    setStep('S1');
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="relative min-h-screen w-full bg-black text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
+      {/* Desktop Ambient Background Orbs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-600/10 blur-[160px]" />
+        <div className="absolute top-1/3 left-1/4 h-[500px] w-[500px] rounded-full bg-purple-600/10 blur-[150px]" />
+        <div className="absolute bottom-10 right-1/4 h-[500px] w-[500px] rounded-full bg-blue-600/10 blur-[150px]" />
+      </div>
+
+      {/* Main Responsive Wrapper: Mobile (full-width) / Desktop (max-w-5xl/6xl 2-column) */}
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md lg:max-w-5xl xl:max-w-6xl flex-col justify-between border-x border-zinc-800/60 bg-zinc-950/70 shadow-2xl backdrop-blur-2xl transition-all duration-300">
+        <div>
+          {/* iOS Frosted Header */}
+          <Header
+            currentStep={getStepLabel(step)}
+            onHomeClick={handleResetAll}
+          />
+
+          {/* Main Screens */}
+          <main className="w-full">
+            {step === 'S1' && (
+              <S1Intro onNext={() => setStep('S2')} />
+            )}
+
+            {step === 'S2' && (
+              <S2Consent
+                onNext={() => setStep('S3')}
+                onPrev={() => setStep('S1')}
+              />
+            )}
+
+            {step === 'S3' && (
+              <S3Recorder
+                onComplete={handleRecordingComplete}
+                onResetAll={handleResetAll}
+              />
+            )}
+
+            {step === 'S4' && audioBlob && (
+              <S4Judging
+                audioBlob={audioBlob}
+                onSuccess={handleJudgingSuccess}
+                onRetry={() => {
+                  setStep('S3');
+                  setTimeout(() => setStep('S4'), 50);
+                }}
+                onReset={handleResetAll}
+              />
+            )}
+
+            {step === 'S5' && judgeResult && (
+              <S5Result
+                result={judgeResult}
+                onGoToCertificate={() => setStep('S6')}
+                onResetAll={handleResetAll}
+              />
+            )}
+
+            {step === 'S6' && judgeResult && (
+              <S6Certificate
+                result={judgeResult}
+                onBack={() => setStep('S5')}
+                onResetAll={handleResetAll}
+              />
+            )}
+          </main>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {/* Minimal Clean Footer */}
+        <footer className="border-t border-zinc-900/80 px-6 py-5 text-center text-xs text-zinc-400">
+          <div>원산지증명서 (C/O) · Voice Dialect Analysis System</div>
+        </footer>
+      </div>
     </div>
   );
 }
