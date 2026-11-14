@@ -18,29 +18,29 @@ const JUDGING_STEPS = [
 ];
 
 export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4JudgingProps) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [secElapsed, setSecElapsed] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
 
   const hasCalledApiRef = useRef(false);
+  const requestCompletedRef = useRef(false);
+  const timedOutRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const currentStepIndex = secElapsed >= 12 ? 3 : secElapsed >= 6 ? 2 : secElapsed >= 2 ? 1 : 0;
 
   useEffect(() => {
+    let elapsed = 0;
     const timer = setInterval(() => {
-      setSecElapsed((prev) => {
-        const next = prev + 1;
-        if (next >= 2 && next < 6) setCurrentStepIndex(1);
-        else if (next >= 6 && next < 12) setCurrentStepIndex(2);
-        else if (next >= 12) setCurrentStepIndex(3);
-
-        if (next >= 30 && !hasCalledApiRef.current) {
-          setErrorInfo({
-            title: '심사 소요 시간 초과',
-            message: '대기 시간이 30초를 경과했습니다. 네트워크를 확인 후 다시 시도해 주십시오.',
-            canRetry: true,
-          });
-        }
-        return next;
-      });
+      elapsed += 1;
+      setSecElapsed(elapsed);
+      if (elapsed >= 30 && !requestCompletedRef.current && !timedOutRef.current) {
+        timedOutRef.current = true;
+        abortControllerRef.current?.abort();
+        setErrorInfo({
+          title: '심사 소요 시간 초과',
+          message: '대기 시간이 30초를 경과했습니다. 네트워크를 확인 후 다시 시도해 주십시오.',
+          canRetry: true,
+        });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
@@ -49,6 +49,8 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
   useEffect(() => {
     if (hasCalledApiRef.current) return;
     hasCalledApiRef.current = true;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const callJudgeApi = async () => {
       try {
@@ -62,9 +64,11 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
         const res = await fetch('/api/judge', {
           method: 'POST',
           body: formData,
+          signal: controller.signal,
         });
 
         const data = await res.json();
+        if (timedOutRef.current) return;
 
         if (!res.ok) {
           const errorCode = data.error;
@@ -104,12 +108,15 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
           onSuccess(data as JudgeResult);
         }, 700);
       } catch (err) {
+        if (timedOutRef.current || (err instanceof DOMException && err.name === 'AbortError')) return;
         console.error('API 에러:', err);
         setErrorInfo({
           title: '통신 오류',
           message: '심사 서버와 통신할 수 없습니다. 잠시 후 다시 시도해 주십시오.',
           canRetry: true,
         });
+      } finally {
+        requestCompletedRef.current = true;
       }
     };
 

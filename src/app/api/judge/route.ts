@@ -10,7 +10,7 @@ import { errorResponse, type JudgeResponse } from "@/lib/judge/contract";
 import { mockAiClient } from "@/lib/judge/mock";
 import { judge } from "@/lib/judge/pipeline";
 import { clientIpFrom } from "@/lib/judge/request";
-import { noopRateLimiter } from "@/lib/rate-limit";
+import { rateLimiterFromEnv } from "@/lib/rate-limit";
 
 // runtime은 지정하지 않는다. Cache Components가 켜져 있으면 쓸 수 없고, 기본값이 Node.js다.
 
@@ -38,6 +38,9 @@ export async function POST(request: Request): Promise<Response> {
       return toResponse(errorResponse("server_error"));
     }
 
+    // Production은 분산 저장소가 없으면 fail closed: AI 호출을 허용하지 않는다.
+    const rateLimiter = rateLimiterFromEnv();
+
     let form: FormData;
     try {
       form = await request.formData();
@@ -53,7 +56,7 @@ export async function POST(request: Request): Promise<Response> {
       },
       {
         ai: config.config.mock ? mockAiClient : createGeminiClient(config.config.gemini),
-        rateLimiter: noopRateLimiter,
+        rateLimiter,
       },
     );
     return toResponse(outcome);

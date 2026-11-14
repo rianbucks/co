@@ -36,17 +36,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
 
   const currentQuestion: QuestionItem = QUESTIONS[currentIdx];
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined') {
-      const found = MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) || '';
-      setSupportedMime(found);
-    }
-    return () => {
-      cleanupAudio();
-    };
-  }, []);
-
-  const cleanupAudio = () => {
+  const cleanupAudio = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -69,7 +59,19 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
       } catch {}
       recorderRef.current = null;
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let initializeFrame = 0;
+    if (typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined') {
+      const found = MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+      initializeFrame = window.requestAnimationFrame(() => setSupportedMime(found));
+    }
+    return () => {
+      if (initializeFrame) window.cancelAnimationFrame(initializeFrame);
+      cleanupAudio();
+    };
+  }, [cleanupAudio]);
 
   const startVolumeVisualizer = (stream: MediaStream) => {
     try {
@@ -106,20 +108,40 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     }
   };
 
-  const stopVolumeVisualizer = () => {
+  const stopVolumeVisualizer = useCallback(() => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
     setAudioLevel(0);
-  };
+  }, []);
 
-  const clearTimer = () => {
+  const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  };
+  }, []);
+
+  const handlePauseSegment = useCallback((finishedIdx: number) => {
+    setCurrentIdx(finishedIdx);
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state === 'recording') {
+      recorder.pause();
+    }
+    stopVolumeVisualizer();
+    setPhase('paused');
+  }, [stopVolumeVisualizer]);
+
+  const handleFinalStop = useCallback(() => {
+    clearTimer();
+    stopVolumeVisualizer();
+    setPhase('processing');
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+  }, [clearTimer, stopVolumeVisualizer]);
 
   const startCountdown = useCallback((questionIdx: number) => {
     clearTimer();
@@ -139,26 +161,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
         return prev - 1;
       });
     }, 1000);
-  }, []);
-
-  const handlePauseSegment = (finishedIdx: number) => {
-    const recorder = recorderRef.current;
-    if (recorder && recorder.state === 'recording') {
-      recorder.pause();
-    }
-    stopVolumeVisualizer();
-    setPhase('paused');
-  };
-
-  const handleFinalStop = () => {
-    clearTimer();
-    stopVolumeVisualizer();
-    setPhase('processing');
-    const recorder = recorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.stop();
-    }
-  };
+  }, [clearTimer, handleFinalStop, handlePauseSegment]);
 
   const handleStartFirstRecording = async () => {
     try {

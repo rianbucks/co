@@ -75,9 +75,19 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
               <div className="flex items-start gap-3.5 rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
                 <span className="text-lg">🛡️</span>
                 <div>
-                  <div className="text-xs font-bold text-zinc-200">일회성 판정 후 음성 즉시 영구 폐기</div>
+                  <div className="text-xs font-bold text-zinc-200">Google Gemini 음성 분석 안내</div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    수집된 음성은 AI 분석 후 즉시 메모리에서 삭제되며 서버나 데이터베이스에 영구 보관되지 않습니다.
+                    녹음 음성은 판정을 위해 Google Gemini AI 서비스로 전송됩니다. 프로젝트 서버와 데이터베이스에는 음성 파일을 지속 저장하지 않습니다.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <span className="text-lg">ℹ️</span>
+                <div>
+                  <div className="text-xs font-bold text-amber-200">Gemini 이용 등급에 따른 데이터 처리</div>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+                    Gemini API 무료 등급에서는 전송한 콘텐츠가 Google 제품 개선에 사용될 수 있습니다. 공개 서비스 운영 전에는 유료 등급과 데이터 처리 조건을 확인해 주십시오.
                   </p>
                 </div>
               </div>
@@ -118,7 +128,7 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
                   className="mt-0.5 h-5 w-5 rounded-md accent-white"
                 />
                 <span className="text-xs leading-relaxed text-zinc-200">
-                  <span className="font-bold text-white">[필수]</span> 본인은 상기 음성 데이터 처리 방침 및 마이크 권한 사용 절차를 모두 확인하였으며 이에 동의합니다.
+                  <span className="font-bold text-white">[필수]</span> 녹음 음성이 판정을 위해 Google Gemini AI 서비스로 전송되며, 프로젝트 서버에 지속 저장되지 않는다는 안내를 확인하고 동의합니다.
                 </span>
               </label>
             </div>

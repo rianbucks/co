@@ -6,9 +6,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "predev": "node scripts/build-css.js",
+    "predev": "node scripts/build-css.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/build-css.js",
+    "prebuild": "node scripts/build-css.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -23,12 +23,14 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@tailwindcss/node": "4.3.3",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "fast-glob": "3.3.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5",
     "vitest": "5.1.0"

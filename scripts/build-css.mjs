@@ -1,7 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const { compile } = require('@tailwindcss/node');
-const fg = require('fast-glob');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { compile } from '@tailwindcss/node';
+import fg from 'fast-glob';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function build() {
   const root = path.resolve(__dirname, '..');
