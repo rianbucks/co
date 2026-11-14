@@ -5,7 +5,7 @@ import { REGION_KOREAN_NAMES, PART_KOREAN_NAMES } from '@/types/screen';
 
 interface S5ResultProps {
   result: JudgeResult;
-  onGoToCertificate?: () => void;
+  onGoToCertificate: () => void;
   onResetAll: () => void;
 }
 
@@ -84,10 +84,7 @@ export default function S5Result({ result, onGoToCertificate, onResetAll }: S5Re
           {/* Action Button inside Left Column for Desktop */}
           <div className="mt-8 space-y-3">
             <button
-              onClick={() => {
-                if (onGoToCertificate) onGoToCertificate();
-                else alert('감정서(S6) 이미지 저장 및 공유 기능은 다음 단계에서 구현될 예정입니다.');
-              }}
+              onClick={onGoToCertificate}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
             >
               <span>원산지증명서 발급 및 확인 (S6)</span>

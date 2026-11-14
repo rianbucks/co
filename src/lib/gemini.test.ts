@@ -38,7 +38,7 @@ describe("createGeminiClient", () => {
     const text = await createGeminiClient(settings).generate(request);
 
     expect(text).toBe('{"audio_quality":"ok"}');
-    expect(sdk.constructorArgs).toEqual([{ apiKey: "test-key" }]);
+    expect(sdk.constructorArgs).toEqual([{ apiKey: "test-key", apiVersion: "v1" }]);
     expect(sdk.create).toHaveBeenCalledTimes(1);
     expect(sdk.create).toHaveBeenCalledWith(
       {

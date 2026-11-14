@@ -7,6 +7,7 @@ import S2Consent from '@/components/screens/S2Consent';
 import S3Recorder from '@/components/screens/S3Recorder';
 import S4Judging from '@/components/screens/S4Judging';
 import S5Result from '@/components/screens/S5Result';
+import S6Certificate from '@/components/screens/S6Certificate';
 import { ScreenStep } from '@/types/screen';
 import { JudgeResult } from '@/lib/judge/contract';
 
@@ -27,6 +28,8 @@ export default function Home() {
         return '분석 중';
       case 'S5':
         return '결과';
+      case 'S6':
+        return '감정서';
       default:
         return '';
     }
@@ -101,6 +104,15 @@ export default function Home() {
             {step === 'S5' && judgeResult && (
               <S5Result
                 result={judgeResult}
+                onGoToCertificate={() => setStep('S6')}
+                onResetAll={handleResetAll}
+              />
+            )}
+
+            {step === 'S6' && judgeResult && (
+              <S6Certificate
+                result={judgeResult}
+                onBack={() => setStep('S5')}
                 onResetAll={handleResetAll}
               />
             )}
