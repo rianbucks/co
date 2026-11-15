@@ -67,7 +67,7 @@ export default function S1Intro({ onNext }: S1IntroProps) {
                 <div>
                   <div className="text-xs font-bold text-zinc-100">4문항 상황극 구술</div>
                   <div className="mt-0.5 text-[11px] text-zinc-400">
-                    문항당 10초씩 편안하게 본인 사투리로 대화
+                    문항당 10초씩 편안하게 평소 말투로 대화
                   </div>
                 </div>
               </div>

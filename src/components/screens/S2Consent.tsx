@@ -67,7 +67,7 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
                 <div>
                   <div className="text-xs font-bold text-zinc-200">상황극 4문항 구술 (총 40초)</div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    화면에 제시되는 4가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 사투리 어조로 답변합니다.
+                    화면에 제시되는 4가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 평소 말투로 답변합니다.
                   </p>
                 </div>
               </div>
