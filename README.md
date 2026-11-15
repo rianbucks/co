@@ -49,6 +49,14 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/a
 - 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
 - 성공 응답의 `transcript`(받아쓰기)는 서버에 저장하지 않습니다.
 
+## 정확도 검증
+
+명세 3장의 검증(권역 정답률, 근거의 진위, 같은 파일의 일관성, 응답 시간)을 실제 Gemini로 돌리는 스크립트가 있습니다. 음성 파일과 결과는 커밋되지 않습니다. 사용법은 [validation/README.md](validation/README.md)에 있습니다.
+
+```bash
+npm run validate -- --csv validation/answers.csv --runs 3
+```
+
 ## 코드 위치
 
 | 파일 | 내용 |
@@ -57,9 +65,11 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/a
 | `src/lib/judge/pipeline.ts` | 서버 검사 → 호출 제한 → AI 호출(실패하면 대체 모델로 1회 재시도) → 후처리 |
 | `src/lib/judge/postprocess.ts` | 후처리 순수 함수: 확률 정규화, 근거 검증, 농도, 등급, 판정 지역, 소견 |
 | `src/lib/judge/rules.ts` | 권역 이름, 농도 가중치, 등급표 |
-| `src/lib/judge/opinions.ts` | 소견 문구(임시, 등급별 1개) |
+| `src/lib/judge/opinions.ts` | 소견 문구(등급 × 가장 높은 항목, 20개) |
 | `src/lib/judge/model-output.ts` | Gemini 출력 JSON 스키마와 검증 |
 | `src/lib/judge/prompt.ts` | 지시문과 문항 세트 |
 | `src/lib/judge/audio.ts` | 파일 크기와 형식 검사 |
 | `src/lib/gemini.ts` | Gemini 호출. SDK는 이 파일에서만 쓴다 |
 | `src/lib/rate-limit.ts` | 호출 제한 인터페이스. 구현은 DB를 붙일 때 한다 |
+| `scripts/validate.ts` | 정확도 검증 스크립트 |
+| `src/lib/validation/` | 정답 CSV 읽기와 검증 결과 집계 |

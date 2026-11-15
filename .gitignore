@@ -40,3 +40,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 정확도 검증: 음성 파일과 결과는 커밋하지 않는다
+/validation/samples/
+/validation/results/
+/validation/**/*.webm
+/validation/**/*.mp4
+/validation/**/*.m4a
+/validation/**/*.mp3
+/validation/**/*.wav
+/validation/**/*.ogg
+/validation/**/*.flac
+/validation/**/*.aac
