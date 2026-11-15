@@ -38,7 +38,7 @@ ${questionList}
 3. regions는 여섯 권역의 확률이고 합은 100이다.
 4. scores는 어휘, 어미, 음운, 억양 각각 0~100이다. 표준어와 차이가 없으면 0에 가깝게 준다.
 5. evidence의 quote는 transcript에 그대로 있는 구절이어야 한다.
-6. 말소리가 없거나 3초 미만이면 audio_quality만 채운다. 이때 transcript, regions, scores, evidence는 null로 둔다.
+6. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, regions, scores, evidence는 null로 둔다.
 7. 욕설이나 혐오 표현이 들리면 flags에 profanity를, 실명이나 전화번호 같은 개인정보가 들리면 personal_info를 넣는다. 없으면 빈 배열로 둔다.`;
 }
 
