@@ -1,6 +1,6 @@
 /**
  * 감정 API 호출 제한. Production은 Redis REST의 원자 Lua 스크립트를 사용해
- * 서버리스 인스턴스 사이에서도 IP당 5회, 전체 1,500회(KST 날짜 기준)를 공유한다.
+ * 서버리스 인스턴스 사이에서도 IP당 60회, 전체 1,500회(KST 날짜 기준)를 공유한다.
  * 로컬 개발/테스트에서는 메모리 제한기를 사용한다.
  */
 import { createHmac } from "node:crypto";
@@ -12,7 +12,8 @@ export interface RateLimiter {
   check(client: { ip: string | null }): Promise<RateLimitDecision>;
 }
 
-export const DAILY_IP_LIMIT = 5;
+/** 교내 와이파이처럼 여러 사람이 IP 하나를 함께 쓰므로 개인 한도를 넉넉하게 둔다(명세 9장). */
+export const DAILY_IP_LIMIT = 60;
 export const DAILY_GLOBAL_LIMIT = 1_500;
 
 type Fetcher = (url: string, init: RequestInit) => Promise<Response>;

@@ -1,10 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DAILY_GLOBAL_LIMIT,
+  DAILY_IP_LIMIT,
   createMemoryRateLimiter,
   createUpstashRateLimiter,
   rateLimiterFromEnv,
   unlimitedRateLimiter,
 } from "./rate-limit";
+
+describe("한도 값(명세 9장)", () => {
+  it("IP당 하루 60회, 전체 하루 1,500회", () => {
+    expect(DAILY_IP_LIMIT).toBe(60);
+    expect(DAILY_GLOBAL_LIMIT).toBe(1_500);
+  });
+});
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -39,7 +48,7 @@ describe("createUpstashRateLimiter", () => {
     expect(body[0][3]).toMatch(/^co:judge:2026-11-14:ip:[a-f0-9]{64}$/);
     expect(body[0][3]).not.toContain("203.0.113.55");
     expect(body[0][4]).toBe("co:judge:2026-11-14:global");
-    expect(body[0][5]).toBe("5");
+    expect(body[0][5]).toBe("60");
     expect(body[0][6]).toBe("1500");
     expect(Number(body[0][7])).toBe(new Date("2026-11-15T00:00:00+09:00").getTime());
   });
@@ -118,11 +127,11 @@ describe("rateLimiterFromEnv", () => {
 });
 
 describe("createMemoryRateLimiter", () => {
-  it("같은 날 IP당 다섯 번까지만 허용한다", async () => {
+  it("같은 날 IP당 60번까지만 허용한다", async () => {
     const limiter = createMemoryRateLimiter({
       now: () => new Date("2031-02-03T10:00:00+09:00").getTime(),
     });
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < 60; i += 1) {
       await expect(limiter.check({ ip: "198.51.100.88" })).resolves.toEqual({ allowed: true });
     }
     await expect(limiter.check({ ip: "198.51.100.88" })).resolves.toEqual({
