@@ -17,6 +17,31 @@ const JUDGING_STEPS = [
   { id: 4, label: '전문 감정위원 심의 합의', desc: '6대 권역 확률 및 농도 등급 최종 확정' },
 ];
 
+/** 같은 녹음을 다시 보내도 결과가 같은 오류. 재시도 대신 다시 녹음으로 안내한다. */
+const RERECORD_ERRORS = new Map<string, { title: string; message: string }>([
+  [
+    'invalid_audio',
+    {
+      title: '감정 반려 (녹음 파일 확인 불가)',
+      message: '녹음 파일을 확인할 수 없습니다. 처음부터 다시 녹음해 주십시오.',
+    },
+  ],
+  [
+    'too_large',
+    {
+      title: '감정 반려 (파일 용량 초과)',
+      message: '녹음 파일이 접수 한도(2MB)를 넘었습니다. 처음부터 다시 녹음해 주십시오.',
+    },
+  ],
+  [
+    'invalid_request',
+    {
+      title: '감정 반려 (신청 정보 오류)',
+      message: '감정 신청 정보를 확인할 수 없습니다. 처음부터 다시 녹음해 주십시오.',
+    },
+  ],
+]);
+
 export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4JudgingProps) {
   const [secElapsed, setSecElapsed] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
@@ -73,6 +98,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
         if (!res.ok) {
           const errorCode = data.error;
           const reason = data.reason;
+          const rerecordError = RERECORD_ERRORS.get(errorCode);
 
           if (errorCode === 'rejected') {
             if (reason === 'noisy') {
@@ -94,6 +120,8 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
               message: '금일 감정 접수가 마감되었습니다. 내일 다시 이용해 주십시오.',
               canRetry: false,
             });
+          } else if (rerecordError) {
+            setErrorInfo({ ...rerecordError, canRetry: false });
           } else {
             setErrorInfo({
               title: '일시적 오류',
