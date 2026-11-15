@@ -23,6 +23,7 @@ npm run dev
 | `GEMINI_API_KEY` | Gemini API 키. `.env.local`이나 배포 설정에만 둔다 | 없음 |
 | `MOCK_AI` | `true`면 Gemini를 부르지 않고 명세 4장 모델 출력 예시로 후처리까지 실행한다 | `false` |
 | `GEMINI_MODEL` | 판정 모델 | `gemini-3.8-flash` |
+| `GEMINI_FALLBACK_MODEL` | 첫 시도가 실패하면 재시도 1회에 쓰는 모델 | `gemini-3.5-flash-lite` |
 | `GEMINI_THINKING_LEVEL` | 사고 수준. `gemini-3.8-flash`는 `low`, `medium`, `high`만 지원한다 | `medium` |
 
 ## 확인
@@ -53,7 +54,7 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/a
 | 파일 | 내용 |
 | --- | --- |
 | `src/app/api/judge/route.ts` | `POST /api/judge` |
-| `src/lib/judge/pipeline.ts` | 서버 검사 → 호출 제한 → AI 호출(1회 재시도) → 후처리 |
+| `src/lib/judge/pipeline.ts` | 서버 검사 → 호출 제한 → AI 호출(실패하면 대체 모델로 1회 재시도) → 후처리 |
 | `src/lib/judge/postprocess.ts` | 후처리 순수 함수: 확률 정규화, 근거 검증, 농도, 등급, 판정 지역, 소견 |
 | `src/lib/judge/rules.ts` | 권역 이름, 농도 가중치, 등급표 |
 | `src/lib/judge/opinions.ts` | 소견 문구(임시, 등급별 1개) |

@@ -15,7 +15,12 @@ vi.mock("@google/genai", () => ({
 
 import { GeminiOutputError, createGeminiClient } from "./gemini";
 
-const settings = { apiKey: "test-key", model: "gemini-3.8-flash", thinkingLevel: "medium" } as const;
+const settings = {
+  apiKey: "test-key",
+  model: "gemini-3.8-flash",
+  fallbackModel: "gemini-3.5-flash-lite",
+  thinkingLevel: "medium",
+} as const;
 
 const request: AiRequest = {
   systemInstruction: "지시문",
@@ -96,5 +101,42 @@ describe("createGeminiClient", () => {
     sdk.create.mockRejectedValue(error);
     await expect(createGeminiClient(settings).generate(request)).rejects.toBe(error);
     expect(sdk.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("useFallbackModel이면 대체 모델로 부르고 나머지 설정은 그대로다", async () => {
+    sdk.create.mockResolvedValue({ status: "completed", output_text: "{}" });
+
+    await createGeminiClient(settings).generate({ ...request, useFallbackModel: true });
+
+    expect(sdk.create.mock.calls[0][0]).toMatchObject({
+      model: "gemini-3.5-flash-lite",
+      generation_config: { thinking_level: "medium" },
+      store: false,
+      automatic_continuation: false,
+    });
+    expect(sdk.create.mock.calls[0][1]).toEqual({ timeout_ms: 20_000, retries: { strategy: "none" } });
+  });
+
+  it("응답의 토큰 사용량을 onUsage로 넘긴다", async () => {
+    sdk.create.mockResolvedValue({
+      status: "completed",
+      output_text: "{}",
+      usage: { total_input_tokens: 1_300, total_output_tokens: 250, total_thought_tokens: 900 },
+    });
+    const onUsage = vi.fn();
+
+    await createGeminiClient(settings).generate({ ...request, onUsage });
+
+    expect(onUsage).toHaveBeenCalledWith({ inputTokens: 1_300, outputTokens: 250, thoughtTokens: 900 });
+  });
+
+  it("완료되지 않은 응답이어도 사용량은 넘긴다(요금은 청구된다)", async () => {
+    sdk.create.mockResolvedValue({ status: "incomplete", usage: { total_input_tokens: 1_300 } });
+    const onUsage = vi.fn();
+
+    await expect(createGeminiClient(settings).generate({ ...request, onUsage })).rejects.toBeInstanceOf(
+      GeminiOutputError,
+    );
+    expect(onUsage).toHaveBeenCalledWith({ inputTokens: 1_300, outputTokens: 0, thoughtTokens: 0 });
   });
 });

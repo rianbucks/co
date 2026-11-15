@@ -11,32 +11,48 @@ describe("readConfig", () => {
     expect(readConfig({ GEMINI_API_KEY: "  " }).ok).toBe(false);
   });
 
-  it("모델과 사고 수준의 기본값은 gemini-3.8-flash, medium", () => {
+  it("기본값은 주 모델 gemini-3.8-flash, 대체 모델 gemini-3.5-flash-lite, 사고 수준 medium", () => {
     const expected = {
       ok: true,
       config: {
         mock: false,
-        gemini: { apiKey: "key", model: "gemini-3.8-flash", thinkingLevel: "medium" },
+        gemini: {
+          apiKey: "key",
+          model: "gemini-3.8-flash",
+          fallbackModel: "gemini-3.5-flash-lite",
+          thinkingLevel: "medium",
+        },
       },
     };
     expect(readConfig({ GEMINI_API_KEY: "key" })).toEqual(expected);
-    expect(readConfig({ GEMINI_API_KEY: "key", GEMINI_MODEL: "", GEMINI_THINKING_LEVEL: "" })).toEqual(
-      expected,
-    );
-  });
-
-  it("환경 변수로 모델과 사고 수준을 바꾼다", () => {
     expect(
       readConfig({
         GEMINI_API_KEY: "key",
-        GEMINI_MODEL: "gemini-3.5-flash-lite",
+        GEMINI_MODEL: "",
+        GEMINI_FALLBACK_MODEL: " ",
+        GEMINI_THINKING_LEVEL: "",
+      }),
+    ).toEqual(expected);
+  });
+
+  it("환경 변수로 주 모델, 대체 모델, 사고 수준을 바꾼다", () => {
+    expect(
+      readConfig({
+        GEMINI_API_KEY: "key",
+        GEMINI_MODEL: "gemini-4-argon",
+        GEMINI_FALLBACK_MODEL: "gemini-3.8-flash",
         GEMINI_THINKING_LEVEL: "low",
       }),
     ).toEqual({
       ok: true,
       config: {
         mock: false,
-        gemini: { apiKey: "key", model: "gemini-3.5-flash-lite", thinkingLevel: "low" },
+        gemini: {
+          apiKey: "key",
+          model: "gemini-4-argon",
+          fallbackModel: "gemini-3.8-flash",
+          thinkingLevel: "low",
+        },
       },
     });
   });

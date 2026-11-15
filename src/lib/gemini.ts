@@ -8,7 +8,7 @@
  * - temperature는 보내지 않는다. 3.6 이후 모델에서 deprecated이고 무시된다.
  * - store: false. Interactions API는 기본으로 요청과 응답을 저장한다.
  * - SDK 자체 재시도(기본 최대 4회)와 자동 이어 받기를 끈다. 시도 1번 = HTTP 요청 1번.
- *   재시도는 파이프라인에서 명세대로 1회만 한다.
+ *   재시도는 파이프라인에서 명세대로 1회만 하고, 그때는 대체 모델(fallbackModel)을 쓴다.
  */
 import { GoogleGenAI } from "@google/genai";
 import type { GeminiSettings } from "./config";
@@ -29,7 +29,7 @@ export function createGeminiClient(settings: GeminiSettings): AiClient {
     async generate(request: AiRequest): Promise<string> {
       const interaction = await ai.interactions.create(
         {
-          model: settings.model,
+          model: request.useFallbackModel ? settings.fallbackModel : settings.model,
           system_instruction: request.systemInstruction,
           input: [
             { type: "text", text: request.userText },
@@ -50,6 +50,13 @@ export function createGeminiClient(settings: GeminiSettings): AiClient {
         },
         { timeout_ms: request.timeoutMs, retries: { strategy: "none" } },
       );
+
+      // 사고 토큰은 출력 토큰과 따로 집계되고 출력 요금으로 청구된다.
+      request.onUsage?.({
+        inputTokens: interaction.usage?.total_input_tokens ?? 0,
+        outputTokens: interaction.usage?.total_output_tokens ?? 0,
+        thoughtTokens: interaction.usage?.total_thought_tokens ?? 0,
+      });
 
       if (interaction.status !== "completed") {
         throw new GeminiOutputError(`interaction status: ${interaction.status}`);

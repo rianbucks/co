@@ -176,7 +176,7 @@ Next.js 프로젝트 하나에 화면과 서버 API를 함께 두고 Vercel에 �
 
 - **저장소**: GitHub 저장소 1개. `main`에 올리면 Vercel이 자동 배포하고, PR마다 미리보기 주소가 생긴다.
 - **계약 우선**: 첫날 7장의 응답 형식을 확정한다. B는 가짜 응답 파일로 화면을 만들고, A는 같은 형식을 내는 API를 만든다.
-- **환경 변수**: `GEMINI_API_KEY`, `MOCK_AI`, `GEMINI_MODEL`, `GEMINI_THINKING_LEVEL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. 랭킹을 만들면 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`를 더한다. 저장소에 올리지 않고 Vercel 설정의 Production과 Preview에 모두 넣는다.
+- **환경 변수**: `GEMINI_API_KEY`, `MOCK_AI`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_THINKING_LEVEL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. 랭킹을 만들면 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`를 더한다. 저장소에 올리지 않고 Vercel 설정의 Production과 Preview에 모두 넣는다.
 - **AI 도구 활용**: 대회 규정상 허용된다. 화면 초안과 반복 코드는 AI 도구로 만들고, 판정 지시문과 문항은 직접 검증한다.
 - **기기 테스트**: 아이폰 사파리와 안드로이드 크롬 실기기에서 11/13까지 녹음과 업로드를 확인한다.
 
@@ -272,7 +272,7 @@ API는 5개이고, 화면 개발은 아래 응답 형식을 계약으로 삼아 
 | 422 | `rejected` | 말소리 없음, 너무 짧음, 소음. `reason`에 사유 |
 | 429 | `rate_limited` | 개인 또는 전체 하루 한도 초과 |
 | 500 | `server_error` | 키 누락 같은 설정 오류나 예상하지 못한 예외 |
-| 502 | `ai_error` | AI 호출 실패 또는 형식 오류. 서버가 1회 재시도 후 반환 |
+| 502 | `ai_error` | AI 호출 실패 또는 형식 오류. 주 모델(3.8 Flash)이 실패하면 3.5 Flash-Lite로 1회 재시도하고, 그래도 실패하면 반환 |
 
 ### 데이터 모델 (Supabase)
 
@@ -400,7 +400,7 @@ Supabase Storage 무료 한도는 1GB다. 파일당 상한이 2MB이므로 최�
 | 같은 음성인데 결과가 흔들림 | 재도전 시 신뢰 하락 | 사고 수준 고정, 점수와 등급은 서버 코드로 계산 |
 | 아이폰에서 녹음 일시정지가 동작하지 않음 | 파일 1개 방식 불가 | 11/13까지 실기기 확인. 안 되면 문항을 하나의 45초 녹음으로 합침 |
 | 요금 초과 | 예상 밖 지출, 잔액 소진 시 서비스 중단 | 하루 1,500회 상한, 선불 잔액 매일 확인 |
-| Gemini 장애 또는 한도 초과 | 감정 불가 | 1회 재시도 후 3.5 Flash-Lite로 대체 호출 |
+| Gemini 장애 또는 한도 초과 | 감정 불가 | 주 모델이 실패하면 재시도 1회를 3.5 Flash-Lite로 보낸다. 그래도 실패하면 502. 호출은 최대 2번이고 25초 안에 끝낸다 |
 | 지역 비하로 읽히는 문구 | 투표자 반감 | 등급명과 소견은 모든 지역에 같은 문구 사용. 특정 지역을 낮춰 보는 표현 금지 |
 | 투표자 대부분이 같은 권역 | 권역 결과가 모두 같아 단조로움 | 농도, 등급, 랭킹을 주된 재미로 설계 |
 | 음성 수집에 대한 거부감 | 참여 저조 | 기본은 미저장이고 저장은 랭킹 등록자의 선택임을 S2에서 고지 |

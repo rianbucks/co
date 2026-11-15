@@ -99,6 +99,7 @@ describe("judge: 성공", () => {
       mimeType: "audio/wav",
       responseSchema: MODEL_OUTPUT_JSON_SCHEMA,
       timeoutMs: 20_000,
+      useFallbackModel: false,
     });
   });
 
@@ -193,18 +194,18 @@ describe("judge: 품질 불량", () => {
 });
 
 describe("judge: AI 실패와 재시도", () => {
-  it("호출이 실패하면 1번 다시 시도한다", async () => {
+  it("호출이 실패하면 재시도 1번을 대체 모델로 보낸다", async () => {
     const { ai, requests } = scriptedAi(new Error("503 UNAVAILABLE"), SPEC_OUTPUT_TEXT);
     const response = await judge(makeInput(), makeDeps({ ai }));
     expect(response.status).toBe(200);
-    expect(requests).toHaveLength(2);
+    expect(requests.map((request) => request.useFallbackModel)).toEqual([false, true]);
   });
 
-  it("형식 오류여도 1번 다시 시도한다", async () => {
+  it("형식 오류여도 재시도 1번을 대체 모델로 보낸다", async () => {
     const { ai, requests } = scriptedAi("not json", SPEC_OUTPUT_TEXT);
     const response = await judge(makeInput(), makeDeps({ ai }));
     expect(response.status).toBe(200);
-    expect(requests).toHaveLength(2);
+    expect(requests.map((request) => request.useFallbackModel)).toEqual([false, true]);
   });
 
   it("두 번 모두 실패하면 더 부르지 않고 502 ai_error", async () => {
@@ -259,8 +260,14 @@ describe("judge: AI 실패와 재시도", () => {
     await judge(makeInput(), makeDeps({ ai, log: (event, detail) => logged.push({ event, detail }) }));
 
     expect(logged).toEqual([
-      { event: "ai_invalid_output", detail: { attempt: 1, problem: "schema_mismatch" } },
-      { event: "ai_invalid_output", detail: { attempt: 2, problem: "schema_mismatch" } },
+      {
+        event: "ai_invalid_output",
+        detail: { attempt: 1, model: "primary", problem: "schema_mismatch" },
+      },
+      {
+        event: "ai_invalid_output",
+        detail: { attempt: 2, model: "fallback", problem: "schema_mismatch" },
+      },
     ]);
     expect(JSON.stringify(logged)).not.toContain(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
   });
