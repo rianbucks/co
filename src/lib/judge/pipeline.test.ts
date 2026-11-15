@@ -4,7 +4,6 @@ import type { AiClient, AiRequest } from "./ai-client";
 import { MAX_AUDIO_BYTES } from "./audio";
 import { SPEC_MODEL_OUTPUT_EXAMPLE, mockAiClient } from "./mock";
 import { MODEL_OUTPUT_JSON_SCHEMA } from "./model-output";
-import { OPINION_BY_GRADE } from "./opinions";
 import { judge, type JudgeDeps, type JudgeInput } from "./pipeline";
 import { buildSystemInstruction, findQuestionSet, USER_TEXT } from "./prompt";
 
@@ -80,7 +79,7 @@ describe("judge: 성공", () => {
         { type: "endings", quote: "했다 아이가", note: "경상 방언의 확인 표현" },
         { type: "phonology", quote: "뭇나", note: "'먹었나'의 축약" },
       ],
-      opinion: OPINION_BY_GRADE[4],
+      opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: "아 그거 내가 했다 아이가, 니 밥 뭇나",
     });
   });

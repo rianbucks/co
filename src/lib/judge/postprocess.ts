@@ -14,7 +14,7 @@ import {
   type RegionProbabilities,
 } from "./contract";
 import type { AcceptedModelOutput } from "./model-output";
-import { CONCEALMENT_NOTE, OPINION_BY_GRADE } from "./opinions";
+import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
 import {
   CONCEALMENT_SCORE_LIMIT,
   GRADE_TABLE,
@@ -128,12 +128,26 @@ export function decideRegion(probabilities: RegionProbabilities): {
   return { top, label: mixed ? MIXED_LABEL : `${REGION_NAMES[top]} 방언`, mixed };
 }
 
+/** 네 항목 중 점수가 가장 높은 항목. 같으면 어휘, 어미, 음운, 억양 순으로 앞선 항목. */
+export function dominantPart(parts: PartScores): PartKey {
+  let best: PartKey = PART_KEYS[0];
+  for (const key of PART_KEYS) {
+    if (parts[key] > parts[best]) best = key;
+  }
+  return best;
+}
+
 /**
- * 소견: 등급별 문구를 고른다.
+ * 소견: 등급과 가장 높은 항목으로 문구를 고른다. 같은 녹음이면 같은 문구가 나온다.
  * 서울경기가 1순위이고 농도가 20 미만이면 끝에 '출신지 은폐 의심.'을 붙인다(명세 4장).
  */
-export function selectOpinion(input: { grade: Grade; top: RegionKey; score: number }): string {
-  const base = OPINION_BY_GRADE[input.grade];
+export function selectOpinion(input: {
+  grade: Grade;
+  top: RegionKey;
+  score: number;
+  parts: PartScores;
+}): string {
+  const base = OPINIONS[input.grade][dominantPart(input.parts)];
   const concealed = input.top === "seoul_gyeonggi" && input.score < CONCEALMENT_SCORE_LIMIT;
   return concealed ? `${base} ${CONCEALMENT_NOTE}` : base;
 }
@@ -163,7 +177,7 @@ export function buildJudgeResult(output: AcceptedModelOutput, issue: IssueInfo):
     region: { ...region, probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
     evidence: verifyEvidence(output.evidence, output.transcript),
-    opinion: selectOpinion({ grade, top: region.top, score }),
+    opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores }),
     transcript: output.transcript,
   };
 }

@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { REGION_KEYS, type Evidence, type RegionProbabilities } from "./contract";
+import {
+  PART_KEYS,
+  REGION_KEYS,
+  type Evidence,
+  type Grade,
+  type PartKey,
+  type PartScores,
+  type RegionProbabilities,
+} from "./contract";
 import { SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { parseModelOutput, type AcceptedModelOutput } from "./model-output";
-import { CONCEALMENT_NOTE, OPINION_BY_GRADE } from "./opinions";
+import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
 import {
   buildJudgeResult,
   computeIntensity,
   decideRegion,
+  dominantPart,
   gradeFor,
   normalizeProbabilities,
   selectOpinion,
@@ -227,28 +236,77 @@ describe("verifyEvidence: 근거 검증", () => {
   });
 });
 
+/** dominant 항목만 60점이고 나머지는 30점 */
+function partsLedBy(dominant: PartKey): PartScores {
+  const parts: PartScores = { vocabulary: 30, endings: 30, phonology: 30, intonation: 30 };
+  parts[dominant] = 60;
+  return parts;
+}
+
+describe("dominantPart: 가장 높은 항목", () => {
+  it("7장 예시 점수에서는 어미(85점)다", () => {
+    expect(dominantPart({ vocabulary: 40, endings: 85, phonology: 60, intonation: 75 })).toBe(
+      "endings",
+    );
+  });
+
+  it.each(PART_KEYS)("%s만 높으면 그 항목이다", (key) => {
+    expect(dominantPart(partsLedBy(key))).toBe(key);
+  });
+
+  it("점수가 같으면 어휘, 어미, 음운, 억양 순으로 앞선 항목이다", () => {
+    expect(dominantPart({ vocabulary: 0, endings: 0, phonology: 0, intonation: 0 })).toBe(
+      "vocabulary",
+    );
+    expect(dominantPart({ vocabulary: 10, endings: 70, phonology: 20, intonation: 70 })).toBe(
+      "endings",
+    );
+    expect(dominantPart({ vocabulary: 10, endings: 20, phonology: 70, intonation: 70 })).toBe(
+      "phonology",
+    );
+  });
+});
+
 describe("selectOpinion: 소견", () => {
-  it.each([1, 2, 3, 4, 5] as const)("%i등급은 등급별 문구를 쓴다", (grade) => {
-    expect(selectOpinion({ grade, top: "gyeongsang", score: 50 })).toBe(OPINION_BY_GRADE[grade]);
+  const cases = ([1, 2, 3, 4, 5] as const).flatMap((grade) =>
+    PART_KEYS.map((part) => [grade, part] as [Grade, PartKey]),
+  );
+
+  it.each(cases)("%i등급이고 %s가 가장 높으면 그 칸의 문구를 쓴다", (grade, part) => {
+    expect(selectOpinion({ grade, top: "gyeongsang", score: 50, parts: partsLedBy(part) })).toBe(
+      OPINIONS[grade][part],
+    );
+  });
+
+  it("같은 등급이라도 가장 높은 항목이 다르면 문구가 다르다", () => {
+    const texts = PART_KEYS.map((part) =>
+      selectOpinion({ grade: 3, top: "jeolla", score: 50, parts: partsLedBy(part) }),
+    );
+    expect(new Set(texts).size).toBe(4);
   });
 
   it("서울경기가 1순위이고 농도가 20 미만이면 '출신지 은폐 의심'을 붙인다", () => {
-    expect(selectOpinion({ grade: 1, top: "seoul_gyeonggi", score: 19 })).toBe(
-      `${OPINION_BY_GRADE[1]} ${CONCEALMENT_NOTE}`,
+    const parts = partsLedBy("intonation");
+    expect(selectOpinion({ grade: 1, top: "seoul_gyeonggi", score: 19, parts })).toBe(
+      `${OPINIONS[1].intonation} ${CONCEALMENT_NOTE}`,
     );
   });
 
   it("농도가 20이면 붙이지 않는다", () => {
-    expect(selectOpinion({ grade: 2, top: "seoul_gyeonggi", score: 20 })).toBe(OPINION_BY_GRADE[2]);
+    const parts = partsLedBy("vocabulary");
+    expect(selectOpinion({ grade: 2, top: "seoul_gyeonggi", score: 20, parts })).toBe(
+      OPINIONS[2].vocabulary,
+    );
   });
 
   it("서울경기가 1순위가 아니면 농도가 낮아도 붙이지 않는다", () => {
-    expect(selectOpinion({ grade: 1, top: "jeju", score: 5 })).toBe(OPINION_BY_GRADE[1]);
+    const parts = partsLedBy("endings");
+    expect(selectOpinion({ grade: 1, top: "jeju", score: 5, parts })).toBe(OPINIONS[1].endings);
   });
 });
 
 describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
-  it("권역과 농도는 7장 예시와 같고, 근거는 2개, 받아쓰기가 함께 나간다", () => {
+  it("권역, 농도, 소견은 7장 예시와 같고, 근거는 2개, 받아쓰기가 함께 나간다", () => {
     const issue = {
       id: "j_8f3a2c",
       certificateNo: "제2026-000123호",
@@ -280,7 +338,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         { type: "endings", quote: "했다 아이가", note: "경상 방언의 확인 표현" },
         { type: "phonology", quote: "뭇나", note: "'먹었나'의 축약" },
       ],
-      opinion: OPINION_BY_GRADE[4],
+      opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: "아 그거 내가 했다 아이가, 니 밥 뭇나",
     });
   });
