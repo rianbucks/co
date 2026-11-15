@@ -82,16 +82,6 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-                <span className="text-lg">ℹ️</span>
-                <div>
-                  <div className="text-xs font-bold text-amber-200">Gemini 이용 등급에 따른 데이터 처리</div>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-300">
-                    Gemini API 무료 등급에서는 전송한 콘텐츠가 Google 제품 개선에 사용될 수 있습니다. 공개 서비스 운영 전에는 유료 등급과 데이터 처리 조건을 확인해 주십시오.
-                  </p>
-                </div>
-              </div>
-
               <div className="flex items-start gap-3.5 rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
                 <span className="text-lg">🏆</span>
                 <div>

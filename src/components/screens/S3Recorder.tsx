@@ -272,12 +272,6 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
               <h3 className="mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
                 {currentQuestion.situation}
               </h3>
-
-              {currentQuestion.hint && (
-                <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-xs text-zinc-400">
-                  <span className="font-semibold text-zinc-300">💡 힌트 예시:</span> {currentQuestion.hint}
-                </div>
-              )}
             </div>
           </div>
 
