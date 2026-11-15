@@ -39,7 +39,8 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // Production은 분산 저장소가 없으면 fail closed: AI 호출을 허용하지 않는다.
-    const rateLimiter = rateLimiterFromEnv();
+    // 가짜 응답 모드는 Gemini 비용이 없으므로 Upstash 없이도 받는다.
+    const rateLimiter = rateLimiterFromEnv(process.env, { mock: config.config.mock });
 
     let form: FormData;
     try {

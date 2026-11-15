@@ -3,6 +3,7 @@ import {
   createMemoryRateLimiter,
   createUpstashRateLimiter,
   rateLimiterFromEnv,
+  unlimitedRateLimiter,
 } from "./rate-limit";
 
 function jsonResponse(body: unknown, status = 200) {
@@ -80,6 +81,39 @@ describe("rateLimiterFromEnv", () => {
         UPSTASH_REDIS_REST_TOKEN: "test-token",
       }),
     ).toThrow("must use HTTPS");
+  });
+
+  it("Production이어도 가짜 응답 모드는 Upstash 없이 제한 없이 받는다", async () => {
+    const limiter = rateLimiterFromEnv({ NODE_ENV: "production" }, { mock: true });
+    expect(limiter).toBe(unlimitedRateLimiter);
+    await expect(limiter.check({ ip: "198.51.100.7" })).resolves.toEqual({ allowed: true });
+  });
+
+  it("가짜 응답 모드여도 Upstash 설정이 반만 있으면 설정 오류다", () => {
+    expect(() =>
+      rateLimiterFromEnv(
+        { NODE_ENV: "production", UPSTASH_REDIS_REST_URL: "https://example.upstash.io" },
+        { mock: true },
+      ),
+    ).toThrow("Upstash Redis rate limiter is not configured");
+  });
+
+  it("가짜 응답 모드여도 Upstash가 설정돼 있으면 같은 한도를 쓴다", () => {
+    const limiter = rateLimiterFromEnv(
+      {
+        NODE_ENV: "production",
+        UPSTASH_REDIS_REST_URL: "https://example.upstash.io",
+        UPSTASH_REDIS_REST_TOKEN: "test-token",
+      },
+      { mock: true },
+    );
+    expect(limiter).not.toBe(unlimitedRateLimiter);
+  });
+
+  it("개발 환경은 가짜 응답 모드여도 메모리 제한기를 쓴다", () => {
+    expect(rateLimiterFromEnv({ NODE_ENV: "development" }, { mock: true })).not.toBe(
+      unlimitedRateLimiter,
+    );
   });
 });
 

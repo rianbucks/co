@@ -132,15 +132,32 @@ export function createMemoryRateLimiter({ now = Date.now }: { now?: () => number
 const memoryIpCounts = new Map<string, Map<string, number>>();
 const memoryGlobalCounts = new Map<string, number>();
 
-/** Production은 외부 Redis 설정이 없거나 불완전하면 닫힌 상태로 실패한다. */
-export function rateLimiterFromEnv(env: Record<string, string | undefined> = process.env): RateLimiter {
+/** 가짜 응답 모드에서 Upstash 없이 쓰는 제한기. Gemini 비용이 없으므로 항상 허용한다. */
+export const unlimitedRateLimiter: RateLimiter = {
+  async check() {
+    return { allowed: true };
+  },
+};
+
+/**
+ * Production은 외부 Redis 설정이 없거나 불완전하면 닫힌 상태로 실패한다.
+ * 다만 가짜 응답 모드(mock)는 Upstash가 없어도 제한 없이 받는다. Upstash가 설정돼 있으면 같은 한도를 쓴다.
+ */
+export function rateLimiterFromEnv(
+  env: Record<string, string | undefined> = process.env,
+  options: { mock?: boolean } = {},
+): RateLimiter {
   const url = env.UPSTASH_REDIS_REST_URL?.trim();
   const token = env.UPSTASH_REDIS_REST_TOKEN?.trim();
   if (url && token) {
     if (!url.startsWith("https://")) throw new Error("UPSTASH_REDIS_REST_URL must use HTTPS");
     return createUpstashRateLimiter({ url, token });
   }
-  if (url || token || env.NODE_ENV === "production") {
+  if (url || token) {
+    throw new Error("Upstash Redis rate limiter is not configured");
+  }
+  if (env.NODE_ENV === "production") {
+    if (options.mock) return unlimitedRateLimiter;
     throw new Error("Upstash Redis rate limiter is not configured");
   }
   return createMemoryRateLimiter();
