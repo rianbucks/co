@@ -4,6 +4,7 @@
  * 로컬 개발/테스트에서는 메모리 제한기를 사용한다.
  */
 import { createHmac } from "node:crypto";
+import { upstashConfigFromEnv } from "./upstash";
 
 export type RateLimitDecision = { allowed: true } | { allowed: false; scope: "ip" | "global" };
 
@@ -143,18 +144,16 @@ export const unlimitedRateLimiter: RateLimiter = {
 /**
  * Production은 외부 Redis 설정이 없거나 불완전하면 닫힌 상태로 실패한다.
  * 다만 가짜 응답 모드(mock)는 Upstash가 없어도 제한 없이 받는다. Upstash가 설정돼 있으면 같은 한도를 쓴다.
+ * 연결 정보는 UPSTASH_REDIS_REST_* 또는 KV_REST_API_*에서 읽는다(./upstash.ts).
  */
 export function rateLimiterFromEnv(
   env: Record<string, string | undefined> = process.env,
   options: { mock?: boolean } = {},
 ): RateLimiter {
-  const url = env.UPSTASH_REDIS_REST_URL?.trim();
-  const token = env.UPSTASH_REDIS_REST_TOKEN?.trim();
-  if (url && token) {
-    if (!url.startsWith("https://")) throw new Error("UPSTASH_REDIS_REST_URL must use HTTPS");
-    return createUpstashRateLimiter({ url, token });
-  }
-  if (url || token) {
+  const upstash = upstashConfigFromEnv(env);
+  if (upstash.status === "ok") return createUpstashRateLimiter(upstash.config);
+  if (upstash.status === "insecure") throw new Error("Upstash Redis REST URL must use HTTPS");
+  if (upstash.status === "partial") {
     throw new Error("Upstash Redis rate limiter is not configured");
   }
   if (env.NODE_ENV === "production") {

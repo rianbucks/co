@@ -107,6 +107,8 @@ describe("POST /api/judge", () => {
     vi.stubEnv("GEMINI_API_KEY", "test-key-not-used");
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("KV_REST_API_URL", "");
+    vi.stubEnv("KV_REST_API_TOKEN", "");
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
@@ -120,6 +122,8 @@ describe("POST /api/judge", () => {
     vi.stubEnv("MOCK_AI", "true");
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    vi.stubEnv("KV_REST_API_URL", "");
+    vi.stubEnv("KV_REST_API_TOKEN", "");
 
     const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
 

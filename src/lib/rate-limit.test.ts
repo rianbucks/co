@@ -124,6 +124,37 @@ describe("rateLimiterFromEnv", () => {
       unlimitedRateLimiter,
     );
   });
+
+  it("Production에서 Vercel Marketplace의 KV_REST_API_*만 있어도 Upstash 제한기를 쓴다", async () => {
+    const fetcher = vi.fn(async (url: string, init: RequestInit) => {
+      void init;
+      expect(url).toBe("https://kv-example.upstash.io/pipeline");
+      return jsonResponse([{ result: [1, "allowed"] }]);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    try {
+      const limiter = rateLimiterFromEnv({
+        NODE_ENV: "production",
+        KV_REST_API_URL: "https://kv-example.upstash.io",
+        KV_REST_API_TOKEN: "kv-token",
+      });
+      await expect(limiter.check({ ip: "198.51.100.9" })).resolves.toEqual({ allowed: true });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0]![1].headers).toMatchObject({ Authorization: "Bearer kv-token" });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("KV_REST_API_* 주소도 HTTPS만 허용한다", () => {
+    expect(() =>
+      rateLimiterFromEnv({
+        NODE_ENV: "production",
+        KV_REST_API_URL: "http://kv-example.upstash.io",
+        KV_REST_API_TOKEN: "kv-token",
+      }),
+    ).toThrow("must use HTTPS");
+  });
 });
 
 describe("createMemoryRateLimiter", () => {

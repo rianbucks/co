@@ -177,7 +177,7 @@ Next.js 프로젝트 하나에 화면과 서버 API를 함께 두고 Vercel에 �
 
 - **저장소**: GitHub 저장소 1개. `main`에 올리면 Vercel이 자동 배포하고, PR마다 미리보기 주소가 생긴다.
 - **계약 우선**: 첫날 7장의 응답 형식을 확정한다. B는 가짜 응답 파일로 화면을 만들고, A는 같은 형식을 내는 API를 만든다.
-- **환경 변수**: `GEMINI_API_KEY`, `MOCK_AI`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_THINKING_LEVEL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. 랭킹을 만들면 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`를 더한다. 저장소에 올리지 않고 Vercel 설정의 Production과 Preview에 모두 넣는다.
+- **환경 변수**: `GEMINI_API_KEY`, `MOCK_AI`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_THINKING_LEVEL`, Upstash 연결 값. Upstash는 Vercel Marketplace로 연결하면 `KV_REST_API_URL`, `KV_REST_API_TOKEN`이 자동으로 들어간다. 직접 넣을 때는 `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`을 쓰며, 둘 중 하나라도 있으면 이쪽을 먼저 쓴다. 읽기 전용 토큰(`KV_REST_API_READ_ONLY_TOKEN`)은 쓰지 않는다. 랭킹을 만들면 `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`를 더한다. 저장소에 올리지 않고 Vercel 설정의 Production과 Preview에 모두 넣는다.
 - **AI 도구 활용**: 대회 규정상 허용된다. 화면 초안과 반복 코드는 AI 도구로 만들고, 판정 지시문과 문항은 직접 검증한다.
 - **기기 테스트**: 아이폰 사파리와 안드로이드 크롬 실기기에서 11/13까지 녹음과 업로드를 확인한다.
 

@@ -25,6 +25,10 @@ npm run dev
 | `GEMINI_MODEL` | 판정 모델 | `gemini-3.8-flash` |
 | `GEMINI_FALLBACK_MODEL` | 첫 시도가 실패하면 재시도 1회에 쓰는 모델 | `gemini-3.5-flash-lite` |
 | `GEMINI_THINKING_LEVEL` | 사고 수준. `gemini-3.8-flash`는 `low`, `medium`, `high`만 지원한다 | `medium` |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash Redis REST 주소와 토큰. Vercel Marketplace로 연결하면 자동으로 들어간다. 읽기 전용 토큰은 쓰지 않는다 | 없음 |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Upstash를 직접 넣을 때 쓰는 이름. 둘 중 하나라도 있으면 `KV_REST_API_*`보다 먼저 쓴다 | 없음 |
+
+Production에서 Upstash 연결 값이 없으면 감정 요청을 거절합니다(가짜 응답 모드는 예외). 로컬에서는 없으면 메모리로 대신합니다.
 
 ## 확인
 
