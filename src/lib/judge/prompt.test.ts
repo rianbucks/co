@@ -61,4 +61,10 @@ describe("buildSystemInstruction", () => {
     expect(instruction).toContain("evidence의 quote는 transcript에 그대로 있는 구절이어야 한다.");
     expect(instruction).toContain("transcript, regions, scores, evidence는 null로 둔다.");
   });
+
+  it("규칙 6은 말소리 없음, 3초 미만, 주변 소음(noisy)일 때 audio_quality만 채우게 한다", () => {
+    expect(instruction).toContain(
+      "6. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다.",
+    );
+  });
 });

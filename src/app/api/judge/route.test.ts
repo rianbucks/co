@@ -100,4 +100,30 @@ describe("POST /api/judge", () => {
     expect(await response.json()).toEqual({ error: "server_error" });
     expect(consoleError).toHaveBeenCalled();
   });
+
+  it("Production에서 Upstash가 없으면 Gemini 호출 없이 요청을 닫는다", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MOCK_AI", "false");
+    vi.stubEnv("GEMINI_API_KEY", "test-key-not-used");
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "server_error" });
+  });
+
+  it("Production에서 Upstash가 없어도 가짜 응답 모드는 동작한다", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("MOCK_AI", "true");
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
+
+    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ intensity: { score: 68, grade: 4 } });
+  });
 });
