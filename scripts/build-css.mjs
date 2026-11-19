@@ -27,12 +27,17 @@ body {
     onDependency: () => {},
   });
 
+  // 두 번째 규칙은 소수점(py-3.5, scale-[0.98])과 # 색상(bg-[#315b83])이 든 클래스를 잡는다.
+  // 첫 번째 규칙으로 뽑던 후보는 그대로 두고 더하기만 한다. 클래스가 아닌 후보는 Tailwind가 무시한다.
+  const candidatePatterns = [/[a-zA-Z0-9_\-\/\[\]\:\%]+/g, /[a-zA-Z0-9_\-\/\[\]\:\%\.#]+/g];
+
   const files = fg.sync(['src/**/*.{tsx,ts,jsx,js}'], { cwd: root });
   const candidates = new Set();
   for (const f of files) {
     const text = fs.readFileSync(path.join(root, f), 'utf8');
-    const matches = text.match(/[a-zA-Z0-9_\-\/\[\]\:\%]+/g) || [];
-    for (const m of matches) candidates.add(m);
+    for (const pattern of candidatePatterns) {
+      for (const m of text.match(pattern) || []) candidates.add(m);
+    }
   }
 
   const result = compiler.build(Array.from(candidates));
