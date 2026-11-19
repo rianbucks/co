@@ -247,7 +247,8 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onRes
 
                 <div className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-[11px] leading-relaxed text-zinc-400">
                   등록하면 <span className="font-semibold text-zinc-200">닉네임, 농도, 지역, 등급, 등록 시각</span>이
-                  랭킹에 공개됩니다. 음성과 받아쓰기는 저장하지 않습니다. 부적절한 닉네임은 운영자가 삭제할 수 있습니다.
+                  랭킹에 공개됩니다. 음성과 받아쓰기는 저장하지 않으며, 기록은 대회 종료 후 1주 안에 모두 삭제합니다.
+                  부적절한 닉네임은 운영자가 삭제할 수 있습니다.
                 </div>
 
                 {formError && (
