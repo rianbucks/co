@@ -1,6 +1,6 @@
 /**
  * 판정 파이프라인(명세 4장 처리 순서 2~5단계).
- * 서버 검사 → 호출 제한 → AI 호출(실패나 형식 오류면 1회 재시도) → 후처리 → 응답.
+ * 서버 검사 → 호출 제한 → AI 호출(실패나 형식 오류면 대체 모델로 1회 재시도) → 후처리 → 응답.
  * 오디오는 메모리에서 AI로 넘긴 뒤 버린다. 받아쓰기, 모델 출력, 음성은 로그에 남기지 않는다.
  */
 import type { RateLimiter } from "../rate-limit";
@@ -12,7 +12,7 @@ import { MODEL_OUTPUT_JSON_SCHEMA, parseModelOutput, type ModelOutput } from "./
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
 import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "./prompt";
 
-/** 처음 1번 + 재시도 1번(명세 7장 502 ai_error). */
+/** 처음 1번은 주 모델, 재시도 1번은 대체 모델(명세 7장 502 ai_error, 11장). */
 export const MAX_AI_ATTEMPTS = 2;
 
 export interface AiTiming {
@@ -83,12 +83,16 @@ async function callAiWithRetry(
     }
 
     const timeoutMs = attempt === 1 ? Math.min(timing.firstAttemptMs, remaining) : remaining;
+    const useFallbackModel = attempt > 1;
+    const model = useFallbackModel ? "fallback" : "primary";
     try {
-      const parsed = parseModelOutput(await deps.ai.generate({ ...request, timeoutMs }));
+      const parsed = parseModelOutput(
+        await deps.ai.generate({ ...request, timeoutMs, useFallbackModel }),
+      );
       if (parsed.ok) return parsed.value;
-      log("ai_invalid_output", { attempt, problem: parsed.problem });
+      log("ai_invalid_output", { attempt, model, problem: parsed.problem });
     } catch (error) {
-      log("ai_call_failed", { attempt, ...describeError(error) });
+      log("ai_call_failed", { attempt, model, ...describeError(error) });
     }
   }
   return null;
@@ -97,7 +101,7 @@ async function callAiWithRetry(
 export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeResponse> {
   const { audio, questionSetId } = input;
 
-  // 서버 검사: 파일, 크기(2MB), 형식. 길이는 검사하지 않는다.
+  // 서버 검사: 파일, 크기(2MB), 형식. 녹음 길이(합계 40초)는 화면에서 지키므로 검사하지 않는다.
   if (audio === null || typeof audio === "string") return errorResponse("invalid_audio");
   if (audio.size > MAX_AUDIO_BYTES) return errorResponse("too_large");
 

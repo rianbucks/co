@@ -23,6 +23,7 @@ npm run dev
 | `GEMINI_API_KEY` | Gemini API 키. `.env.local`이나 배포 설정에만 둔다 | 없음 |
 | `MOCK_AI` | `true`면 Gemini를 부르지 않고 명세 4장 모델 출력 예시로 후처리까지 실행한다 | `false` |
 | `GEMINI_MODEL` | 판정 모델 | `gemini-3.8-flash` |
+| `GEMINI_FALLBACK_MODEL` | 첫 시도가 실패하면 재시도 1회에 쓰는 모델 | `gemini-3.5-flash-lite` |
 | `GEMINI_THINKING_LEVEL` | 사고 수준. `gemini-3.8-flash`는 `low`, `medium`, `high`만 지원한다 | `medium` |
 
 ## 확인
@@ -40,22 +41,35 @@ MOCK 모드에서 API 호출 예:
 curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/api/judge
 ```
 
-## API 계약에서 명세 7장과 다른 점
+## API
 
-- 성공 응답에 `transcript`(받아쓰기)가 있다. 서버는 저장하지 않는다.
-- 오류 코드 `invalid_request`(400, questionSetId가 없거나 등록되지 않음)와 `server_error`(500)가 있다.
+`POST /api/judge`는 명세 7장의 요청, 응답, 오류 형식을 따릅니다.
+
+- 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`(지금은 `set-a`만 등록)를 보냅니다.
+- 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
+- 성공 응답의 `transcript`(받아쓰기)는 서버에 저장하지 않습니다.
+
+## 정확도 검증
+
+명세 3장의 검증(권역 정답률, 근거의 진위, 같은 파일의 일관성, 응답 시간)을 실제 Gemini로 돌리는 스크립트가 있습니다. 음성 파일과 결과는 커밋되지 않습니다. 사용법은 [validation/README.md](validation/README.md)에 있습니다.
+
+```bash
+npm run validate -- --csv validation/answers.csv --runs 3
+```
 
 ## 코드 위치
 
 | 파일 | 내용 |
 | --- | --- |
 | `src/app/api/judge/route.ts` | `POST /api/judge` |
-| `src/lib/judge/pipeline.ts` | 서버 검사 → 호출 제한 → AI 호출(1회 재시도) → 후처리 |
+| `src/lib/judge/pipeline.ts` | 서버 검사 → 호출 제한 → AI 호출(실패하면 대체 모델로 1회 재시도) → 후처리 |
 | `src/lib/judge/postprocess.ts` | 후처리 순수 함수: 확률 정규화, 근거 검증, 농도, 등급, 판정 지역, 소견 |
 | `src/lib/judge/rules.ts` | 권역 이름, 농도 가중치, 등급표 |
-| `src/lib/judge/opinions.ts` | 소견 문구(임시, 등급별 1개) |
+| `src/lib/judge/opinions.ts` | 소견 문구(등급 × 가장 높은 항목, 20개) |
 | `src/lib/judge/model-output.ts` | Gemini 출력 JSON 스키마와 검증 |
 | `src/lib/judge/prompt.ts` | 지시문과 문항 세트 |
 | `src/lib/judge/audio.ts` | 파일 크기와 형식 검사 |
 | `src/lib/gemini.ts` | Gemini 호출. SDK는 이 파일에서만 쓴다 |
 | `src/lib/rate-limit.ts` | 호출 제한 인터페이스. 구현은 DB를 붙일 때 한다 |
+| `scripts/validate.ts` | 정확도 검증 스크립트 |
+| `src/lib/validation/` | 정답 CSV 읽기와 검증 결과 집계 |
