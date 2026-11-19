@@ -6,10 +6,11 @@ import { REGION_KOREAN_NAMES, PART_KOREAN_NAMES } from '@/types/screen';
 interface S5ResultProps {
   result: JudgeResult;
   onGoToCertificate: () => void;
+  onGoToRanking: () => void;
   onResetAll: () => void;
 }
 
-export default function S5Result({ result, onGoToCertificate, onResetAll }: S5ResultProps) {
+export default function S5Result({ result, onGoToCertificate, onGoToRanking, onResetAll }: S5ResultProps) {
   const { region, intensity, evidence, opinion, transcript, certificateNo, issuedAt } = result;
 
   const formattedDate = new Date(issuedAt).toLocaleString('ko-KR', {
@@ -88,6 +89,14 @@ export default function S5Result({ result, onGoToCertificate, onResetAll }: S5Re
               className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
             >
               <span>원산지증명서 발급 및 확인 (S6)</span>
+              <span>→</span>
+            </button>
+
+            <button
+              onClick={onGoToRanking}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
+            >
+              <span>농도 랭킹 등록 (S7)</span>
               <span>→</span>
             </button>
 

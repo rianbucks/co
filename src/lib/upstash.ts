@@ -33,3 +33,35 @@ export function upstashConfigFromEnv(
   if (!url.startsWith("https://")) return { status: "insecure" };
   return { status: "ok", config: { url: url.replace(/\/+$/, ""), token } };
 }
+
+export type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
+
+/**
+ * Upstash REST pipeline으로 명령 여러 개를 한 번에 보낸다. 명령 순서대로 결과를 돌려준다.
+ * HTTP 오류나 명령 하나라도 오류면 예외를 던진다.
+ */
+export async function upstashPipeline(
+  config: UpstashConfig,
+  commands: string[][],
+  fetcher: Fetcher = fetch,
+): Promise<unknown[]> {
+  const response = await fetcher(`${config.url}/pipeline`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(commands),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`Upstash returned HTTP ${response.status}`);
+
+  const body = (await response.json()) as unknown;
+  if (!Array.isArray(body) || body.length !== commands.length) {
+    throw new Error("Upstash returned an invalid pipeline response");
+  }
+  return body.map((item, index) => {
+    const entry = item as { result?: unknown; error?: string } | null;
+    if (!entry || entry.error) {
+      throw new Error(`Upstash command ${commands[index][0]} failed: ${entry?.error ?? "no result"}`);
+    }
+    return entry.result ?? null;
+  });
+}

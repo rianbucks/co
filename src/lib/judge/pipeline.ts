@@ -1,12 +1,19 @@
 /**
  * 판정 파이프라인(명세 4장 처리 순서 2~5단계).
- * 서버 검사 → 호출 제한 → AI 호출(실패나 형식 오류면 대체 모델로 1회 재시도) → 후처리 → 응답.
+ * 서버 검사 → 호출 제한 → AI 호출(실패나 형식 오류면 대체 모델로 1회 재시도) → 후처리
+ * → 랭킹 등록 자격 기록 → 응답.
  * 오디오는 메모리에서 AI로 넘긴 뒤 버린다. 받아쓰기, 모델 출력, 음성은 로그에 남기지 않는다.
  */
 import type { RateLimiter } from "../rate-limit";
 import type { AiClient, AiRequest } from "./ai-client";
 import { MAX_AUDIO_BYTES, detectAudioFormat } from "./audio";
-import { errorResponse, rejectedResponse, type JudgeResponse } from "./contract";
+import {
+  errorResponse,
+  rejectedResponse,
+  type Grade,
+  type JudgeResponse,
+  type RegionKey,
+} from "./contract";
 import { createIssueInfo } from "./issue";
 import { MODEL_OUTPUT_JSON_SCHEMA, parseModelOutput, type ModelOutput } from "./model-output";
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
@@ -41,6 +48,17 @@ export interface JudgeInput {
 
 export type JudgeLog = (event: string, detail: Record<string, unknown>) => void;
 
+/** 랭킹 등록 자격으로 남기는 감정 요약. 음성과 받아쓰기는 넣지 않는다. */
+export interface JudgmentSummary {
+  id: string;
+  intensity: number;
+  /** 1순위 권역 */
+  region: RegionKey;
+  grade: Grade;
+  /** 모델이 flags(욕설, 개인정보)를 붙였는지 */
+  flagged: boolean;
+}
+
 export interface JudgeDeps {
   ai: AiClient;
   rateLimiter: RateLimiter;
@@ -50,6 +68,11 @@ export interface JudgeDeps {
   /** id, 문서번호, 발급 시각(테스트용) */
   issue?: () => IssueInfo;
   log?: JudgeLog;
+  /**
+   * 성공한 감정의 요약을 저장한다(랭킹 등록 때 서버가 이 값을 읽는다).
+   * 실패해도 감정 결과는 그대로 돌려주고 로그만 남긴다.
+   */
+  recordJudgment?: (summary: JudgmentSummary) => Promise<void>;
 }
 
 const defaultLog: JudgeLog = (event, detail) => {
@@ -133,5 +156,21 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
   if (output.audio_quality !== "ok") return rejectedResponse(output.audio_quality);
 
   const issue = deps.issue ?? (() => createIssueInfo(new Date()));
-  return { status: 200, body: buildJudgeResult(output, issue()) };
+  const result = buildJudgeResult(output, issue());
+
+  if (deps.recordJudgment) {
+    try {
+      await deps.recordJudgment({
+        id: result.id,
+        intensity: result.intensity.score,
+        region: result.region.top,
+        grade: result.intensity.grade,
+        flagged: output.flags.length > 0,
+      });
+    } catch (error) {
+      (deps.log ?? defaultLog)("judgment_record_failed", describeError(error));
+    }
+  }
+
+  return { status: 200, body: result };
 }

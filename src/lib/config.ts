@@ -26,8 +26,13 @@ function isThinkingLevel(value: string): value is ThinkingLevel {
   return (THINKING_LEVELS as readonly string[]).includes(value);
 }
 
+/** MOCK_AI=true면 Gemini를 부르지 않는 가짜 응답 모드다. 이 모드의 결과는 랭킹에 등록할 수 없다. */
+export function isMockMode(env: Record<string, string | undefined> = process.env): boolean {
+  return env.MOCK_AI?.trim().toLowerCase() === "true";
+}
+
 export function readConfig(env: Record<string, string | undefined> = process.env): ConfigResult {
-  if (env.MOCK_AI?.trim().toLowerCase() === "true") {
+  if (isMockMode(env)) {
     return { ok: true, config: { mock: true } };
   }
 
