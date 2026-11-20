@@ -7,11 +7,14 @@ import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/r
 import { REGION_KOREAN_NAMES } from '@/types/screen';
 
 interface S7RankingProps {
-  result: JudgeResult;
+  /** 지금 감정 결과. 감정 없이 들어오면 null이고, 이때는 순위 목록만 보여 준다. */
+  result: JudgeResult | null;
   /** 이 감정 결과로 등록한 랭킹 항목 id. 아직 등록하지 않았으면 null */
   entryId: string | null;
   onRegistered: (entryId: string) => void;
   onBack: () => void;
+  /** 감정 신청(결과 없이 들어왔을 때) */
+  onApply: () => void;
   onResetAll: () => void;
 }
 
@@ -79,8 +82,7 @@ function RankingRow({ item, isMine }: { item: RankingEntryView; isMine: boolean 
   );
 }
 
-export default function S7Ranking({ result, entryId, onRegistered, onBack, onResetAll }: S7RankingProps) {
-  const { region, intensity } = result;
+export default function S7Ranking({ result, entryId, onRegistered, onBack, onApply, onResetAll }: S7RankingProps) {
 
   const [nickname, setNickname] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -123,7 +125,7 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onRes
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting || entryId || formError?.final) return;
+    if (!result || submitting || entryId || formError?.final) return;
 
     const checked = checkNickname(nickname);
     if (!checked.ok) {
@@ -172,7 +174,7 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onRes
                 사투리 농도 랭킹
               </span>
               <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
-                {mine ? '랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
+                {!result ? '농도 랭킹' : mine ? '랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
               </h2>
               <p className="mt-2 text-xs leading-relaxed text-zinc-400">
                 농도 점수가 높은 순으로 상위 50명을 보여 드립니다. 점수가 같으면 먼저 등록한 분이 앞섭니다.
@@ -180,24 +182,40 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onRes
             </div>
 
             {/* My Judgment Summary */}
-            <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-zinc-400">내 감정 결과</span>
-                <span className="font-medium text-zinc-200">{region.mixed ? '혼합 방언' : region.label}</span>
-              </div>
-              <div className="mt-2 flex items-end justify-between gap-3">
-                <div className="text-xs">
-                  <span className="font-bold text-amber-400">{intensity.grade}등급</span>
-                  <span className="ml-1.5 font-medium text-zinc-200">{intensity.gradeName}</span>
+            {result && (
+              <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-zinc-400">내 감정 결과</span>
+                  <span className="font-medium text-zinc-200">{result.region.mixed ? '혼합 방언' : result.region.label}</span>
                 </div>
-                <div className="flex shrink-0 items-baseline gap-1">
-                  <span className="text-3xl font-black text-white">{intensity.score}</span>
-                  <span className="text-xs text-zinc-500">/ 100점</span>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <div className="text-xs">
+                    <span className="font-bold text-amber-400">{result.intensity.grade}등급</span>
+                    <span className="ml-1.5 font-medium text-zinc-200">{result.intensity.gradeName}</span>
+                  </div>
+                  <div className="flex shrink-0 items-baseline gap-1">
+                    <span className="text-3xl font-black text-white">{result.intensity.score}</span>
+                    <span className="text-xs text-zinc-500">/ 100점</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {mine ? (
+            {!result ? (
+              <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5 text-center">
+                <p className="text-sm font-semibold text-zinc-200">감정을 받으면 랭킹에 등록할 수 있습니다</p>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-400">
+                  4개 문항에 평소 말투로 답하면 농도 점수가 나오고, 닉네임으로 랭킹에 오를 수 있습니다.
+                </p>
+                <button
+                  onClick={onApply}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+                >
+                  <span>감정 신청</span>
+                  <span>→</span>
+                </button>
+              </div>
+            ) : mine ? (
               <div className="mt-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-center">
                 <div className="text-xs font-semibold text-indigo-300">내 순위</div>
                 <div className="mt-1 text-5xl font-black tracking-tight text-white">
@@ -274,17 +292,19 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onRes
           </div>
 
           <div className="mt-8 space-y-3">
-            <button
-              onClick={onBack}
-              className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
-            >
-              감정 결과로 돌아가기
-            </button>
+            {result && (
+              <button
+                onClick={onBack}
+                className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
+              >
+                감정 결과로 돌아가기
+              </button>
+            )}
             <button
               onClick={onResetAll}
               className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
             >
-              새로운 감정 다시 시작
+              {result ? '새로운 감정 다시 시작' : '첫 화면으로 돌아가기'}
             </button>
           </div>
         </div>
