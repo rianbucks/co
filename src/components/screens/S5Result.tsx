@@ -71,23 +71,17 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
 
             {/* Verdict Hero */}
             <div className="mt-6 text-center">
-              <span className="inline-block rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-semibold text-indigo-300">
+              <p className="result-eyebrow">
                 최종 판정 결과
-              </span>
+              </p>
 
               <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
                 {region.mixed ? '혼합 방언' : region.label}
               </h2>
 
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-700/60 bg-zinc-800/80 px-4 py-1.5 shadow-inner">
-                <span className="text-xs font-bold text-amber-400">
-                  {intensity.grade}등급
-                </span>
-                <span className="h-3 w-px bg-zinc-700" />
-                <span className="text-xs font-medium text-zinc-200">
-                  {intensity.gradeName}
-                </span>
-              </div>
+              <p className="mt-4 text-sm font-medium text-zinc-300">
+                {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
+              </p>
             </div>
 
             {/* Dialect Intensity Gauge Bar */}
