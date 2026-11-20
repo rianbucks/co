@@ -16,75 +16,74 @@ const STEPS = [
 
 export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
   return (
-    <div className="screen-glass mx-auto w-full max-w-6xl p-5 sm:p-8 lg:p-12">
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
-        <section className="glass-panel flex flex-col justify-between p-6 sm:p-9 lg:col-span-7 lg:p-11">
+    <div className="intro-page mx-auto w-full max-w-6xl px-5 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
+      <header className="intro-masthead">
+        <div className="intro-wordmark">
+          <span className="intro-seal" aria-hidden="true">C/O</span>
           <div>
-            <p className="text-sm font-medium tracking-wide text-sky-200/80">원산지증명서 · 방언 감정 안내</p>
-            <h1 className="mt-5 max-w-2xl text-balance text-3xl font-semibold leading-[1.18] tracking-tight text-white sm:text-4xl lg:text-[3.25rem]">
-              평소 말투에 담긴
-              <br />
-              지역의 특징을 살펴봅니다
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-8 text-zinc-300">
-              네 가지 일상 상황에 평소 말투로 답해 주세요. 녹음된 말소리를 바탕으로 방언의 특징과
-              권역별 결과, 농도 점수를 안내합니다.
-            </p>
+            <p className="intro-brand">원산지증명서</p>
+            <p className="intro-brand-subtitle">사투리 음성 감정</p>
           </div>
+        </div>
+        <p className="intro-edition">구술 감정 안내 <span>제 1 호</span></p>
+      </header>
 
-          <div className="mt-10 border-t border-white/10 pt-5">
-            <h2 className="text-sm font-semibold text-zinc-300">지원 지역</h2>
-            <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-base text-zinc-200">
-              {REGIONS.map((region, index) => (
-                <li key={region} className="inline-flex items-center gap-3 py-1">
-                  <span>{region}</span>
-                  {index < REGIONS.length - 1 && <span aria-hidden="true" className="text-zinc-600">·</span>}
-                </li>
-              ))}
+      <div className="intro-layout">
+        <section className="intro-copy">
+          <p className="intro-eyebrow">방언 감정 안내</p>
+          <h1>
+            말소리에서
+            <br />
+            <span>방언 특징을 살펴봅니다</span>
+          </h1>
+          <p className="intro-description">
+            네 가지 일상 질문에 평소 말투로 답해 주세요. 녹음된 말소리에서 방언의 특징을 살펴
+            권역과 농도 결과를 안내합니다.
+          </p>
+
+          <div className="intro-regions">
+            <h2>감정 가능 지역</h2>
+            <ul>
+              {REGIONS.map((region) => <li key={region}>{region}</li>)}
             </ul>
           </div>
         </section>
 
-        <aside className="glass-panel flex flex-col justify-between p-6 sm:p-8 lg:col-span-5">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-100">진행 순서</h2>
-            <ol className="mt-3 divide-y divide-white/10">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className="flex gap-4 py-4">
-                  <span className="pt-0.5 font-mono text-xs text-zinc-500">
-                    0{index + 1}
-                  </span>
-                  <div>
-                    <h3 className="text-base font-medium text-zinc-100">{step.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-zinc-400">{step.detail}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+        <aside className="intro-record" aria-label="감정 절차와 신청">
+          <div className="intro-record-heading">
+            <div>
+              <p>감정 절차</p>
+              <h2>신청부터 결과까지</h2>
+            </div>
+            <span aria-hidden="true">C/O</span>
           </div>
 
-          <div className="mt-6 space-y-3">
-            <p className="border-t border-white/10 pt-4 text-sm text-zinc-400">
-              예상 시간 약 1분 · 설치나 회원가입이 필요하지 않습니다.
-            </p>
-            <button
-              onClick={onNext}
-              className="w-full rounded-xl border border-white/20 bg-sky-100/90 px-4 py-3.5 text-base font-semibold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_8px_24px_rgba(91,145,204,0.18)] transition hover:bg-white"
-            >
-              감정 신청
-            </button>
-            <button
-              onClick={onViewRanking}
-              className="w-full rounded-xl border border-white/15 bg-white/[0.045] px-4 py-3 text-base font-medium text-zinc-200 transition hover:bg-white/10"
-            >
-              농도 랭킹 보기
-            </button>
-            <p className="text-center text-sm leading-6 text-zinc-400">
-              녹음 음성은 판정 처리 후 서버에 보관하지 않습니다.
-            </p>
+          <ol className="intro-steps">
+            {STEPS.map((step, index) => (
+              <li key={step.title}>
+                <span className="intro-step-number">{index + 1}</span>
+                <div>
+                  <h3>{step.title}</h3>
+                  <p>{step.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="intro-actions">
+            <p className="intro-time">예상 시간 약 1분 <span>설치·가입 불필요</span></p>
+            <button onClick={onNext} className="intro-primary-action">감정 신청</button>
+            <button onClick={onViewRanking} className="intro-secondary-action">농도 랭킹 보기</button>
+            <p className="intro-privacy">녹음 음성은 판정 처리 후 서버에 보관하지 않습니다.</p>
           </div>
         </aside>
       </div>
+
+      <footer className="intro-footer">
+        <span>원산지증명서</span>
+        <span>방언 음성 감정 안내</span>
+        <span>대한민국 6개 권역</span>
+      </footer>
     </div>
   );
 }

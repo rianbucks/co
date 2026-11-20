@@ -161,13 +161,13 @@ function renderCertificate(result: JudgeResult): Promise<Blob> {
     });
 
     // 직인과 발급 문구.
-    context.strokeStyle = '#9b4e4e';
+    context.strokeStyle = '#416785';
     context.lineWidth = 4;
     context.beginPath();
     context.arc(925, 1395, 70, 0, Math.PI * 2);
     context.stroke();
     context.textAlign = 'center';
-    context.fillStyle = '#9b4e4e';
+    context.fillStyle = '#416785';
     context.font = '700 20px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
     context.fillText('C/O', 925, 1388);
     context.font = '600 15px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
@@ -290,7 +290,7 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
 
           <div className="relative mt-8 flex items-end justify-between gap-4 sm:mt-10">
             <p className="max-w-[70%] text-[11px] leading-5 text-slate-500 sm:text-xs">본 감정서는 음성 분석 결과를 기록한 문서입니다.</p>
-            <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-2 border-[#9b4e4e] text-[#9b4e4e] sm:h-20 sm:w-20">
+            <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-2 border-[#416785] text-[#416785] sm:h-20 sm:w-20">
               <span className="text-sm font-black">C/O</span><span className="text-[9px] font-semibold">감정 확인</span>
             </div>
           </div>
