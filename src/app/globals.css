@@ -1637,9 +1637,6 @@
     .hover\:opacity-80:hover {
       opacity: 80%;
     }
-    .hover\:opacity-90:hover {
-      opacity: 90%;
-    }
   }
   .focus\:border-indigo-400\/70:focus {
     border-color: color-mix(in srgb, oklch(67.3% 0.182 276.935) 70%, transparent);
