@@ -3,7 +3,7 @@ import type { RateLimiter } from "../rate-limit";
 import type { AiClient, AiRequest } from "./ai-client";
 import { MAX_AUDIO_BYTES } from "./audio";
 import { SPEC_MODEL_OUTPUT_EXAMPLE, mockAiClient } from "./mock";
-import { MODEL_OUTPUT_JSON_SCHEMA } from "./model-output";
+import { buildModelOutputSchema } from "./model-output";
 import { judge, type JudgeDeps, type JudgeInput } from "./pipeline";
 import { buildSystemInstruction, findQuestionSet, USER_TEXT } from "./prompt";
 
@@ -75,12 +75,14 @@ describe("judge: 성공", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
-      evidence: [
-        { type: "endings", quote: "했다 아이가", note: "경상 방언의 확인 표현" },
-        { type: "phonology", quote: "뭇나", note: "'먹었나'의 축약" },
-      ],
+      evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
-      transcript: "아 그거 내가 했다 아이가, 니 밥 뭇나",
+      transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
+      segments: findQuestionSet("set-a")!.map((prompt, index) => ({
+        question: index + 1,
+        prompt,
+        transcript: SPEC_MODEL_OUTPUT_EXAMPLE.question_transcripts[index],
+      })),
     });
   });
 
@@ -96,7 +98,7 @@ describe("judge: 성공", () => {
       userText: USER_TEXT,
       audio: new Uint8Array(await audio.arrayBuffer()),
       mimeType: "audio/wav",
-      responseSchema: MODEL_OUTPUT_JSON_SCHEMA,
+      responseSchema: buildModelOutputSchema(4),
       timeoutMs: 20_000,
       useFallbackModel: false,
     });

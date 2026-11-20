@@ -15,7 +15,7 @@ import {
   type RegionKey,
 } from "./contract";
 import { createIssueInfo } from "./issue";
-import { MODEL_OUTPUT_JSON_SCHEMA, parseModelOutput, type ModelOutput } from "./model-output";
+import { buildModelOutputSchema, parseModelOutput, type ModelOutput } from "./model-output";
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
 import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "./prompt";
 
@@ -91,6 +91,7 @@ function describeError(error: unknown): Record<string, unknown> {
 
 async function callAiWithRetry(
   request: Omit<AiRequest, "timeoutMs">,
+  questionCount: number,
   deps: JudgeDeps,
 ): Promise<ModelOutput | null> {
   const timing = deps.timing ?? DEFAULT_AI_TIMING;
@@ -111,6 +112,7 @@ async function callAiWithRetry(
     try {
       const parsed = parseModelOutput(
         await deps.ai.generate({ ...request, timeoutMs, useFallbackModel }),
+        questionCount,
       );
       if (parsed.ok) return parsed.value;
       log("ai_invalid_output", { attempt, model, problem: parsed.problem });
@@ -146,8 +148,9 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
       userText: USER_TEXT,
       audio: bytes,
       mimeType: format.mimeType,
-      responseSchema: MODEL_OUTPUT_JSON_SCHEMA,
+      responseSchema: buildModelOutputSchema(questions.length),
     },
+    questions.length,
     deps,
   );
   if (!output) return errorResponse("ai_error");
@@ -156,7 +159,7 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
   if (output.audio_quality !== "ok") return rejectedResponse(output.audio_quality);
 
   const issue = deps.issue ?? (() => createIssueInfo(new Date()));
-  const result = buildJudgeResult(output, issue());
+  const result = buildJudgeResult(output, issue(), questions);
 
   if (deps.recordJudgment) {
     try {

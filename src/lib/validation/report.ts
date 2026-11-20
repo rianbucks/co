@@ -10,10 +10,12 @@ import { REGION_NAMES } from "../judge/rules";
 export type RunStatus = "ok" | "rejected" | "format_error" | "call_error";
 
 export interface EvidenceCheck {
+  /** 근거가 나온 문항 번호(모델이 준 값). 없거나 범위 밖이면 null */
+  question?: number | null;
   type: string;
   quote: string;
   note: string;
-  /** 받아쓰기에 그대로 있어 근거 검증을 통과했는지 */
+  /** 그 문항의 받아쓰기(문항별 받아쓰기가 없으면 전체 받아쓰기)에 그대로 있어 근거 검증을 통과했는지 */
   kept: boolean;
 }
 
@@ -34,6 +36,8 @@ export interface RunRecord {
   grade?: Grade;
   evidence?: EvidenceCheck[];
   transcript?: string;
+  /** 문항별 받아쓰기. 모델이 문항 수만큼 주지 않았으면 null */
+  questionTranscripts?: string[] | null;
   error?: string;
 }
 
@@ -374,7 +378,8 @@ export function toDetailsMarkdown(records: readonly RunRecord[]): string {
   const lines = [
     "# 받아쓰기와 근거",
     "",
-    "✓는 받아쓰기에 그대로 있어 통과한 근거, ✗는 받아쓰기에 없어 걸러진 근거다.",
+    "✓는 그 문항의 받아쓰기에 그대로 있어 통과한 근거, ✗는 없어 걸러진 근거다.",
+    "문항별 받아쓰기가 없는 호출은 전체 받아쓰기로 확인한다.",
     "통과한 근거도 실제 녹음에 그 말이 있는지 들어서 확인한다.",
   ];
   for (const record of records) {
@@ -384,9 +389,18 @@ export function toDetailsMarkdown(records: readonly RunRecord[]): string {
       lines.push(
         `- 판정: ${REGION_NAMES[record.top]}${record.mixed ? " (혼합)" : ""}, 농도 ${record.score}점, ${record.grade}등급`,
         `- 받아쓰기: ${record.transcript ?? ""}`,
+        ...(record.questionTranscripts
+          ? [
+              "- 문항별 받아쓰기:",
+              ...record.questionTranscripts.map(
+                (text, index) => `  - 문항 ${index + 1}: ${text || "(답 없음)"}`,
+              ),
+            ]
+          : ["- 문항별 받아쓰기: 없음 (문항 수만큼 오지 않아 전체 받아쓰기로 근거를 확인)"]),
         "- 근거:",
         ...(record.evidence ?? []).map(
-          (item) => `  - ${item.kept ? "✓" : "✗"} [${item.type}] "${item.quote}" — ${item.note}`,
+          (item) =>
+            `  - ${item.kept ? "✓" : "✗"} ${item.question ? `문항 ${item.question} ` : ""}[${item.type}] "${item.quote}" — ${item.note}`,
         ),
       );
       if ((record.evidence ?? []).length === 0) lines.push("  - (없음)");

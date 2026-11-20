@@ -22,7 +22,7 @@ import type { AiClient, AiUsage } from "../src/lib/judge/ai-client";
 import { MAX_AUDIO_BYTES, detectAudioFormat, type GeminiAudioMime } from "../src/lib/judge/audio";
 import { formatKstIso } from "../src/lib/judge/issue";
 import { mockAiClient } from "../src/lib/judge/mock";
-import { MODEL_OUTPUT_JSON_SCHEMA, parseModelOutput } from "../src/lib/judge/model-output";
+import { buildModelOutputSchema, parseModelOutput } from "../src/lib/judge/model-output";
 import { buildJudgeResult, verifyEvidence } from "../src/lib/judge/postprocess";
 import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "../src/lib/judge/prompt";
 import {
@@ -54,6 +54,8 @@ const HELP = `정확도 검증 (명세 3장)
 interface PreparedSample extends SampleRow {
   audio: Uint8Array;
   mimeType: GeminiAudioMime;
+  /** 녹음한 문항 세트(문항 순서) */
+  questions: readonly string[];
   systemInstruction: string;
 }
 
@@ -96,6 +98,7 @@ function prepareSamples(samples: SampleRow[], samplesDir: string): PreparedSampl
       ...sample,
       audio,
       mimeType: format.mimeType,
+      questions,
       systemInstruction: buildSystemInstruction(questions),
     });
   }
@@ -118,7 +121,7 @@ async function runOnce(
       userText: USER_TEXT,
       audio: sample.audio,
       mimeType: sample.mimeType,
-      responseSchema: MODEL_OUTPUT_JSON_SCHEMA,
+      responseSchema: buildModelOutputSchema(sample.questions.length),
       timeoutMs: base.timeoutMs,
       onUsage: (value) => {
         usage = value;
@@ -136,7 +139,7 @@ async function runOnce(
   }
   const latencyMs = performance.now() - started;
 
-  const parsed = parseModelOutput(text);
+  const parsed = parseModelOutput(text, sample.questions.length);
   if (!parsed.ok) return { ...record, status: "format_error", latencyMs, usage, error: parsed.problem };
 
   const output = parsed.value;
@@ -144,7 +147,7 @@ async function runOnce(
     return { ...record, status: "rejected", latencyMs, usage, quality: output.audio_quality };
   }
 
-  const result = buildJudgeResult(output, { id: "-", certificateNo: "-", issuedAt: "-" });
+  const result = buildJudgeResult(output, { id: "-", certificateNo: "-", issuedAt: "-" }, sample.questions);
   return {
     ...record,
     status: "ok",
@@ -155,9 +158,11 @@ async function runOnce(
     score: result.intensity.score,
     grade: result.intensity.grade,
     transcript: output.transcript,
+    questionTranscripts: output.question_transcripts,
+    // 운영과 같은 기준: 문항별 받아쓰기가 있으면 그 문항에서, 없으면 전체 받아쓰기에서 찾는다.
     evidence: output.evidence.map((item) => ({
       ...item,
-      kept: verifyEvidence([item], output.transcript).length === 1,
+      kept: verifyEvidence([item], output.transcript, output.question_transcripts).length === 1,
     })),
   };
 }

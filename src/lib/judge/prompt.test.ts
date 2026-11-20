@@ -58,8 +58,20 @@ describe("buildSystemInstruction", () => {
     const rules = instruction.split("\n규칙\n")[1].split("\n");
     expect(rules).toHaveLength(7);
     rules.forEach((line, index) => expect(line.startsWith(`${index + 1}. `)).toBe(true));
-    expect(instruction).toContain("evidence의 quote는 transcript에 그대로 있는 구절이어야 한다.");
-    expect(instruction).toContain("transcript, regions, scores, evidence는 null로 둔다.");
+    expect(instruction).toContain(
+      "5. evidence의 question은 그 구절이 나온 문항 번호(1~4)이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다.",
+    );
+    expect(instruction).toContain("transcript, question_transcripts, regions, scores, evidence는 null로 둔다.");
+  });
+
+  it("문항별 받아쓰기를 문항 수만큼 요구하고, 문항 사이에 쉬는 구간이 없을 수 있다고 알린다", () => {
+    expect(instruction).toContain(
+      "question_transcripts는 문항 순서대로 각 문항의 답을 같은 방식으로 적은 4개의 배열이다. 답하지 않은 문항은 빈 문자열로 둔다.",
+    );
+    expect(instruction).toContain(
+      "녹음은 문항 순서대로 이어 붙인 것이고 문항 사이에 쉬는 구간이 없을 수 있다. 문항 경계가 불확실하면 내용으로 판단한다.",
+    );
+    expect(buildSystemInstruction(["하나", "둘"])).toContain("2개의 배열");
   });
 
   it("규칙 6은 말소리 없음, 3초 미만, 주변 소음(noisy)일 때 audio_quality만 채우게 한다", () => {

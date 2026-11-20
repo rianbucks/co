@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PART_KEYS, REGION_KEYS } from "./contract";
 import { SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
-import { MODEL_OUTPUT_JSON_SCHEMA, parseModelOutput } from "./model-output";
+import { buildModelOutputSchema, parseModelOutput as parseWithCount } from "./model-output";
+
+/** set-a는 문항 4개 */
+const QUESTION_COUNT = 4;
+const parseModelOutput = (text: string) => parseWithCount(text, QUESTION_COUNT);
+const MODEL_OUTPUT_JSON_SCHEMA = buildModelOutputSchema(QUESTION_COUNT);
 
 const example = () => JSON.parse(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE));
 
@@ -76,6 +81,48 @@ describe("parseModelOutput", () => {
     },
   );
 
+  it.each([
+    ["없음", undefined],
+    ["null", null],
+    ["3개", ["하나", "둘", "셋"]],
+    ["5개", ["하나", "둘", "셋", "넷", "다섯"]],
+    ["문자열이 아닌 값", ["하나", "둘", 3, "넷"]],
+    ["배열이 아님", "하나 둘 셋 넷"],
+  ])("문항별 받아쓰기가 4개의 문자열 배열이 아니면 실패하지 않고 null로 둔다: %s", (_name, value) => {
+    const parsed = parseModelOutput(JSON.stringify({ ...example(), question_transcripts: value }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok && parsed.value.audio_quality === "ok") {
+      expect(parsed.value.question_transcripts).toBeNull();
+      expect(parsed.value.transcript).toBe(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
+    }
+  });
+
+  it("답하지 않은 문항은 빈 문자열로 받아들인다", () => {
+    const parsed = parseModelOutput(
+      JSON.stringify({ ...example(), question_transcripts: ["어 니가 웬일이고", "", "", ""] }),
+    );
+    expect(parsed.ok && parsed.value.audio_quality === "ok" && parsed.value.question_transcripts).toEqual([
+      "어 니가 웬일이고",
+      "",
+      "",
+      "",
+    ]);
+  });
+
+  it.each([
+    ["없음", undefined],
+    ["0", 0],
+    ["5", 5],
+    ["소수", 1.5],
+    ["문자열", "1"],
+  ])("근거의 문항 번호가 1~4 정수가 아니면 실패하지 않고 null로 둔다: %s", (_name, question) => {
+    const evidence = [{ question, type: "endings", quote: "뭐 했노", note: "" }];
+    const parsed = parseModelOutput(JSON.stringify({ ...example(), evidence }));
+    expect(parsed.ok && parsed.value.audio_quality === "ok" && parsed.value.evidence).toEqual([
+      { question: null, type: "endings", quote: "뭐 했노", note: "" },
+    ]);
+  });
+
   it("권역 확률이 모두 0이면 zero_probabilities", () => {
     const regions = Object.fromEntries(REGION_KEYS.map((key) => [key, 0]));
     expect(parseModelOutput(JSON.stringify({ ...example(), regions }))).toEqual({
@@ -142,9 +189,23 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
     expect(Object.keys(properties.scores.properties as object)).toEqual([...PART_KEYS]);
   });
 
+  it("문항별 받아쓰기는 문항 수만큼의 문자열 배열이고, 근거의 문항 번호는 1~문항 수다", () => {
+    const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
+    expect(properties.question_transcripts).toMatchObject({
+      items: { type: "string" },
+      minItems: 4,
+      maxItems: 4,
+    });
+    const evidenceItem = (properties.evidence.items as SchemaNode).properties as Record<string, SchemaNode>;
+    expect(evidenceItem.question).toMatchObject({ type: "integer", minimum: 1, maximum: 4 });
+
+    const three = buildModelOutputSchema(3).properties as Record<string, SchemaNode>;
+    expect(three.question_transcripts).toMatchObject({ minItems: 3, maxItems: 3 });
+  });
+
   it("품질 불량일 때 비우는 필드는 null을 허용한다", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
-    for (const field of ["transcript", "regions", "scores", "evidence"]) {
+    for (const field of ["transcript", "question_transcripts", "regions", "scores", "evidence"]) {
       expect(properties[field].type).toContain("null");
     }
     expect(properties.audio_quality.type).toBe("string");
