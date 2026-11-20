@@ -16,12 +16,29 @@ const MIME_CANDIDATES = [
   'audio/aac',
 ];
 
+/** 문항당 녹음 시간(초) */
+const SECONDS_PER_QUESTION = 10;
+/** 남은 시간을 다시 계산하는 간격. 1초보다 짧게 두어 표시가 밀리지 않게 한다. */
+const TIMER_TICK_MS = 200;
+const LAST_QUESTION_IDX = QUESTIONS.length - 1;
+/**
+ * 녹음 시작 버튼과 다음 문항 버튼이 같은 자리에 있어서 두 번 누르면 다음 동작까지 눌린다.
+ * 상태가 바뀐 직후의 누름은 무시한다(타이머로 넘어가는 것은 막지 않는다).
+ */
+const DOUBLE_TAP_GUARD_MS = 500;
+
+/**
+ * ready: 첫 문항을 보여 주고 녹음 시작을 기다린다.
+ * recording: 지금 문항을 녹음 중이고 타이머가 흐른다.
+ * paused: 녹음을 일시정지하고 다음 문항을 보여 준다. 타이머는 10초에서 멈춰 있다.
+ * processing: 마지막 문항이 끝나 녹음 파일을 만들고 제출하는 중이다.
+ */
 type RecordingPhase = 'ready' | 'recording' | 'paused' | 'processing' | 'error';
 
 export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) {
-  const [currentIdx, setCurrentIdx] = useState(0); // 0, 1, 2, 3
+  const [currentIdx, setCurrentIdx] = useState(0); // 화면에 보이는 문항: 0, 1, 2, 3
   const [phase, setPhase] = useState<RecordingPhase>('ready');
-  const [secLeft, setSecLeft] = useState(10);
+  const [secLeft, setSecLeft] = useState(SECONDS_PER_QUESTION);
   const [supportedMime, setSupportedMime] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
@@ -33,6 +50,12 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  /** 지금 녹음 중인 문항. 녹음 중이 아니면 null. 타이머와 버튼이 같은 문항을 두 번 끝내지 않게 막는다. */
+  const recordingIdxRef = useRef<number | null>(null);
+  /** 마이크를 여는 중이면 true. 시작 버튼을 두 번 눌러 녹음기가 둘 생기지 않게 막는다. */
+  const startingRef = useRef(false);
+  /** 문항 녹음을 시작하거나 끝낸 시각(performance.now) */
+  const phaseChangedAtRef = useRef(0);
 
   const currentQuestion: QuestionItem = QUESTIONS[currentIdx];
 
@@ -41,22 +64,30 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    recordingIdxRef.current = null;
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
     }
+    audioContextRef.current = null;
+    analyserRef.current = null;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-      try {
-        recorderRef.current.stop();
-      } catch {}
+    const recorder = recorderRef.current;
+    if (recorder) {
+      // 처음부터 다시 하거나 화면을 떠날 때는 녹음하던 파일을 제출하지 않는다.
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      if (recorder.state !== 'inactive') {
+        try {
+          recorder.stop();
+        } catch {}
+      }
       recorderRef.current = null;
     }
   }, []);
@@ -75,18 +106,24 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
 
   const startVolumeVisualizer = (stream: MediaStream) => {
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const audioCtx = new AudioCtx();
-      audioContextRef.current = audioCtx;
+      // 분석기는 처음 한 번만 만들고, 문항을 이어 녹음할 때는 다시 쓴다.
+      if (audioContextRef.current?.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {});
+      }
+      if (!audioContextRef.current || !analyserRef.current) {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const audioCtx = new AudioCtx();
+        audioContextRef.current = audioCtx;
 
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 64;
-      analyserRef.current = analyser;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        analyserRef.current = analyser;
 
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+      }
 
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
 
       const checkVolume = () => {
         if (!analyserRef.current) return;
@@ -102,6 +139,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
         animFrameRef.current = requestAnimationFrame(checkVolume);
       };
 
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       checkVolume();
     } catch (e) {
       console.warn('AudioContext visualizer not supported:', e);
@@ -123,47 +161,57 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     }
   }, []);
 
-  const handlePauseSegment = useCallback((finishedIdx: number) => {
-    setCurrentIdx(finishedIdx);
-    const recorder = recorderRef.current;
-    if (recorder && recorder.state === 'recording') {
-      recorder.pause();
-    }
-    stopVolumeVisualizer();
-    setPhase('paused');
-  }, [stopVolumeVisualizer]);
+  const isDoubleTap = () => performance.now() - phaseChangedAtRef.current < DOUBLE_TAP_GUARD_MS;
 
-  const handleFinalStop = useCallback(() => {
+  /**
+   * 지금 문항을 끝낸다(10초 경과 또는 버튼). 타이머를 바로 멈추고,
+   * 마지막 문항이 아니면 녹음을 일시정지한 뒤 다음 문항을 보여 주고 시작 버튼을 기다린다.
+   * 마지막 문항이면 녹음을 끝내고 바로 제출한다.
+   */
+  const finishQuestion = useCallback(() => {
+    const finishedIdx = recordingIdxRef.current;
+    if (finishedIdx === null) return; // 이미 끝낸 문항(타이머와 버튼이 겹친 경우)
+    recordingIdxRef.current = null;
+    phaseChangedAtRef.current = performance.now();
     clearTimer();
     stopVolumeVisualizer();
-    setPhase('processing');
+
     const recorder = recorderRef.current;
+    if (finishedIdx < LAST_QUESTION_IDX) {
+      if (recorder && recorder.state === 'recording') {
+        recorder.pause();
+      }
+      setCurrentIdx(finishedIdx + 1);
+      setSecLeft(SECONDS_PER_QUESTION);
+      setPhase('paused');
+      return;
+    }
+
+    // 마지막 문항: 녹음을 멈추면 onstop에서 파일 1개를 만들어 제출한다.
+    setPhase('processing');
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
     }
   }, [clearTimer, stopVolumeVisualizer]);
 
+  /** questionIdx 문항의 10초 타이머를 시작한다. 종료 처리는 상태 갱신 함수 밖에서 한다. */
   const startCountdown = useCallback((questionIdx: number) => {
     clearTimer();
-    setSecLeft(10);
+    recordingIdxRef.current = questionIdx;
+    phaseChangedAtRef.current = performance.now();
+    const deadline = phaseChangedAtRef.current + SECONDS_PER_QUESTION * 1000;
+    setSecLeft(SECONDS_PER_QUESTION);
 
     timerRef.current = setInterval(() => {
-      setSecLeft((prev) => {
-        if (prev <= 1) {
-          clearTimer();
-          if (questionIdx < 3) {
-            handlePauseSegment(questionIdx);
-          } else {
-            handleFinalStop();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [clearTimer, handleFinalStop, handlePauseSegment]);
+      const remaining = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+      setSecLeft(remaining);
+      if (remaining === 0) finishQuestion();
+    }, TIMER_TICK_MS);
+  }, [clearTimer, finishQuestion]);
 
   const handleStartFirstRecording = async () => {
+    if (startingRef.current || recorderRef.current) return;
+    startingRef.current = true;
     try {
       setErrorMessage('');
       chunksRef.current = [];
@@ -208,15 +256,16 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
       setErrorMessage(
         err instanceof Error ? err.message : '마이크 장치 초기화에 실패하였습니다.'
       );
+    } finally {
+      startingRef.current = false;
     }
   };
 
-  const handleResumeNext = () => {
+  /** 대기 중인 문항(currentIdx)의 녹음을 시작한다. 이 버튼을 누를 때만 녹음을 이어 가고 타이머가 흐른다. */
+  const handleStartNextQuestion = () => {
     const recorder = recorderRef.current;
-    if (!recorder || recorder.state !== 'paused') return;
-
-    const nextIdx = currentIdx + 1;
-    setCurrentIdx(nextIdx);
+    if (!recorder || recorder.state !== 'paused' || recordingIdxRef.current !== null) return;
+    if (isDoubleTap()) return;
 
     recorder.resume();
     setPhase('recording');
@@ -224,7 +273,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     if (streamRef.current) {
       startVolumeVisualizer(streamRef.current);
     }
-    startCountdown(nextIdx);
+    startCountdown(currentIdx);
   };
 
   const handleReset = () => {
@@ -232,9 +281,27 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     chunksRef.current = [];
     setCurrentIdx(0);
     setPhase('ready');
-    setSecLeft(10);
+    setSecLeft(SECONDS_PER_QUESTION);
     setErrorMessage('');
   };
+
+  const isLastQuestion = currentIdx === LAST_QUESTION_IDX;
+  const statusLabel =
+    phase === 'recording'
+      ? 'ON AIR (녹음 중)'
+      : phase === 'paused'
+        ? '일시정지 · 다음 문항 대기'
+        : phase === 'processing'
+          ? '녹음 종료'
+          : '녹음 대기';
+  const timerHint =
+    phase === 'recording'
+      ? isLastQuestion
+        ? `${secLeft}초 후 자동으로 제출`
+        : `${secLeft}초 후 자동으로 다음 문항 이동`
+      : phase === 'ready' || phase === 'paused'
+        ? '문항을 읽고 녹음 시작을 눌러 주십시오'
+        : '녹음 종료';
 
   return (
     <div className="p-5 sm:p-7 lg:p-10">
@@ -287,7 +354,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
               <span className="text-xs font-bold text-zinc-300">오디오 레코딩 콘솔</span>
               <span className={`flex items-center gap-1.5 text-xs font-semibold ${phase === 'recording' ? 'text-red-400' : 'text-zinc-500'}`}>
                 <span className={`h-2 w-2 rounded-full ${phase === 'recording' ? 'bg-red-500 animate-ping' : 'bg-zinc-600'}`} />
-                {phase === 'recording' ? 'ON AIR (녹음 중)' : phase === 'paused' ? '일시정지 상태' : '녹음 대기'}
+                {statusLabel}
               </span>
             </div>
 
@@ -315,7 +382,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
                   00:{secLeft < 10 ? `0${secLeft}` : secLeft}
                 </div>
                 <div className="mt-1 text-[11px] font-medium text-zinc-500">
-                  {secLeft > 0 ? `${secLeft}초 후 자동으로 다음 문항 이동` : '시간 종료'}
+                  {timerHint}
                 </div>
               </div>
 
@@ -323,7 +390,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
               <div className="mt-5 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-800">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${secLeft <= 3 ? 'bg-red-500' : 'bg-white'}`}
-                  style={{ width: `${(secLeft / 10) * 100}%` }}
+                  style={{ width: `${(secLeft / SECONDS_PER_QUESTION) * 100}%` }}
                 />
               </div>
             </div>
@@ -337,42 +404,24 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            {phase === 'ready' && (
+            {(phase === 'ready' || phase === 'paused') && (
               <button
-                onClick={handleStartFirstRecording}
+                onClick={phase === 'ready' ? handleStartFirstRecording : handleStartNextQuestion}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
               >
                 <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                <span>문항 1 녹음 시작 (10초)</span>
+                <span>문항 {currentIdx + 1} 녹음 시작 ({SECONDS_PER_QUESTION}초)</span>
               </button>
             )}
 
             {phase === 'recording' && (
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handlePauseSegment(currentIdx)}
-                  className="flex-1 rounded-full border border-zinc-700/60 bg-zinc-800/80 py-4 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 active:scale-95"
-                >
-                  수동 일시정지
-                </button>
-                <button
-                  onClick={() => {
-                    if (currentIdx < 3) handlePauseSegment(currentIdx);
-                    else handleFinalStop();
-                  }}
-                  className="flex-1 rounded-full bg-white py-4 text-xs font-bold text-black shadow-md transition hover:bg-zinc-200 active:scale-95"
-                >
-                  {currentIdx < 3 ? '다음 문항으로' : '녹음 완료 및 최종 제출'}
-                </button>
-              </div>
-            )}
-
-            {phase === 'paused' && (
               <button
-                onClick={handleResumeNext}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 py-4 text-sm font-bold text-white shadow-xl shadow-indigo-500/20 transition hover:opacity-90 active:scale-[0.98]"
+                onClick={() => {
+                  if (!isDoubleTap()) finishQuestion();
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
               >
-                <span>문항 {currentIdx + 2} 이어 녹음하기</span>
+                <span>{isLastQuestion ? '녹음 완료 및 최종 제출' : '다음 문항으로'}</span>
                 <span>→</span>
               </button>
             )}
