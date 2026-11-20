@@ -167,7 +167,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
   }, [audioBlob, onSuccess]);
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       {/* Error Notice: 오류가 나면 화면 맨 위에 안내와 버튼을 둔다 */}
       {errorInfo && (
         <div

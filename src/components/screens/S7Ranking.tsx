@@ -163,7 +163,7 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
   const submitDisabled = submitting || Boolean(formError?.final);
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-start">
 
         {/* Left Column: My Result & Registration */}
@@ -212,7 +212,6 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
                 >
                   <span>감정 신청</span>
-                  <span>→</span>
                 </button>
               </div>
             ) : mine ? (
@@ -285,7 +284,6 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
                   }`}
                 >
                   <span>{submitting ? '등록하는 중...' : '공개에 동의하고 랭킹 등록'}</span>
-                  {!submitting && <span>→</span>}
                 </button>
               </form>
             )}

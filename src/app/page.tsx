@@ -67,8 +67,8 @@ export default function Home() {
   const showRankingLink = step !== 'S3' && step !== 'S4' && step !== 'S7';
 
   return (
-    <div className="min-h-screen w-full bg-black text-zinc-100 antialiased selection:bg-sky-700 selection:text-white">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-between border-x border-zinc-800 bg-zinc-950 lg:max-w-5xl xl:max-w-6xl">
+    <div className="app-shell min-h-screen w-full text-zinc-100 antialiased selection:bg-sky-700 selection:text-white">
+      <div className="app-frame mx-auto flex min-h-screen flex-col justify-between border-x">
         <div>
           {step !== 'S1' && (
             <Header
@@ -144,7 +144,7 @@ export default function Home() {
           </main>
         </div>
 
-        <footer className="border-t border-zinc-900 px-6 py-5 text-center text-xs text-zinc-500">
+        <footer className="app-footer border-t px-6 py-5 text-center text-xs text-zinc-400">
           <div>원산지증명서 · 사투리 음성 감정 안내</div>
         </footer>
       </div>

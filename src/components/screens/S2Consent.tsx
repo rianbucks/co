@@ -43,7 +43,7 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
   };
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
         
         {/* Left Column: Guidelines & Principles */}
@@ -139,7 +139,6 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
               }`}
             >
               <span>{micState === 'requesting' ? '마이크 연결 중...' : '마이크 허용하고 녹음실 입장'}</span>
-              <span>→</span>
             </button>
 
             <button

@@ -236,11 +236,11 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
   };
 
   return (
-    <section className="p-5 sm:p-7 lg:p-10" aria-labelledby="certificate-title">
+    <section className="screen-glass p-5 sm:p-7 lg:p-10" aria-labelledby="certificate-title">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <button onClick={onBack} className="rounded-full border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800">
-            ← 결과로
+            결과로 돌아가기
           </button>
           <span className="text-xs font-medium text-zinc-500">S6 · 감정서 발급</span>
         </div>
@@ -309,7 +309,6 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
         >
           <span>농도 랭킹 등록</span>
-          <span>→</span>
         </button>
         {message && <p role="status" className="mt-3 text-center text-sm text-amber-300">{message}</p>}
         <button onClick={onResetAll} className="mt-4 w-full py-3 text-sm text-zinc-400 underline underline-offset-4 hover:text-white">

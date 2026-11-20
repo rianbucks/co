@@ -304,7 +304,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
         : '녹음 종료';
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
 
         {/* Left Column: Situation Prompt & Instructions */}
@@ -422,7 +422,6 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
               >
                 <span>{isLastQuestion ? '녹음 완료 및 최종 제출' : '다음 문항으로'}</span>
-                <span>→</span>
               </button>
             )}
 
