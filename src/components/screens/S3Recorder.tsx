@@ -397,7 +397,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
 
             {errorMessage && (
               <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
-                <p className="font-semibold">⚠️ {errorMessage}</p>
+                <p className="font-semibold">{errorMessage}</p>
               </div>
             )}
           </div>

@@ -160,7 +160,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                   <div key={regKey} className="text-xs">
                     <div className="flex justify-between font-medium">
                       <span className={isTop ? 'font-bold text-indigo-300' : 'text-zinc-400'}>
-                        {label} {isTop && '★ 1순위'}
+                        {label} {isTop && '· 1순위'}
                       </span>
                       <span className="font-mono text-zinc-300">{prob}%</span>
                     </div>
