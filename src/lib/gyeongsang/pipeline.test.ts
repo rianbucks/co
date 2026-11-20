@@ -223,3 +223,55 @@ describe("judgeGyeongsang: AI 실패와 재시도(일반 감정과 같은 규칙
     expect(JSON.stringify(logged)).not.toContain(GS_MOCK_MODEL_OUTPUT.transcript);
   });
 });
+
+describe("judgeGyeongsang: 정밀 랭킹 등록 자격 기록", () => {
+  it("성공하면 id, 경상 농도, 경북권 비율, flags 여부만 기록한다(신고 원산지와 받아쓰기는 없다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
+    const response = await judgeGyeongsang(makeInput(), makeDeps({ recordJudgment }));
+    expect(response.status).toBe(200);
+    expect(recordJudgment).toHaveBeenCalledTimes(1);
+    expect(recordJudgment).toHaveBeenCalledWith({
+      id: "g_000000000001",
+      intensity: 69,
+      gyeongbuk: 64,
+      flagged: false,
+    });
+  });
+
+  it("모델이 flags를 붙이면 flagged로 기록한다", async () => {
+    const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
+    const { ai } = scriptedAi(JSON.stringify({ ...GS_MOCK_MODEL_OUTPUT, flags: ["personal_info"] }));
+    await judgeGyeongsang(makeInput(), makeDeps({ ai, recordJudgment }));
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ flagged: true }));
+  });
+
+  it("품질 불량, 경상 방언 미확인, AI 실패, 호출 제한이면 기록하지 않는다", async () => {
+    const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
+    const notGyeongsang = JSON.stringify({ audio_quality: "ok", flags: [], not_gyeongsang: true });
+    for (const ai of [
+      scriptedAi(JSON.stringify({ audio_quality: "noisy", flags: [] })).ai,
+      scriptedAi(notGyeongsang).ai,
+      scriptedAi(new Error("1"), new Error("2")).ai,
+    ]) {
+      await judgeGyeongsang(makeInput(), makeDeps({ ai, recordJudgment }));
+    }
+    const blocked: RateLimiter = { check: async () => ({ allowed: false, scope: "global" }) };
+    await judgeGyeongsang(makeInput(), makeDeps({ rateLimiter: blocked, recordJudgment }));
+    expect(recordJudgment).not.toHaveBeenCalled();
+  });
+
+  it("기록에 실패해도 정밀 감정 결과는 200으로 돌려주고 로그만 남긴다", async () => {
+    const events: string[] = [];
+    const response = await judgeGyeongsang(
+      makeInput(),
+      makeDeps({
+        recordJudgment: async () => {
+          throw new Error("Upstash down");
+        },
+        log: (event) => events.push(event),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(events).toEqual(["judgment_record_failed"]);
+  });
+});

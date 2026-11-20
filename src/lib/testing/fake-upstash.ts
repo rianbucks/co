@@ -1,7 +1,8 @@
 /**
  * 테스트용 가짜 Upstash REST(/pipeline). 랭킹 저장소가 쓰는 Redis 명령만 흉내 낸다.
- * Lua는 실행하지 못하므로 알려진 스크립트(랭킹 등록)만 같은 의미로 처리한다.
+ * Lua는 실행하지 못하므로 알려진 스크립트(농도 랭킹 등록, 정밀 랭킹 등록)만 같은 의미로 처리한다.
  */
+import { GS_REGISTER_SCRIPT } from "../gyeongsang/ranking/store";
 import { REGISTER_SCRIPT } from "../ranking/store";
 import type { Fetcher } from "../upstash";
 
@@ -145,12 +146,16 @@ export function createFakeUpstash({
         const [script, numKeys, ...rest] = args;
         const keys = rest.slice(0, Number(numKeys));
         const argv = rest.slice(Number(numKeys));
-        if (script !== REGISTER_SCRIPT) throw new Error("fake upstash: unknown script");
-        const [claimKey, entriesKey, orderKey] = keys;
+        if (script !== REGISTER_SCRIPT && script !== GS_REGISTER_SCRIPT) {
+          throw new Error("fake upstash: unknown script");
+        }
+        // 정밀 랭킹 등록은 네 번째 키(보기 정렬 집합)에도 넣는다.
+        const [claimKey, entriesKey, orderKey, areaKey] = keys;
         const [entryId, entryJson, score, ttlSeconds] = argv;
         if (set(claimKey, entryId, ["NX", "EX", ttlSeconds]) === null) return 0;
         exec(["HSET", entriesKey, entryId, entryJson]);
         exec(["ZADD", orderKey, score, entryId]);
+        if (script === GS_REGISTER_SCRIPT) exec(["ZADD", areaKey, score, entryId]);
         return (exec(["ZREVRANK", orderKey, entryId]) as number) + 1;
       }
       default:

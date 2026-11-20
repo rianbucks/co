@@ -10,6 +10,7 @@ import { MAX_AUDIO_BYTES } from "@/lib/judge/audio";
 import { gsMockAiClient } from "@/lib/gyeongsang/mock";
 import { judgeGyeongsang } from "@/lib/gyeongsang/pipeline";
 import { GS_QUESTION_SET_ID } from "@/lib/gyeongsang/questions";
+import { gsRankingStoreFromEnv } from "@/lib/gyeongsang/ranking/store";
 import { errorResponse } from "@/lib/judge/contract";
 import { mockAiClient } from "@/lib/judge/mock";
 import { judge } from "@/lib/judge/pipeline";
@@ -57,13 +58,16 @@ export async function POST(request: Request): Promise<Response> {
       return toResponse(errorResponse("invalid_audio"));
     }
 
-    // 경상 정밀 감정: 같은 제한기로 일반 감정과 횟수를 합쳐 센다. 랭킹 등록 자격은 남기지 않는다.
+    // 경상 정밀 감정: 같은 제한기로 일반 감정과 횟수를 합쳐 센다.
+    // 정밀 랭킹 등록 자격(경상 농도, 경북권 비율)은 기존 랭킹과 다른 저장소에 1시간 남긴다.
     if (form.get("questionSetId") === GS_QUESTION_SET_ID) {
+      const gsRankingStore = gsRankingStoreFromEnv(process.env, { mock });
       const outcome = await judgeGyeongsang(
         { audio: form.get("audio"), clientIp: clientIpFrom(request.headers) },
         {
           ai: config.config.mock ? gsMockAiClient : createGeminiClient(config.config.gemini),
           rateLimiter,
+          recordJudgment: ({ id, ...summary }) => gsRankingStore.saveJudgment(id, { ...summary, mock }),
         },
       );
       return toResponse(outcome);

@@ -75,11 +75,13 @@ export interface JudgeDeps {
   recordJudgment?: (summary: JudgmentSummary) => Promise<void>;
 }
 
-const defaultLog: JudgeLog = (event, detail) => {
+/** 기본 로그. 경상 정밀 감정 파이프라인(../gyeongsang/pipeline.ts)도 쓴다. */
+export const defaultLog: JudgeLog = (event, detail) => {
   console.warn(`[judge] ${event}`, detail);
 };
 
-function describeError(error: unknown): Record<string, unknown> {
+/** 예외를 로그에 남길 수 있는 값으로 줄인다(이름, HTTP 상태, 메시지 앞 200자). */
+export function describeError(error: unknown): Record<string, unknown> {
   if (!(error instanceof Error)) return { name: typeof error };
   const status = (error as { status?: unknown }).status;
   return {

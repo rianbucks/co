@@ -16,6 +16,8 @@ interface GsResultProps {
   result: GyeongsangResult;
   origin: OriginKey;
   onGoToCertificate: () => void;
+  /** 정밀 감정 랭킹(등록과 조회) */
+  onGoToRanking: () => void;
   onRestart: () => void;
 }
 
@@ -46,7 +48,7 @@ function HighlightedTranscript({ text, quotes }: { text: string; quotes: string[
 }
 
 /** 경상 정밀 감정 결과: 성분 비율, 경상 농도와 등급, 신고 원산지와의 일치 여부, 문항별 받아쓰기와 근거. */
-export default function GsResult({ result, origin, onGoToCertificate, onRestart }: GsResultProps) {
+export default function GsResult({ result, origin, onGoToCertificate, onGoToRanking, onRestart }: GsResultProps) {
   const { subregions, intensity, evidence, transcript, segments, certificateNo, issuedAt } = result;
   const match = judgeOriginMatch(origin, subregions);
 
@@ -127,6 +129,9 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
               className="flex w-full items-center justify-center rounded-full bg-white py-4 text-sm font-bold text-black transition hover:bg-zinc-200"
             >
               정밀 감정서 발급
+            </button>
+            <button onClick={onGoToRanking} className="secondary-action-button w-full text-center transition">
+              정밀 랭킹 등록
             </button>
             <button onClick={onRestart} className="secondary-action-button w-full text-center transition">
               다시 정밀 감정받기

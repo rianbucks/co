@@ -13,8 +13,10 @@ interface HeaderProps {
   /** 진행이 멈춘 상태(예: 감정 오류). */
   stopped?: boolean;
   onHomeClick?: () => void;
-  /** 있으면 '농도 랭킹 보기' 버튼을 보여 준다. */
+  /** 있으면 랭킹 버튼을 보여 준다. */
   onRankingClick?: () => void;
+  /** 랭킹 버튼 글자. 없으면 '농도 랭킹'(경상 정밀 감정 탭은 '정밀 랭킹') */
+  rankingLabel?: string;
   /** 지금 보고 있는 탭 */
   activeTab?: HeaderTab;
   /** 있으면 '일반 감정'과 '경상 정밀 감정' 탭을 보여 준다. */
@@ -28,6 +30,7 @@ export default function Header({
   stopped = false,
   onHomeClick,
   onRankingClick,
+  rankingLabel = '농도 랭킹',
   activeTab = 'general',
   onTabChange,
   tabsDisabled = false,
@@ -50,7 +53,7 @@ export default function Header({
               onClick={onRankingClick}
               className="app-header-link whitespace-nowrap text-sm text-zinc-300 transition hover:text-white"
             >
-              농도 랭킹
+              {rankingLabel}
             </button>
           )}
           {currentStep && (
