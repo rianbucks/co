@@ -271,3 +271,79 @@ describe("judge: AI 실패와 재시도", () => {
     expect(JSON.stringify(logged)).not.toContain(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
   });
 });
+
+describe("judge: 랭킹 등록 자격 기록", () => {
+  it("성공하면 id, 농도, 1순위 권역, 등급, flags 여부만 기록한다", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+
+    const response = await judge(makeInput(), makeDeps({ recordJudgment }));
+
+    expect(response.status).toBe(200);
+    expect(recordJudgment).toHaveBeenCalledTimes(1);
+    expect(recordJudgment).toHaveBeenCalledWith({
+      id: "j_000000000001",
+      intensity: 68,
+      region: "gyeongsang",
+      grade: 4,
+      flagged: false,
+    });
+  });
+
+  it("모델이 flags를 붙이면 flagged로 기록한다", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const { ai } = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, flags: ["profanity"] }));
+
+    await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ flagged: true }));
+  });
+
+  it("품질 불량, AI 실패, 호출 제한이면 기록하지 않는다", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const rejected = JSON.stringify({
+      audio_quality: "too_short",
+      flags: [],
+      transcript: null,
+      regions: null,
+      scores: null,
+      evidence: null,
+    });
+
+    await judge(makeInput(), makeDeps({ ai: scriptedAi(rejected).ai, recordJudgment }));
+    await judge(
+      makeInput(),
+      makeDeps({ ai: scriptedAi(new Error("1"), new Error("2")).ai, recordJudgment }),
+    );
+    await judge(
+      makeInput(),
+      makeDeps({
+        rateLimiter: { check: async () => ({ allowed: false, scope: "global" }) },
+        recordJudgment,
+      }),
+    );
+
+    expect(recordJudgment).not.toHaveBeenCalled();
+  });
+
+  it("기록에 실패해도 감정 결과는 200으로 돌려주고 로그만 남긴다", async () => {
+    const events: Array<{ event: string; detail: Record<string, unknown> }> = [];
+
+    const response = await judge(
+      makeInput(),
+      makeDeps({
+        recordJudgment: async () => {
+          throw new Error("Upstash returned HTTP 503");
+        },
+        log: (event, detail) => events.push({ event, detail }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(events).toEqual([
+      {
+        event: "judgment_record_failed",
+        detail: { name: "Error", message: "Upstash returned HTTP 503" },
+      },
+    ]);
+  });
+});

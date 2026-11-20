@@ -8,6 +8,7 @@ import S3Recorder from '@/components/screens/S3Recorder';
 import S4Judging from '@/components/screens/S4Judging';
 import S5Result from '@/components/screens/S5Result';
 import S6Certificate from '@/components/screens/S6Certificate';
+import S7Ranking from '@/components/screens/S7Ranking';
 import { ScreenStep } from '@/types/screen';
 import { JudgeResult } from '@/lib/judge/contract';
 
@@ -15,6 +16,8 @@ export default function Home() {
   const [step, setStep] = useState<ScreenStep>('S1');
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [judgeResult, setJudgeResult] = useState<JudgeResult | null>(null);
+  /** 지금 감정 결과로 등록한 랭킹 항목 id. 새 감정을 받거나 처음으로 돌아가면 지운다. */
+  const [rankingEntryId, setRankingEntryId] = useState<string | null>(null);
 
   const getStepLabel = (s: ScreenStep) => {
     switch (s) {
@@ -30,6 +33,8 @@ export default function Home() {
         return '결과';
       case 'S6':
         return '감정서';
+      case 'S7':
+        return '랭킹';
       default:
         return '';
     }
@@ -42,12 +47,14 @@ export default function Home() {
 
   const handleJudgingSuccess = (result: JudgeResult) => {
     setJudgeResult(result);
+    setRankingEntryId(null);
     setStep('S5');
   };
 
   const handleResetAll = () => {
     setAudioBlob(null);
     setJudgeResult(null);
+    setRankingEntryId(null);
     setStep('S1');
   };
 
@@ -105,6 +112,7 @@ export default function Home() {
               <S5Result
                 result={judgeResult}
                 onGoToCertificate={() => setStep('S6')}
+                onGoToRanking={() => setStep('S7')}
                 onResetAll={handleResetAll}
               />
             )}
@@ -112,6 +120,16 @@ export default function Home() {
             {step === 'S6' && judgeResult && (
               <S6Certificate
                 result={judgeResult}
+                onBack={() => setStep('S5')}
+                onResetAll={handleResetAll}
+              />
+            )}
+
+            {step === 'S7' && judgeResult && (
+              <S7Ranking
+                result={judgeResult}
+                entryId={rankingEntryId}
+                onRegistered={setRankingEntryId}
                 onBack={() => setStep('S5')}
                 onResetAll={handleResetAll}
               />

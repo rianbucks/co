@@ -1,4 +1,4 @@
-export type ScreenStep = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6';
+export type ScreenStep = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7';
 
 /**
  * 녹음 문항(명세 8장). 서버의 set-a(src/lib/judge/prompt.ts)와 문구가 같아야 한다.
