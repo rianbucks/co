@@ -23,9 +23,21 @@ export type PartScores = Record<PartKey, number>;
 export type Grade = 1 | 2 | 3 | 4 | 5;
 
 export interface Evidence {
+  /** 근거가 나온 문항 번호(1부터). 문항별 받아쓰기가 없어 문항으로 확인하지 못했으면 null */
+  question: number | null;
   type: PartKey;
   quote: string;
   note: string;
+}
+
+/** 문항별 받아쓰기(명세 7장). 문항 문구는 서버의 문항 세트에서 가져온다. */
+export interface Segment {
+  /** 문항 번호(1부터) */
+  question: number;
+  /** 문항 문구 */
+  prompt: string;
+  /** 그 문항의 받아쓰기(공백 정리). 답하지 않은 문항은 빈 문자열 */
+  transcript: string;
 }
 
 export interface JudgeResult {
@@ -46,7 +58,13 @@ export interface JudgeResult {
   };
   evidence: Evidence[];
   opinion: string;
+  /** 전체 받아쓰기 */
   transcript: string;
+  /**
+   * 문항별 받아쓰기(문항 순서). 모델이 문항 수만큼 주지 않았으면 빈 배열이고,
+   * 이때 근거는 전체 받아쓰기로 검증하며 question은 null이다.
+   */
+  segments: Segment[];
 }
 
 /** 422 rejected의 reason. 모델 출력의 audio_quality 값(ok 제외)을 그대로 쓴다. */

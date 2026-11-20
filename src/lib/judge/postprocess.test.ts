@@ -13,6 +13,7 @@ import { parseModelOutput, type AcceptedModelOutput } from "./model-output";
 import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
 import {
   buildJudgeResult,
+  buildSegments,
   computeIntensity,
   decideRegion,
   dominantPart,
@@ -21,7 +22,10 @@ import {
   selectOpinion,
   verifyEvidence,
 } from "./postprocess";
+import { findQuestionSet } from "./prompt";
 import { INTENSITY_WEIGHTS, REGION_NAMES } from "./rules";
+
+const SET_A = findQuestionSet("set-a")!;
 
 /** 순서: 서울경기, 강원, 충청, 경상, 전라, 제주 */
 function probs(values: [number, number, number, number, number, number]): RegionProbabilities {
@@ -34,7 +38,7 @@ function sum(p: RegionProbabilities): number {
 }
 
 function acceptedSpecExample(): AcceptedModelOutput {
-  const parsed = parseModelOutput(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE));
+  const parsed = parseModelOutput(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE), SET_A.length);
   if (!parsed.ok) throw new Error(`4장 예시가 검증을 통과하지 못했다: ${parsed.problem}`);
   const value = parsed.value;
   if (value.audio_quality !== "ok") throw new Error("4장 예시의 품질은 ok여야 한다");
@@ -197,42 +201,92 @@ describe("decideRegion: 판정 지역", () => {
 });
 
 describe("verifyEvidence: 근거 검증", () => {
-  const transcript = SPEC_MODEL_OUTPUT_EXAMPLE.transcript;
-  const evidence = (quote: string): Evidence => ({ type: "endings", quote, note: "메모" });
-
-  it("4장 예시의 근거 2개는 모두 받아쓰기에 있으므로 남는다", () => {
-    expect(verifyEvidence(SPEC_MODEL_OUTPUT_EXAMPLE.evidence, transcript)).toEqual(
-      SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
-    );
+  const { transcript, question_transcripts: questionTranscripts } = SPEC_MODEL_OUTPUT_EXAMPLE;
+  const evidence = (quote: string, question: number | null = null): Evidence => ({
+    question,
+    type: "endings",
+    quote,
+    note: "메모",
   });
 
-  it("받아쓰기에 없는 인용은 버린다", () => {
-    expect(verifyEvidence([evidence("밥 묵었나"), evidence("뭇나")], transcript)).toEqual([
-      evidence("뭇나"),
-    ]);
+  describe("문항별 받아쓰기가 있으면 그 문항에서 찾는다", () => {
+    it("4장 예시의 근거 5개는 모두 자기 문항 받아쓰기에 있으므로 남는다", () => {
+      expect(
+        verifyEvidence(SPEC_MODEL_OUTPUT_EXAMPLE.evidence, transcript, questionTranscripts),
+      ).toEqual(SPEC_MODEL_OUTPUT_EXAMPLE.evidence);
+    });
+
+    it("다른 문항에만 있는 인용은 버린다", () => {
+      expect(
+        verifyEvidence([evidence("뭐 했노", 1), evidence("뭐 했노", 2)], transcript, questionTranscripts),
+      ).toEqual([evidence("뭐 했노", 2)]);
+    });
+
+    it("받아쓰기에 없는 인용은 버린다", () => {
+      expect(verifyEvidence([evidence("밥 묵었나", 4)], transcript, questionTranscripts)).toEqual([]);
+    });
+
+    it("문항 번호가 없거나 범위를 벗어나면 확인할 수 없으므로 버린다", () => {
+      expect(
+        verifyEvidence(
+          [evidence("억수로", null), evidence("억수로", 0), evidence("억수로", 5), evidence("억수로", 1.5)],
+          transcript,
+          questionTranscripts,
+        ),
+      ).toEqual([]);
+    });
+
+    it("답하지 않은 문항(빈 문자열)에는 어떤 근거도 남지 않는다", () => {
+      expect(verifyEvidence([evidence("억수로", 2)], transcript, ["억수로", "", "", ""])).toEqual([]);
+    });
+  });
+
+  describe("문항별 받아쓰기가 없으면 전체 받아쓰기에서 찾는다", () => {
+    it("전체 받아쓰기에 있으면 남기고 문항은 확인하지 않았으므로 null로 둔다", () => {
+      expect(verifyEvidence([evidence("뭐 했노", 1), evidence("밥 묵었나", 2)], transcript)).toEqual([
+        evidence("뭐 했노", null),
+      ]);
+      expect(verifyEvidence([evidence("뭐 했노", 3)], transcript, null)).toEqual([evidence("뭐 했노")]);
+    });
   });
 
   it("앞뒤 공백과 연속 공백 차이는 같은 구절로 본다", () => {
-    expect(verifyEvidence([evidence("  했다   아이가 ")], transcript)).toEqual([
-      evidence("했다 아이가"),
+    expect(verifyEvidence([evidence("  뭐   했노 ", 2)], transcript, questionTranscripts)).toEqual([
+      evidence("뭐 했노", 2),
     ]);
-    expect(verifyEvidence([evidence("했다 아이가")], "아 그거 내가 했다\t\n아이가")).toEqual([
-      evidence("했다 아이가"),
+    expect(verifyEvidence([evidence("뭐 했노")], "퍼뜩 안 오고 뭐\t\n했노")).toEqual([evidence("뭐 했노")]);
+    expect(verifyEvidence([evidence("뭐 했노", 1)], "", ["안 오고 뭐  했노 "])).toEqual([
+      evidence("뭐 했노", 1),
     ]);
   });
 
   it("띄어쓰기가 다르면 다른 구절로 본다", () => {
-    expect(verifyEvidence([evidence("했다아이가")], transcript)).toEqual([]);
+    expect(verifyEvidence([evidence("뭐했노", 2)], transcript, questionTranscripts)).toEqual([]);
   });
 
   it("빈 인용과 공백뿐인 인용은 버린다", () => {
+    expect(verifyEvidence([evidence("", 1), evidence("   ", 1)], transcript, questionTranscripts)).toEqual([]);
     expect(verifyEvidence([evidence(""), evidence("   ")], transcript)).toEqual([]);
   });
 
   it("한글 자모가 분해된(NFD) 인용도 같은 구절로 보고 NFC로 돌려준다", () => {
-    expect(verifyEvidence([evidence("뭇나".normalize("NFD"))], transcript)).toEqual([
-      evidence("뭇나"),
+    expect(
+      verifyEvidence([evidence("억수로".normalize("NFD"), 1)], transcript, questionTranscripts),
+    ).toEqual([evidence("억수로", 1)]);
+  });
+});
+
+describe("buildSegments: 문항별 받아쓰기", () => {
+  it("문항 번호, 문항 문구, 공백을 정리한 받아쓰기를 문항 순서대로 낸다", () => {
+    expect(buildSegments(["문항 하나", "문항 둘"], ["  어 니가\n웬일이고 ", ""])).toEqual([
+      { question: 1, prompt: "문항 하나", transcript: "어 니가 웬일이고" },
+      { question: 2, prompt: "문항 둘", transcript: "" },
     ]);
+  });
+
+  it("문항별 받아쓰기가 없거나 문항 수와 다르면 빈 배열", () => {
+    expect(buildSegments(["문항 하나", "문항 둘"], null)).toEqual([]);
+    expect(buildSegments(["문항 하나", "문항 둘"], ["하나만"])).toEqual([]);
   });
 });
 
@@ -306,14 +360,14 @@ describe("selectOpinion: 소견", () => {
 });
 
 describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
-  it("권역, 농도, 소견은 7장 예시와 같고, 근거는 2개, 받아쓰기가 함께 나간다", () => {
-    const issue = {
-      id: "j_8f3a2c",
-      certificateNo: "제2026-000123호",
-      issuedAt: "2026-11-15T14:03:00+09:00",
-    };
+  const issue = {
+    id: "j_8f3a2c",
+    certificateNo: "제2026-000123호",
+    issuedAt: "2026-11-15T14:03:00+09:00",
+  };
 
-    expect(buildJudgeResult(acceptedSpecExample(), issue)).toEqual({
+  it("권역, 농도, 소견은 7장 예시와 같고, 근거 5개와 문항별 받아쓰기, 전체 받아쓰기가 함께 나간다", () => {
+    expect(buildJudgeResult(acceptedSpecExample(), issue, SET_A)).toEqual({
       ...issue,
       region: {
         top: "gyeongsang",
@@ -334,18 +388,37 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
-      evidence: [
-        { type: "endings", quote: "했다 아이가", note: "경상 방언의 확인 표현" },
-        { type: "phonology", quote: "뭇나", note: "'먹었나'의 축약" },
-      ],
+      evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
-      transcript: "아 그거 내가 했다 아이가, 니 밥 뭇나",
+      transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
+      segments: SET_A.map((prompt, index) => ({
+        question: index + 1,
+        prompt,
+        transcript: SPEC_MODEL_OUTPUT_EXAMPLE.question_transcripts[index],
+      })),
     });
+  });
+
+  it("문항별 받아쓰기가 없으면 segments는 빈 배열이고 근거는 전체 받아쓰기로 검증한다", () => {
+    const output = {
+      ...acceptedSpecExample(),
+      question_transcripts: null,
+      evidence: [
+        { question: 3, type: "endings" as const, quote: "뭐 했노", note: "다른 문항이라도 전체에 있으면 남는다" },
+        { question: 1, type: "vocabulary" as const, quote: "밥 묵었나", note: "어디에도 없다" },
+      ],
+    };
+    const result = buildJudgeResult(output, issue, SET_A);
+    expect(result.segments).toEqual([]);
+    expect(result.evidence).toEqual([
+      { question: null, type: "endings", quote: "뭐 했노", note: "다른 문항이라도 전체에 있으면 남는다" },
+    ]);
+    expect(result.transcript).toBe(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
   });
 
   it("확률 합이 100이 아니면 맞춘 값으로 판정한다", () => {
     const output = { ...acceptedSpecExample(), regions: probs([1, 1, 1, 0, 0, 0]) };
-    const result = buildJudgeResult(output, { id: "j_1", certificateNo: "c", issuedAt: "t" });
+    const result = buildJudgeResult(output, { id: "j_1", certificateNo: "c", issuedAt: "t" }, SET_A);
     expect(result.region).toEqual({
       top: "seoul_gyeonggi",
       label: "혼합 방언",

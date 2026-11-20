@@ -62,7 +62,7 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/a
 
 - 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`(지금은 `set-a`만 등록)를 보냅니다.
 - 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
-- 성공 응답의 `transcript`(받아쓰기)는 서버에 저장하지 않습니다.
+- 성공 응답에는 전체 받아쓰기 `transcript`와 문항별 받아쓰기 `segments`가 들어가며, 둘 다 서버에 저장하지 않습니다. 근거(`evidence`)는 문항 번호 `question`을 달고 그 문항의 받아쓰기로 검증합니다. 모델이 문항별 받아쓰기를 문항 수만큼 주지 않으면 `segments`는 빈 배열이고 근거는 전체 받아쓰기로 검증합니다(명세 4장, 7장).
 - 감정에 성공하면 랭킹 등록 자격(농도, 1순위 권역, 등급, 가짜 응답 여부, flags 여부)을 감정 `id`로 1시간 저장합니다.
 
 랭킹 API의 형식과 오류는 명세 7장에 있습니다.

@@ -1,6 +1,7 @@
 'use client';
 
-import { JudgeResult } from '@/lib/judge/contract';
+import { Evidence, JudgeResult } from '@/lib/judge/contract';
+import { splitHighlights } from '@/lib/judge/highlight';
 import { REGION_KOREAN_NAMES, PART_KOREAN_NAMES } from '@/types/screen';
 
 interface S5ResultProps {
@@ -10,8 +11,41 @@ interface S5ResultProps {
   onResetAll: () => void;
 }
 
+function EvidenceRow({ item }: { item: Evidence }) {
+  return (
+    <div className="rounded-2xl border border-zinc-800/60 bg-black/30 p-3.5 text-xs">
+      <div className="flex items-center gap-2">
+        <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+          {PART_KOREAN_NAMES[item.type] || item.type}
+        </span>
+        <span className="font-bold text-indigo-300">&quot;{item.quote}&quot;</span>
+      </div>
+      <p className="mt-1.5 text-xs text-zinc-400 pl-1">↳ {item.note}</p>
+    </div>
+  );
+}
+
+/** 받아쓰기에서 근거 인용 구절을 강조해 보여 준다. */
+function HighlightedTranscript({ text, quotes }: { text: string; quotes: string[] }) {
+  return (
+    <>
+      {splitHighlights(text, quotes).map((part, index) =>
+        part.highlighted ? (
+          <mark key={index} className="rounded bg-indigo-500/25 px-0.5 font-semibold not-italic text-indigo-200">
+            {part.text}
+          </mark>
+        ) : (
+          <span key={index}>{part.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
 export default function S5Result({ result, onGoToCertificate, onGoToRanking, onResetAll }: S5ResultProps) {
   const { region, intensity, evidence, opinion, transcript, certificateNo, issuedAt } = result;
+  // 이전 형식의 응답(segments 없음)도 전체 받아쓰기로 보여 준다.
+  const segments = result.segments ?? [];
 
   const formattedDate = new Date(issuedAt).toLocaleString('ko-KR', {
     year: 'numeric',
@@ -159,38 +193,76 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
             </div>
           </div>
 
-          {/* Transcript & Linguistic Evidence */}
-          <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
-            <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-              구술 음성 채록 및 근거 인용
-            </h3>
+          {/* Per-question Transcript & Evidence */}
+          {segments.length > 0 ? (
+            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
+              <h3 className="text-sm font-bold tracking-tight text-zinc-200">
+                문항별 구술 채록 및 근거 인용
+              </h3>
+              <div className="mt-4 space-y-4">
+                {segments.map((segment) => {
+                  const items = evidence.filter((item) => item.question === segment.question);
+                  return (
+                    <div key={segment.question} className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
+                      <div className="flex items-start gap-2.5">
+                        <span className="shrink-0 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
+                          문항 {segment.question}
+                        </span>
+                        <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
+                      </div>
 
-            {transcript && (
-              <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/50 p-4">
-                <div className="text-[11px] font-semibold text-zinc-400">구술 채록문 (Transcript)</div>
-                <p className="mt-1.5 text-xs italic leading-relaxed text-zinc-200 font-serif">
-                  &quot;{transcript}&quot;
-                </p>
-              </div>
-            )}
+                      <div className="mt-3 rounded-xl border border-zinc-800/60 bg-black/50 p-3">
+                        <div className="text-[11px] font-semibold text-zinc-400">구술 채록문</div>
+                        {segment.transcript ? (
+                          <p className="mt-1.5 text-xs italic leading-relaxed text-zinc-200 font-serif">
+                            &quot;
+                            <HighlightedTranscript text={segment.transcript} quotes={items.map((item) => item.quote)} />
+                            &quot;
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 text-xs text-zinc-500">이 문항의 답변이 확인되지 않았습니다.</p>
+                        )}
+                      </div>
 
-            {evidence && evidence.length > 0 && (
-              <div className="mt-4 space-y-2.5">
-                <div className="text-xs font-semibold text-zinc-400">식별된 방언 언어학적 근거</div>
-                {evidence.map((item, idx) => (
-                  <div key={idx} className="rounded-2xl border border-zinc-800/60 bg-black/30 p-3.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
-                        {PART_KOREAN_NAMES[item.type] || item.type}
-                      </span>
-                      <span className="font-bold text-indigo-300">&quot;{item.quote}&quot;</span>
+                      {items.length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {items.map((item, idx) => (
+                            <EvidenceRow key={idx} item={item} />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 pl-1 text-[11px] text-zinc-500">이 문항에서 확인된 근거가 없습니다.</p>
+                      )}
                     </div>
-                    <p className="mt-1.5 text-xs text-zinc-400 pl-1">↳ {item.note}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
+              <h3 className="text-sm font-bold tracking-tight text-zinc-200">
+                구술 음성 채록 및 근거 인용
+              </h3>
+
+              {transcript && (
+                <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/50 p-4">
+                  <div className="text-[11px] font-semibold text-zinc-400">구술 채록문 (Transcript)</div>
+                  <p className="mt-1.5 text-xs italic leading-relaxed text-zinc-200 font-serif">
+                    &quot;{transcript}&quot;
+                  </p>
+                </div>
+              )}
+
+              {evidence && evidence.length > 0 && (
+                <div className="mt-4 space-y-2.5">
+                  <div className="text-xs font-semibold text-zinc-400">식별된 방언 언어학적 근거</div>
+                  {evidence.map((item, idx) => (
+                    <EvidenceRow key={idx} item={item} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 

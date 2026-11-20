@@ -1,10 +1,20 @@
 import type { AiClient } from "./ai-client";
 
-/** 명세 4장의 모델 출력 예시. */
+/**
+ * 명세 4장의 모델 출력 예시. set-a 문항 4개에 경상 방언으로 답한 녹음을 가정한다.
+ * transcript는 문항별 받아쓰기를 순서대로 이은 것이고, 근거는 모두 그 문항의 받아쓰기에 있다.
+ */
 export const SPEC_MODEL_OUTPUT_EXAMPLE = {
   audio_quality: "ok",
   flags: [],
-  transcript: "아 그거 내가 했다 아이가, 니 밥 뭇나",
+  transcript:
+    "어, 니가 웬일이고? 억수로 오랜만이네 니 지금 웃음이 나오나? 퍼뜩 안 오고 뭐 했노 그래 입고 나가모 얼어 죽는데이 할매 이거 진짜 맛있네예, 한 그릇 더 묵을게예",
+  question_transcripts: [
+    "어, 니가 웬일이고? 억수로 오랜만이네",
+    "니 지금 웃음이 나오나? 퍼뜩 안 오고 뭐 했노",
+    "그래 입고 나가모 얼어 죽는데이",
+    "할매 이거 진짜 맛있네예, 한 그릇 더 묵을게예",
+  ],
   regions: {
     seoul_gyeonggi: 4,
     gangwon: 3,
@@ -15,8 +25,11 @@ export const SPEC_MODEL_OUTPUT_EXAMPLE = {
   },
   scores: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
   evidence: [
-    { type: "endings", quote: "했다 아이가", note: "경상 방언의 확인 표현" },
-    { type: "phonology", quote: "뭇나", note: "'먹었나'의 축약" },
+    { question: 1, type: "vocabulary", quote: "억수로", note: "'아주'를 뜻하는 경상 방언 어휘" },
+    { question: 1, type: "endings", quote: "웬일이고", note: "의문사와 함께 쓰는 경상 방언 의문형 어미 '-고'" },
+    { question: 2, type: "endings", quote: "뭐 했노", note: "의문사와 함께 쓰는 경상 방언 의문형 어미 '-노'" },
+    { question: 3, type: "endings", quote: "죽는데이", note: "경상 방언의 종결 어미 '-데이'" },
+    { question: 4, type: "phonology", quote: "묵을게예", note: "'먹을게요'의 'ㅓ'가 'ㅜ'로 바뀐 발음" },
   ],
 } as const;
 

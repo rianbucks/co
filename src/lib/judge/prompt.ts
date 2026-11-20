@@ -22,24 +22,26 @@ export function findQuestionSet(questionSetId: string): readonly string[] | null
 }
 
 /**
- * 명세 4장 지시문 초안에 문항 목록을 넣는다.
+ * 명세 4장 지시문 초안에 문항 목록과 문항 수를 넣는다.
  * 규칙 6에는 "나머지 필드는 null"을 덧붙였다. 출력 스키마가 모든 필드를 요구하기 때문이다.
  */
 export function buildSystemInstruction(questions: readonly string[]): string {
   const questionList = questions.map((question, index) => `${index + 1}. ${question}`).join("\n");
+  const count = questions.length;
 
   return `너는 한국어 방언 감정위원이다. 첨부한 음성은 화자가 아래 문항에 순서대로 답한 녹음이다.
+녹음은 문항 순서대로 이어 붙인 것이고 문항 사이에 쉬는 구간이 없을 수 있다. 문항 경계가 불확실하면 내용으로 판단한다.
 
 [문항 목록]
 ${questionList}
 
 규칙
 1. 실제로 들린 것만 근거로 쓴다. 들리지 않은 표현을 지어내지 않는다.
-2. transcript는 들린 발음 그대로 적는다. 표준어로 고치지 않는다.
+2. transcript는 들린 발음 그대로 적는다. 표준어로 고치지 않는다. question_transcripts는 문항 순서대로 각 문항의 답을 같은 방식으로 적은 ${count}개의 배열이다. 답하지 않은 문항은 빈 문자열로 둔다.
 3. regions는 여섯 권역의 확률이고 합은 100이다.
 4. scores는 어휘, 어미, 음운, 억양 각각 0~100이다. 표준어와 차이가 없으면 0에 가깝게 준다.
-5. evidence의 quote는 transcript에 그대로 있는 구절이어야 한다.
-6. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, regions, scores, evidence는 null로 둔다.
+5. evidence의 question은 그 구절이 나온 문항 번호(1~${count})이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다.
+6. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, regions, scores, evidence는 null로 둔다.
 7. 욕설이나 혐오 표현이 들리면 flags에 profanity를, 실명이나 전화번호 같은 개인정보가 들리면 personal_info를 넣는다. 없으면 빈 배열로 둔다.`;
 }
 

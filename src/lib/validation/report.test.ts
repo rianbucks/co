@@ -224,5 +224,34 @@ describe("출력 파일", () => {
     expect(details).toContain("- 품질 반려: noisy");
     expect(details).toContain('- 호출 실패: timeout, "60s"');
     expect(details).toContain("- 형식 오류: schema_mismatch");
+    expect(details).toContain("- 문항별 받아쓰기: 없음 (문항 수만큼 오지 않아 전체 받아쓰기로 근거를 확인)");
+  });
+
+  it("문항별 받아쓰기가 있으면 문항마다 적고, 근거에 문항 번호를 붙인다", () => {
+    const details = toDetailsMarkdown([
+      {
+        file: "c.webm",
+        expected: "gyeongsang",
+        model: "gemini-3.8-flash",
+        run: 1,
+        status: "ok",
+        latencyMs: 5_000,
+        top: "gyeongsang",
+        mixed: false,
+        score: 68,
+        grade: 4,
+        transcript: "억수로 오랜만이네 뭐 했노",
+        questionTranscripts: ["억수로 오랜만이네", "뭐 했노", "", ""],
+        evidence: [
+          { question: 1, type: "vocabulary", quote: "억수로", note: "아주", kept: true },
+          { question: 1, type: "endings", quote: "뭐 했노", note: "다른 문항", kept: false },
+        ],
+      },
+    ]);
+    expect(details).toContain(
+      ["- 문항별 받아쓰기:", "  - 문항 1: 억수로 오랜만이네", "  - 문항 2: 뭐 했노", "  - 문항 3: (답 없음)", "  - 문항 4: (답 없음)"].join("\n"),
+    );
+    expect(details).toContain('  - ✓ 문항 1 [vocabulary] "억수로" — 아주');
+    expect(details).toContain('  - ✗ 문항 1 [endings] "뭐 했노" — 다른 문항');
   });
 });

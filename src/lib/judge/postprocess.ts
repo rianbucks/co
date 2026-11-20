@@ -12,6 +12,7 @@ import {
   type PartScores,
   type RegionKey,
   type RegionProbabilities,
+  type Segment,
 } from "./contract";
 import type { AcceptedModelOutput } from "./model-output";
 import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
@@ -64,19 +65,51 @@ export function normalizeQuoteText(text: string): string {
 }
 
 /**
- * 근거 검증: quote가 transcript에 그대로 있는 근거만 남긴다(명세 4장). 지어낸 근거를 걸러낸다.
+ * 근거 검증(명세 4장): 지어낸 근거를 걸러낸다.
+ * - 문항별 받아쓰기가 있으면 quote가 그 근거의 문항(question) 받아쓰기에 그대로 있어야 남긴다.
+ *   문항 번호가 없거나 범위를 벗어나면 확인할 수 없으므로 버린다.
+ * - 문항별 받아쓰기가 없으면(null) quote가 전체 받아쓰기에 있으면 남기고,
+ *   문항은 확인하지 않았으므로 question을 null로 둔다.
  * 빈 인용은 어디에나 포함되므로 버린다. 남긴 근거의 quote는 정규화한 값으로 바꾼다.
  */
-export function verifyEvidence(evidence: readonly Evidence[], transcript: string): Evidence[] {
-  const haystack = normalizeQuoteText(transcript);
+export function verifyEvidence(
+  evidence: readonly Evidence[],
+  transcript: string,
+  questionTranscripts: readonly string[] | null = null,
+): Evidence[] {
+  const fullText = normalizeQuoteText(transcript);
+  const questionTexts = questionTranscripts?.map(normalizeQuoteText) ?? null;
   const kept: Evidence[] = [];
   for (const item of evidence) {
     const quote = normalizeQuoteText(item.quote);
-    if (quote.length > 0 && haystack.includes(quote)) {
-      kept.push({ ...item, quote });
+    if (quote.length === 0) continue;
+
+    if (questionTexts) {
+      const question = item.question;
+      const inRange =
+        question !== null && Number.isInteger(question) && question >= 1 && question <= questionTexts.length;
+      if (inRange && questionTexts[question - 1].includes(quote)) kept.push({ ...item, quote });
+    } else if (fullText.includes(quote)) {
+      kept.push({ ...item, question: null, quote });
     }
   }
   return kept;
+}
+
+/**
+ * 문항별 받아쓰기(명세 7장). 문항 문구는 문항 세트에서 가져오고 받아쓰기는 공백을 정리한다.
+ * 문항별 받아쓰기가 없거나 문항 수와 다르면 빈 배열이다.
+ */
+export function buildSegments(
+  questions: readonly string[],
+  questionTranscripts: readonly string[] | null,
+): Segment[] {
+  if (!questionTranscripts || questionTranscripts.length !== questions.length) return [];
+  return questions.map((prompt, index) => ({
+    question: index + 1,
+    prompt,
+    transcript: normalizeQuoteText(questionTranscripts[index]),
+  }));
 }
 
 /**
@@ -159,8 +192,16 @@ export interface IssueInfo {
   issuedAt: string;
 }
 
-/** 품질이 ok인 모델 출력으로 감정 결과 JSON을 만든다. */
-export function buildJudgeResult(output: AcceptedModelOutput, issue: IssueInfo): JudgeResult {
+/**
+ * 품질이 ok인 모델 출력으로 감정 결과 JSON을 만든다. questions는 녹음한 문항 세트(문항 순서)다.
+ * 문항별 받아쓰기가 문항 수만큼 있으면 근거를 문항별로 검증하고 segments를 채운다.
+ * 없으면 기존처럼 전체 받아쓰기로 검증하고 segments는 빈 배열이다.
+ */
+export function buildJudgeResult(
+  output: AcceptedModelOutput,
+  issue: IssueInfo,
+  questions: readonly string[],
+): JudgeResult {
   const probabilities = normalizeProbabilities(output.regions);
   if (!probabilities) {
     throw new RangeError("권역 확률 합이 0이다. parseModelOutput에서 걸러졌어야 한다");
@@ -169,6 +210,8 @@ export function buildJudgeResult(output: AcceptedModelOutput, issue: IssueInfo):
   const region = decideRegion(probabilities);
   const score = computeIntensity(output.scores);
   const { grade, gradeName } = gradeFor(score);
+  const questionTranscripts =
+    output.question_transcripts?.length === questions.length ? output.question_transcripts : null;
 
   return {
     id: issue.id,
@@ -176,8 +219,9 @@ export function buildJudgeResult(output: AcceptedModelOutput, issue: IssueInfo):
     issuedAt: issue.issuedAt,
     region: { ...region, probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
-    evidence: verifyEvidence(output.evidence, output.transcript),
+    evidence: verifyEvidence(output.evidence, output.transcript, questionTranscripts),
     opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores }),
     transcript: output.transcript,
+    segments: buildSegments(questions, questionTranscripts),
   };
 }

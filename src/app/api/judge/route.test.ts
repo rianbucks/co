@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MAX_AUDIO_BYTES } from "@/lib/judge/audio";
+import { SPEC_MODEL_OUTPUT_EXAMPLE } from "@/lib/judge/mock";
 import { POST } from "./route";
 
 const WAV_HEADER = new Uint8Array([
@@ -40,9 +41,21 @@ describe("POST /api/judge", () => {
     expect(body).toMatchObject({
       region: { top: "gyeongsang", label: "경상 방언", mixed: false },
       intensity: { score: 68, grade: 4, gradeName: "자막 필요" },
-      transcript: "아 그거 내가 했다 아이가, 니 밥 뭇나",
+      transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
     });
-    expect(body.evidence).toHaveLength(2);
+    expect(body.evidence).toHaveLength(5);
+    expect(body.evidence[0]).toEqual({
+      question: 1,
+      type: "vocabulary",
+      quote: "억수로",
+      note: "'아주'를 뜻하는 경상 방언 어휘",
+    });
+    expect(body.segments).toHaveLength(4);
+    expect(body.segments[0]).toEqual({
+      question: 1,
+      prompt: "오랜만에 고향 친구에게서 전화가 왔습니다. 받자마자 뭐라고 하시겠습니까?",
+      transcript: "어, 니가 웬일이고? 억수로 오랜만이네",
+    });
     expect(body.id).toMatch(/^j_[0-9a-f]{12}$/);
     expect(body.certificateNo).toMatch(/^제\d{4}-\d{6}호$/);
     expect(body.issuedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/);
