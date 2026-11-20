@@ -970,6 +970,9 @@
       background-color: color-mix(in oklab, var(--color-purple-600) 15%, transparent);
     }
   }
+  .bg-red-400 {
+    background-color: var(--color-red-400);
+  }
   .bg-red-500 {
     background-color: var(--color-red-500);
   }
