@@ -103,7 +103,7 @@ export default function S5Result({
               </div>
               <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-700"
+                  className="h-full rounded-full bg-[#9bbbd5] transition-all duration-700"
                   style={{ width: `${intensity.score}%` }}
                 />
               </div>
@@ -180,7 +180,7 @@ export default function S5Result({
                     <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          isTop ? 'bg-gradient-to-r from-indigo-500 to-purple-400' : 'bg-zinc-700'
+                          isTop ? 'bg-[#9bbbd5]' : 'bg-zinc-700'
                         }`}
                         style={{ width: `${prob}%` }}
                       />
