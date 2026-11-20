@@ -7,6 +7,7 @@ import { REGION_KOREAN_NAMES } from '@/types/screen';
 interface S6CertificateProps {
   result: JudgeResult;
   onBack: () => void;
+  onGoToRanking: () => void;
   onResetAll: () => void;
 }
 
@@ -194,7 +195,7 @@ function downloadBlob(blob: Blob, certificateNo: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function S6Certificate({ result, onBack, onResetAll }: S6CertificateProps) {
+export default function S6Certificate({ result, onBack, onGoToRanking, onResetAll }: S6CertificateProps) {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -303,6 +304,13 @@ export default function S6Certificate({ result, onBack, onResetAll }: S6Certific
             {busy ? '이미지 생성 중…' : '공유'}
           </button>
         </div>
+        <button
+          onClick={onGoToRanking}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
+        >
+          <span>농도 랭킹 등록</span>
+          <span>→</span>
+        </button>
         {message && <p role="status" className="mt-3 text-center text-sm text-amber-300">{message}</p>}
         <button onClick={onResetAll} className="mt-4 w-full py-3 text-sm text-zinc-400 underline underline-offset-4 hover:text-white">
           다시 감정받기

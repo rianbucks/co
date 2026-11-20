@@ -2,9 +2,11 @@
 
 interface S1IntroProps {
   onNext: () => void;
+  /** 감정 없이 농도 랭킹(S7)을 본다. */
+  onViewRanking: () => void;
 }
 
-export default function S1Intro({ onNext }: S1IntroProps) {
+export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
   return (
     <div className="p-5 sm:p-7 lg:p-10">
       {/* Responsive Container: Mobile (Single col) / Desktop (2-Column Grid) */}
@@ -114,6 +116,13 @@ export default function S1Intro({ onNext }: S1IntroProps) {
             >
               <span>감정 시작하기</span>
               <span className="transition-transform group-hover:translate-x-1">→</span>
+            </button>
+
+            <button
+              onClick={onViewRanking}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
+            >
+              <span>🏆 농도 랭킹 보기</span>
             </button>
 
             <div className="text-center text-[11px] text-zinc-400">

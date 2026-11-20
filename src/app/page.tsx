@@ -63,6 +63,8 @@ export default function Home() {
   };
 
   const judgingStopped = step === 'S4' && judgingFailed;
+  /** 녹음(S3)과 감정(S4) 중에는 진행 중인 작업을 잃지 않도록 머리글에 랭킹 버튼을 두지 않는다. */
+  const showRankingLink = step !== 'S3' && step !== 'S4' && step !== 'S7';
 
   return (
     <div className="relative min-h-screen w-full bg-black text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
@@ -81,12 +83,13 @@ export default function Home() {
             currentStep={judgingStopped ? '분석 중단' : getStepLabel(step)}
             stopped={judgingStopped}
             onHomeClick={handleResetAll}
+            onRankingClick={showRankingLink ? () => setStep('S7') : undefined}
           />
 
           {/* Main Screens */}
           <main className="w-full">
             {step === 'S1' && (
-              <S1Intro onNext={() => setStep('S2')} />
+              <S1Intro onNext={() => setStep('S2')} onViewRanking={() => setStep('S7')} />
             )}
 
             {step === 'S2' && (
@@ -130,16 +133,18 @@ export default function Home() {
               <S6Certificate
                 result={judgeResult}
                 onBack={() => setStep('S5')}
+                onGoToRanking={() => setStep('S7')}
                 onResetAll={handleResetAll}
               />
             )}
 
-            {step === 'S7' && judgeResult && (
+            {step === 'S7' && (
               <S7Ranking
                 result={judgeResult}
                 entryId={rankingEntryId}
                 onRegistered={setRankingEntryId}
                 onBack={() => setStep('S5')}
+                onApply={() => setStep('S2')}
                 onResetAll={handleResetAll}
               />
             )}

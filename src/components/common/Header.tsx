@@ -5,9 +5,11 @@ interface HeaderProps {
   /** 진행이 멈춘 상태(예: 감정 오류). 점을 깜빡이지 않고 빨갛게 보여 준다. */
   stopped?: boolean;
   onHomeClick?: () => void;
+  /** 있으면 '농도 랭킹 보기' 버튼을 보여 준다. */
+  onRankingClick?: () => void;
 }
 
-export default function Header({ currentStep, stopped = false, onHomeClick }: HeaderProps) {
+export default function Header({ currentStep, stopped = false, onHomeClick, onRankingClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-black/60 px-5 py-3.5 backdrop-blur-xl transition-all">
       <div className="flex items-center justify-between">
@@ -24,16 +26,27 @@ export default function Header({ currentStep, stopped = false, onHomeClick }: He
           </div>
         </button>
 
-        {currentStep && (
-          <div
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium shadow-inner ${
-              stopped ? 'border-red-500/40 bg-red-500/10 text-red-300' : 'border-zinc-700/60 bg-zinc-800/80 text-zinc-300'
-            }`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${stopped ? 'bg-red-400' : 'bg-emerald-400 animate-pulse'}`} />
-            {currentStep}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {onRankingClick && (
+            <button
+              onClick={onRankingClick}
+              className="whitespace-nowrap rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-[11px] font-semibold text-indigo-200 transition hover:bg-indigo-500/20 active:scale-95"
+            >
+              농도 랭킹 보기
+            </button>
+          )}
+
+          {currentStep && (
+            <div
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-[11px] font-medium shadow-inner ${
+                stopped ? 'border-red-500/40 bg-red-500/10 text-red-300' : 'border-zinc-700/60 bg-zinc-800/80 text-zinc-300'
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${stopped ? 'bg-red-400' : 'bg-emerald-400 animate-pulse'}`} />
+              {currentStep}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -1311,6 +1311,9 @@
     --tw-tracking: var(--tracking-widest);
     letter-spacing: var(--tracking-widest);
   }
+  .whitespace-nowrap {
+    white-space: nowrap;
+  }
   .text-\[\#9b4e4e\] {
     color: #9b4e4e;
   }
@@ -1576,6 +1579,14 @@
   @media (hover: hover) {
     .hover\:border-zinc-700:hover {
       border-color: var(--color-zinc-700);
+    }
+    .hover\:bg-indigo-500\/20:hover {
+      background-color: color-mix(in srgb, oklch(58.5% 0.233 277.117) 20%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-indigo-500\/20:hover {
+        background-color: color-mix(in oklab, var(--color-indigo-500) 20%, transparent);
+      }
     }
     .hover\:bg-indigo-500\/25:hover {
       background-color: color-mix(in srgb, oklch(58.5% 0.233 277.117) 25%, transparent);
