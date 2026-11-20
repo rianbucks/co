@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MAX_AUDIO_BYTES } from "@/lib/judge/audio";
 import { SPEC_MODEL_OUTPUT_EXAMPLE } from "@/lib/judge/mock";
+import { GS_MOCK_MODEL_OUTPUT } from "@/lib/gyeongsang/mock";
+import { GS_QUESTION_TEXTS } from "@/lib/gyeongsang/questions";
+import { DAILY_IP_LIMIT } from "@/lib/rate-limit";
 import { POST } from "./route";
 
 const WAV_HEADER = new Uint8Array([
@@ -18,10 +21,17 @@ function wavFile(size = 64): File {
   return new File([content], "recording.wav", { type: "audio/wav" });
 }
 
-function postForm(fields: Record<string, string | Blob>): Request {
+function postForm(fields: Record<string, string | Blob>, headers: Record<string, string> = {}): Request {
   const form = new FormData();
   for (const [name, value] of Object.entries(fields)) form.append(name, value);
-  return new Request("http://localhost/api/judge", { method: "POST", body: form });
+  return new Request("http://localhost/api/judge", { method: "POST", body: form, headers });
+}
+
+/** 로컬 메모리 제한기를 쓰도록 Upstash 연결 값을 비운다. */
+function useMemoryRateLimiter() {
+  for (const name of ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "KV_REST_API_URL", "KV_REST_API_TOKEN"]) {
+    vi.stubEnv(name, "");
+  }
 }
 
 afterEach(() => {
@@ -143,5 +153,70 @@ describe("POST /api/judge", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ intensity: { score: 68, grade: 4 } });
+  });
+});
+
+describe("POST /api/judge: 경상 정밀 감정(questionSetId=set-gs)", () => {
+  it("MOCK_AI=true면 경상 전용 가짜 출력을 후처리한 200 정밀 감정 결과를 돌려준다", async () => {
+    vi.stubEnv("MOCK_AI", "true");
+
+    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-gs" }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      subregions: { gyeongbuk: 64, gyeongnam: 36 },
+      intensity: { score: 69, grade: 4, gradeName: "자막 필요" },
+      transcript: GS_MOCK_MODEL_OUTPUT.transcript,
+    });
+    expect(body.evidence).toHaveLength(GS_MOCK_MODEL_OUTPUT.evidence.length);
+    expect(body.evidence[0]).toEqual({ question: 1, quote: "갈 끼라", note: GS_MOCK_MODEL_OUTPUT.evidence[0].note });
+    expect(body.segments.map((segment: { prompt: string }) => segment.prompt)).toEqual(GS_QUESTION_TEXTS);
+    expect(body.id).toMatch(/^g_[0-9a-f]{12}$/);
+    expect(body.certificateNo).toMatch(/^제\d{4}-경상-\d{6}호$/);
+    // 일반 감정의 필드는 없다.
+    expect(body).not.toHaveProperty("region");
+    expect(body).not.toHaveProperty("opinion");
+  });
+
+  it("set-gs도 파일 검사는 같다: 파일이 없으면 400 invalid_audio, 2MB를 넘으면 413", async () => {
+    vi.stubEnv("MOCK_AI", "true");
+    const missing = await POST(postForm({ questionSetId: "set-gs" }));
+    expect(missing.status).toBe(400);
+    expect(await missing.json()).toEqual({ error: "invalid_audio" });
+
+    const large = await POST(postForm({ audio: wavFile(MAX_AUDIO_BYTES + 1), questionSetId: "set-gs" }));
+    expect(large.status).toBe(413);
+  });
+
+  it("set-a 응답은 그대로다(경상 정밀 감정 필드가 없다)", async () => {
+    vi.stubEnv("MOCK_AI", "true");
+    const body = await (await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }))).json();
+    expect(body.region.top).toBe("gyeongsang");
+    expect(body.id).toMatch(/^j_[0-9a-f]{12}$/);
+    expect(body).not.toHaveProperty("subregions");
+  });
+
+  it("일반 감정과 하루 호출 한도(IP당 60회)를 합쳐 센다", async () => {
+    vi.stubEnv("MOCK_AI", "true");
+    useMemoryRateLimiter();
+    const headers = { "x-forwarded-for": "198.51.100.23" };
+
+    for (let count = 1; count < DAILY_IP_LIMIT; count += 1) {
+      const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }, headers));
+      expect(response.status).toBe(200);
+    }
+    // 60번째는 정밀 감정으로 받는다.
+    expect((await POST(postForm({ audio: wavFile(), questionSetId: "set-gs" }, headers))).status).toBe(200);
+
+    for (const questionSetId of ["set-gs", "set-a"]) {
+      const blocked = await POST(postForm({ audio: wavFile(), questionSetId }, headers));
+      expect(blocked.status).toBe(429);
+      expect(await blocked.json()).toEqual({ error: "rate_limited" });
+    }
+
+    // 다른 IP는 영향을 받지 않는다.
+    const other = await POST(postForm({ audio: wavFile(), questionSetId: "set-gs" }, { "x-forwarded-for": "198.51.100.24" }));
+    expect(other.status).toBe(200);
   });
 });

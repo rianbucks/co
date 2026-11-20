@@ -4,6 +4,8 @@ interface S1IntroProps {
   onNext: () => void;
   /** 감정 없이 농도 랭킹(S7)을 본다. */
   onViewRanking: () => void;
+  /** 있으면 '경상 정밀 감정 받기' 버튼을 보여 준다. */
+  onStartGyeongsang?: () => void;
 }
 
 const REGIONS = ['서울·경기', '강원', '충청', '경상', '전라', '제주'];
@@ -14,7 +16,7 @@ const STEPS = [
   { title: '결과 확인하기', detail: '권역별 결과와 농도 점수를 확인하고 저장합니다.' },
 ];
 
-export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
+export default function S1Intro({ onNext, onViewRanking, onStartGyeongsang }: S1IntroProps) {
   return (
     <div className="intro-page mx-auto w-full max-w-6xl px-5 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
       <header className="intro-masthead">
@@ -74,6 +76,11 @@ export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
             <p className="intro-time">예상 시간 약 1분 <span>설치·가입 불필요</span></p>
             <button onClick={onNext} className="intro-primary-action">감정 신청</button>
             <button onClick={onViewRanking} className="intro-secondary-action">농도 랭킹 보기</button>
+            {onStartGyeongsang && (
+              <button onClick={onStartGyeongsang} className="intro-secondary-action">
+                경상 정밀 감정 받기
+              </button>
+            )}
             <p className="intro-privacy">녹음 음성은 판정 처리 후 서버에 보관하지 않습니다.</p>
           </div>
         </aside>

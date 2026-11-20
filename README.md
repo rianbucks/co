@@ -6,11 +6,12 @@
 
 - 화면 S1~S7: 첫 화면, 안내와 동의, 녹음, 심사 중, 결과, 감정서, 농도 랭킹
 - `POST /api/judge`: 판정 파이프라인(명세 4장, 7장). 첫 시도가 실패하면 대체 모델로 1회 재시도
+- 경상 정밀 감정 탭(명세 12장): 머리글 탭(S1에는 머리글이 없어 S1 버튼), 1순위가 경상인 S5의 권유 버튼으로 들어간다. 신고 원산지(대구, 경북, 부산, 울산, 경남)를 고르고 `set-gs` 문항을 녹음하면 경북권·경남권 성분 비율, 경상 농도와 등급, 원산지 일치 여부를 보여 주고 정밀 감정서(PNG 저장, 공유)를 발급한다
 - 농도 랭킹(명세 확장 1): 음성 없이 닉네임과 농도만 공개. `POST /api/ranking`, `GET /api/ranking`, 운영자용 `DELETE /api/ranking/{id}`
 - 호출 제한(감정: IP당 하루 60회와 전체 1,500회, 랭킹 등록: IP당 하루 60회)과 랭킹 저장: Upstash Redis
 - 정확도 검증 스크립트(명세 3장)
 
-음성과 받아쓰기는 어디에도 저장하지 않습니다. 랭킹에 저장하는 값은 닉네임, 농도, 지역, 등급, 등록 시각뿐입니다. 확장 2(표준어 검정)와 확장 3(지역 세분화)은 없습니다.
+음성과 받아쓰기는 어디에도 저장하지 않습니다. 랭킹에 저장하는 값은 닉네임, 농도, 지역, 등급, 등록 시각뿐입니다. 경상 정밀 감정은 서버에 아무것도 저장하지 않고, 신고 원산지는 서버로 보내지도 않습니다(화면과 정밀 감정서에만 씁니다). 정밀 감정 전용 랭킹은 아직 없습니다. 확장 2(표준어 검정)는 없고, 확장 3(지역 세분화)은 경상만 경상 정밀 감정 탭으로 만들었습니다.
 
 ## 화면 디자인 참고
 
@@ -35,7 +36,7 @@ npm run dev
 | 이름 | 설명 | 기본값 |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | Gemini API 키. `.env.local`이나 배포 설정에만 둔다 | 없음 |
-| `MOCK_AI` | `true`면 Gemini를 부르지 않고 명세 4장 모델 출력 예시로 후처리까지 실행한다. 이 모드의 결과는 랭킹에 등록할 수 없다 | `false` |
+| `MOCK_AI` | `true`면 Gemini를 부르지 않고 명세 4장 모델 출력 예시로 후처리까지 실행한다. 경상 정밀 감정(`set-gs`)은 경상 전용 가짜 출력(명세 12장)을 쓴다. 이 모드의 결과는 랭킹에 등록할 수 없다 | `false` |
 | `GEMINI_MODEL` | 판정 모델 | `gemini-3.8-flash` |
 | `GEMINI_FALLBACK_MODEL` | 첫 시도가 실패하면 재시도 1회에 쓰는 모델 | `gemini-3.5-flash-lite` |
 | `GEMINI_THINKING_LEVEL` | 사고 수준. `gemini-3.8-flash`는 `low`, `medium`, `high`만 지원한다 | `medium` |
@@ -60,14 +61,21 @@ MOCK 모드에서 API 호출 예:
 curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/api/judge
 ```
 
+경상 정밀 감정은 `questionSetId`만 바꿉니다.
+
+```bash
+curl -F "audio=@recording.webm" -F "questionSetId=set-gs" http://localhost:3000/api/judge
+```
+
 ## API
 
 `POST /api/judge`는 명세 7장의 요청, 응답, 오류 형식을 따릅니다.
 
-- 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`(지금은 `set-a`만 등록)를 보냅니다.
+- 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`를 보냅니다. `set-a`는 일반 감정, `set-gs`는 경상 정밀 감정(명세 12장)입니다.
 - 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
 - 성공 응답에는 전체 받아쓰기 `transcript`와 문항별 받아쓰기 `segments`가 들어가며, 둘 다 서버에 저장하지 않습니다. 근거(`evidence`)는 문항 번호 `question`을 달고 그 문항의 받아쓰기로 검증합니다. 모델이 문항별 받아쓰기를 문항 수만큼 주지 않으면 `segments`는 빈 배열이고 근거는 전체 받아쓰기로 검증합니다(명세 4장, 7장).
 - 감정에 성공하면 랭킹 등록 자격(농도, 1순위 권역, 등급, 가짜 응답 여부, flags 여부)을 감정 `id`로 1시간 저장합니다.
+- `set-gs`의 성공 응답은 정밀 감정 결과(`subregions`, `intensity`, `evidence`, `transcript`, `segments`, `g_`로 시작하는 `id`)입니다. 경상 방언으로 보기 어려우면 422 `rejected`, `reason: "not_gyeongsang"`입니다. 호출 제한은 일반 감정과 합쳐 세고, 랭킹 등록 자격은 남기지 않습니다.
 
 랭킹 API의 형식과 오류는 명세 7장에 있습니다.
 
@@ -103,8 +111,9 @@ npm run validate -- --csv validation/answers.csv --runs 3
 
 | 파일 | 내용 |
 | --- | --- |
-| `src/app/page.tsx` | 화면 전환(S1~S7)과 상태 |
+| `src/app/page.tsx` | 화면 전환(S1~S7), 머리글 탭(일반 감정, 경상 정밀 감정)과 상태 |
 | `src/components/screens/` | 화면 S1~S7. 랭킹 화면은 `S7Ranking.tsx` |
+| `src/components/gyeongsang/` | 경상 정밀 감정 흐름(`GyeongsangFlow.tsx`), 원산지 신고, 정밀 결과, 정밀 감정서와 PNG 그리기 |
 | `src/app/api/judge/route.ts` | `POST /api/judge` |
 | `src/app/api/ranking/route.ts` | `POST /api/ranking`, `GET /api/ranking` |
 | `src/app/api/ranking/[id]/route.ts` | `DELETE /api/ranking/{id}` (운영자) |
@@ -115,6 +124,10 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | `src/lib/judge/model-output.ts` | Gemini 출력 JSON 스키마와 검증 |
 | `src/lib/judge/prompt.ts` | 지시문과 문항 세트 |
 | `src/lib/judge/audio.ts` | 파일 크기와 형식 검사 |
+| `src/lib/gyeongsang/questions.ts` | 경상 정밀 감정 문항(`set-gs`). 지금은 임시 문구이고, 확정 문구는 이 파일만 고친다 |
+| `src/lib/gyeongsang/pipeline.ts` | 경상 정밀 감정 파이프라인: 서버 검사 → 호출 제한(일반 감정과 합산) → AI 호출과 재시도 → 후처리 |
+| `src/lib/gyeongsang/prompt.ts`, `model-output.ts`, `postprocess.ts` | 경상 전용 지시문, 출력 스키마와 검증, 성분 비율과 근거 검증, 농도 |
+| `src/lib/gyeongsang/origin.ts` | 신고 원산지와 원산지 일치 판정(화면에서 쓴다) |
 | `src/lib/gemini.ts` | Gemini 호출. SDK는 이 파일에서만 쓴다 |
 | `src/lib/ranking/service.ts` | 랭킹 등록, 조회, 삭제 규칙과 운영자 토큰 확인 |
 | `src/lib/ranking/store.ts` | 랭킹 저장소: Upstash Redis와 로컬 메모리 |

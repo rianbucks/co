@@ -15,7 +15,7 @@ import {
   type RegionKey,
 } from "./contract";
 import { createIssueInfo } from "./issue";
-import { buildModelOutputSchema, parseModelOutput, type ModelOutput } from "./model-output";
+import { buildModelOutputSchema, parseModelOutput } from "./model-output";
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
 import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "./prompt";
 
@@ -89,11 +89,21 @@ function describeError(error: unknown): Record<string, unknown> {
   };
 }
 
-async function callAiWithRetry(
+/** 모델 출력 검증 결과. 실패면 problem(형식 오류의 종류)을 로그에만 남긴다. */
+export type AiParseResult<T> = { ok: true; value: T } | { ok: false; problem: string };
+
+/** AI 호출과 재시도에 쓰는 값. 일반 감정과 경상 정밀 감정(../gyeongsang/pipeline.ts)이 함께 쓴다. */
+export type AiRetryDeps = Pick<JudgeDeps, "ai" | "timing" | "now" | "log">;
+
+/**
+ * AI를 부르고 parse로 출력을 검증한다. 호출이 실패하거나 형식 오류면 대체 모델로 1회 재시도하고,
+ * 그래도 안 되면 null이다. 첫 시도와 재시도를 합쳐 timing.totalMs 안에 끝낸다.
+ */
+export async function callAiWithRetry<T>(
   request: Omit<AiRequest, "timeoutMs">,
-  questionCount: number,
-  deps: JudgeDeps,
-): Promise<ModelOutput | null> {
+  parse: (text: string) => AiParseResult<T>,
+  deps: AiRetryDeps,
+): Promise<T | null> {
   const timing = deps.timing ?? DEFAULT_AI_TIMING;
   const now = deps.now ?? Date.now;
   const log = deps.log ?? defaultLog;
@@ -110,10 +120,7 @@ async function callAiWithRetry(
     const useFallbackModel = attempt > 1;
     const model = useFallbackModel ? "fallback" : "primary";
     try {
-      const parsed = parseModelOutput(
-        await deps.ai.generate({ ...request, timeoutMs, useFallbackModel }),
-        questionCount,
-      );
+      const parsed = parse(await deps.ai.generate({ ...request, timeoutMs, useFallbackModel }));
       if (parsed.ok) return parsed.value;
       log("ai_invalid_output", { attempt, model, problem: parsed.problem });
     } catch (error) {
@@ -150,7 +157,7 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
       mimeType: format.mimeType,
       responseSchema: buildModelOutputSchema(questions.length),
     },
-    questions.length,
+    (text) => parseModelOutput(text, questions.length),
     deps,
   );
   if (!output) return errorResponse("ai_error");
