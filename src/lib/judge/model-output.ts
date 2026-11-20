@@ -169,14 +169,14 @@ const rawOutputSchema = z.object({
 });
 
 /** 문항 수만큼의 문자열 배열이면 그대로, 아니면 null(전체 받아쓰기로 대신한다). */
-function readQuestionTranscripts(value: unknown, questionCount: number): string[] | null {
+export function readQuestionTranscripts(value: unknown, questionCount: number): string[] | null {
   if (!Array.isArray(value) || value.length !== questionCount) return null;
   if (!value.every((item): item is string => typeof item === "string")) return null;
   return value;
 }
 
 /** 1~문항 수의 정수면 그대로, 아니면 null. */
-function readQuestionNumber(value: unknown, questionCount: number): number | null {
+export function readQuestionNumber(value: unknown, questionCount: number): number | null {
   return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= questionCount
     ? value
     : null;

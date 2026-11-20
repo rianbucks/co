@@ -3,16 +3,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
 
-interface S4JudgingProps {
+/** 심사 단계 표시. 경과 시간(2초, 6초, 12초)에 따라 4단계를 차례로 보여 준다. */
+export interface JudgingStep {
+  id: number;
+  label: string;
+  desc: string;
+}
+
+/** T는 성공 응답의 형식이다. 기본은 일반 감정 결과(JudgeResult). */
+interface S4JudgingProps<T> {
   audioBlob: Blob;
-  onSuccess: (result: JudgeResult) => void;
+  onSuccess: (result: T) => void;
   onRetry: () => void;
   onReset: () => void;
   /** 오류로 멈췄는지 알린다(머리글에 '분석 중단'을 보여 주는 데 쓴다). */
   onFailedChange?: (failed: boolean) => void;
+  /** 요청의 questionSetId. 없으면 일반 감정(set-a). 경상 정밀 감정은 set-gs를 넘긴다. */
+  questionSetId?: string;
+  /** 심사 단계 문구(4개). 없으면 일반 감정의 단계 */
+  steps?: readonly JudgingStep[];
 }
 
-const JUDGING_STEPS = [
+const JUDGING_STEPS: readonly JudgingStep[] = [
   { id: 1, label: '구술 서류 접수', desc: '녹음 데이터 컨테이너 및 40초 무결성 검증' },
   { id: 2, label: '어휘 및 음운 분석', desc: '지역 고유 어휘, 받침 축약 및 음운 변이 계측' },
   { id: 3, label: '어미 및 억양 대조', desc: '종결어미 패턴 대조 및 고저 억양 곡선 산출' },
@@ -44,7 +56,15 @@ const RERECORD_ERRORS = new Map<string, { title: string; message: string }>([
   ],
 ]);
 
-export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFailedChange }: S4JudgingProps) {
+export default function S4Judging<T = JudgeResult>({
+  audioBlob,
+  onSuccess,
+  onRetry,
+  onReset,
+  onFailedChange,
+  questionSetId = 'set-a',
+  steps = JUDGING_STEPS,
+}: S4JudgingProps<T>) {
   const [secElapsed, setSecElapsed] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
   const failed = errorInfo !== null;
@@ -99,7 +119,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
 
         const formData = new FormData();
         formData.append('audio', file);
-        formData.append('questionSetId', 'set-a');
+        formData.append('questionSetId', questionSetId);
 
         const res = await fetch('/api/judge', {
           method: 'POST',
@@ -116,7 +136,14 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
           const rerecordError = RERECORD_ERRORS.get(errorCode);
 
           if (errorCode === 'rejected') {
-            if (reason === 'noisy') {
+            if (reason === 'not_gyeongsang') {
+              // 경상 정밀 감정(set-gs)에서만 온다.
+              setErrorInfo({
+                title: '정밀 감정 불가 (경상 방언 미확인)',
+                message: '경상 방언이 확인되지 않아 정밀 감정이 불가합니다. 평소 말투로 다시 녹음하시거나 일반 감정을 이용해 주십시오.',
+                canRetry: false,
+              });
+            } else if (reason === 'noisy') {
               setErrorInfo({
                 title: '감정 반려 (소음 과다)',
                 message: '주변 소음으로 인해 감정이 불가합니다. 조용한 환경에서 다시 녹음해 주십시오.',
@@ -148,7 +175,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
         }
 
         setTimeout(() => {
-          onSuccess(data as JudgeResult);
+          onSuccess(data as T);
         }, 700);
       } catch (err) {
         if (timedOutRef.current || (err instanceof DOMException && err.name === 'AbortError')) return;
@@ -164,7 +191,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
     };
 
     callJudgeApi();
-  }, [audioBlob, onSuccess]);
+  }, [audioBlob, onSuccess, questionSetId]);
 
   return (
     <div className="screen-glass p-5 sm:p-7 lg:p-10">
@@ -173,7 +200,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
         <div
           ref={errorPanelRef}
           role="alert"
-          className="mb-6 scroll-mt-24 rounded-3xl border border-red-500/40 bg-red-500/10 p-5 shadow-2xl shadow-red-500/5 backdrop-blur-xl sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8 lg:p-7"
+          className="mb-6 scroll-mt-36 rounded-3xl border border-red-500/40 bg-red-500/10 p-5 shadow-2xl shadow-red-500/5 backdrop-blur-xl sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8 lg:p-7"
         >
           <div>
             <div className="text-base font-bold text-red-200 sm:text-lg">{errorInfo.title}</div>
@@ -236,7 +263,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
             </h3>
 
             <div className="mt-4 space-y-3">
-              {JUDGING_STEPS.map((step, idx) => {
+              {steps.map((step, idx) => {
                 const isDone = currentStepIndex > idx;
                 const isCurrent = currentStepIndex === idx;
 

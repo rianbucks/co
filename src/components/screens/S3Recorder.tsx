@@ -6,6 +6,8 @@ import { QUESTIONS, QuestionItem } from '@/types/screen';
 interface S3RecorderProps {
   onComplete: (blob: Blob) => void;
   onResetAll: () => void;
+  /** 녹음할 문항. 없으면 일반 감정 문항(set-a). 경상 정밀 감정은 set-gs 문항을 넘긴다. */
+  questions?: readonly QuestionItem[];
 }
 
 const MIME_CANDIDATES = [
@@ -20,7 +22,6 @@ const MIME_CANDIDATES = [
 const SECONDS_PER_QUESTION = 10;
 /** 남은 시간을 다시 계산하는 간격. 1초보다 짧게 두어 표시가 밀리지 않게 한다. */
 const TIMER_TICK_MS = 200;
-const LAST_QUESTION_IDX = QUESTIONS.length - 1;
 /**
  * 녹음 시작 버튼과 다음 문항 버튼이 같은 자리에 있어서 두 번 누르면 다음 동작까지 눌린다.
  * 상태가 바뀐 직후의 누름은 무시한다(타이머로 넘어가는 것은 막지 않는다).
@@ -35,7 +36,7 @@ const DOUBLE_TAP_GUARD_MS = 500;
  */
 type RecordingPhase = 'ready' | 'recording' | 'paused' | 'processing' | 'error';
 
-export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) {
+export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIONS }: S3RecorderProps) {
   const [currentIdx, setCurrentIdx] = useState(0); // 화면에 보이는 문항: 0, 1, 2, 3
   const [phase, setPhase] = useState<RecordingPhase>('ready');
   const [secLeft, setSecLeft] = useState(SECONDS_PER_QUESTION);
@@ -57,7 +58,8 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   /** 문항 녹음을 시작하거나 끝낸 시각(performance.now) */
   const phaseChangedAtRef = useRef(0);
 
-  const currentQuestion: QuestionItem = QUESTIONS[currentIdx];
+  const lastQuestionIdx = questions.length - 1;
+  const currentQuestion: QuestionItem = questions[currentIdx];
 
   const cleanupAudio = useCallback(() => {
     if (timerRef.current) {
@@ -177,7 +179,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     stopVolumeVisualizer();
 
     const recorder = recorderRef.current;
-    if (finishedIdx < LAST_QUESTION_IDX) {
+    if (finishedIdx < lastQuestionIdx) {
       if (recorder && recorder.state === 'recording') {
         recorder.pause();
       }
@@ -192,7 +194,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
     }
-  }, [clearTimer, stopVolumeVisualizer]);
+  }, [clearTimer, stopVolumeVisualizer, lastQuestionIdx]);
 
   /** questionIdx 문항의 10초 타이머를 시작한다. 종료 처리는 상태 갱신 함수 밖에서 한다. */
   const startCountdown = useCallback((questionIdx: number) => {
@@ -285,7 +287,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     setErrorMessage('');
   };
 
-  const isLastQuestion = currentIdx === LAST_QUESTION_IDX;
+  const isLastQuestion = currentIdx === lastQuestionIdx;
   const statusLabel =
     phase === 'recording'
       ? 'ON AIR (녹음 중)'
@@ -314,7 +316,7 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 items-center rounded-full bg-indigo-500/20 px-3 text-xs font-bold text-indigo-300">
-                  문항 {currentIdx + 1} / {QUESTIONS.length}
+                  문항 {currentIdx + 1} / {questions.length}
                 </span>
                 <span className="text-xs font-medium text-zinc-400">
                   상황극 녹음

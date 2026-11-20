@@ -2,11 +2,15 @@
  * POST /api/judge (명세 7장)
  * 요청: multipart/form-data, audio(파일), questionSetId
  * 응답: 200 결과 JSON, 오류는 { error } (422는 reason 포함)
+ * questionSetId가 set-gs면 경상 정밀 감정(명세 12장)으로 처리한다. 그 밖의 값은 일반 감정 경로 그대로다.
  */
 import { readConfig } from "@/lib/config";
 import { createGeminiClient } from "@/lib/gemini";
 import { MAX_AUDIO_BYTES } from "@/lib/judge/audio";
-import { errorResponse, type JudgeResponse } from "@/lib/judge/contract";
+import { gsMockAiClient } from "@/lib/gyeongsang/mock";
+import { judgeGyeongsang } from "@/lib/gyeongsang/pipeline";
+import { GS_QUESTION_SET_ID } from "@/lib/gyeongsang/questions";
+import { errorResponse } from "@/lib/judge/contract";
 import { mockAiClient } from "@/lib/judge/mock";
 import { judge } from "@/lib/judge/pipeline";
 import { clientIpFrom } from "@/lib/judge/request";
@@ -21,7 +25,7 @@ export const maxDuration = 60;
 /** multipart 본문에서 파일 외 부분(경계 문자열, 헤더, questionSetId)에 주는 여유 */
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 
-function toResponse(outcome: JudgeResponse): Response {
+function toResponse(outcome: { status: number; body: unknown }): Response {
   return Response.json(outcome.body, { status: outcome.status });
 }
 
@@ -51,6 +55,18 @@ export async function POST(request: Request): Promise<Response> {
       form = await request.formData();
     } catch {
       return toResponse(errorResponse("invalid_audio"));
+    }
+
+    // 경상 정밀 감정: 같은 제한기로 일반 감정과 횟수를 합쳐 센다. 랭킹 등록 자격은 남기지 않는다.
+    if (form.get("questionSetId") === GS_QUESTION_SET_ID) {
+      const outcome = await judgeGyeongsang(
+        { audio: form.get("audio"), clientIp: clientIpFrom(request.headers) },
+        {
+          ai: config.config.mock ? gsMockAiClient : createGeminiClient(config.config.gemini),
+          rateLimiter,
+        },
+      );
+      return toResponse(outcome);
     }
 
     const outcome = await judge(

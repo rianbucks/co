@@ -4,6 +4,8 @@ interface S1IntroProps {
   onNext: () => void;
   /** 감정 없이 농도 랭킹(S7)을 본다. */
   onViewRanking: () => void;
+  /** 있으면 '경상 정밀 감정 받기' 버튼을 보여 준다. */
+  onStartGyeongsang?: () => void;
 }
 
 const REGIONS = ['서울·경기', '강원', '충청', '경상', '전라', '제주'];
@@ -14,7 +16,7 @@ const STEPS = [
   { title: '결과 확인하기', detail: '권역별 결과와 농도 점수를 확인하고 저장합니다.' },
 ];
 
-export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
+export default function S1Intro({ onNext, onViewRanking, onStartGyeongsang }: S1IntroProps) {
   return (
     <div className="screen-glass mx-auto w-full max-w-6xl p-5 sm:p-8 lg:p-12">
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
@@ -79,6 +81,15 @@ export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
             >
               농도 랭킹 보기
             </button>
+            {onStartGyeongsang && (
+              <button
+                onClick={onStartGyeongsang}
+                className="w-full rounded-xl border border-amber-100/20 bg-amber-100/[0.06] px-4 py-3 text-center transition hover:bg-amber-100/10"
+              >
+                <span className="block text-base font-medium text-amber-50">경상 정밀 감정 받기</span>
+                <span className="mt-0.5 block text-sm text-zinc-400">경북권·경남권 성분 감정</span>
+              </button>
+            )}
             <p className="text-center text-sm leading-6 text-zinc-400">
               녹음 음성은 판정 처리 후 서버에 보관하지 않습니다.
             </p>

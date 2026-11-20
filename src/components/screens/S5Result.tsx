@@ -9,6 +9,8 @@ interface S5ResultProps {
   onGoToCertificate: () => void;
   onGoToRanking: () => void;
   onResetAll: () => void;
+  /** 있으면 1순위가 경상일 때 경상 정밀 감정을 권한다. */
+  onStartGyeongsang?: () => void;
 }
 
 function EvidenceRow({ item }: { item: Evidence }) {
@@ -42,7 +44,13 @@ function HighlightedTranscript({ text, quotes }: { text: string; quotes: string[
   );
 }
 
-export default function S5Result({ result, onGoToCertificate, onGoToRanking, onResetAll }: S5ResultProps) {
+export default function S5Result({
+  result,
+  onGoToCertificate,
+  onGoToRanking,
+  onResetAll,
+  onStartGyeongsang,
+}: S5ResultProps) {
   const { region, intensity, evidence, opinion, transcript, certificateNo, issuedAt } = result;
   // 이전 형식의 응답(segments 없음)도 전체 받아쓰기로 보여 준다.
   const segments = result.segments ?? [];
@@ -114,6 +122,22 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                 &quot;{opinion}&quot;
               </p>
             </div>
+
+            {/* 1순위가 경상이면 경상 정밀 감정을 권한다 */}
+            {onStartGyeongsang && region.top === 'gyeongsang' && (
+              <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                <div className="text-xs font-bold text-amber-200">경상 방언이 1순위로 판정되었습니다</div>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+                  경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽 성분이 강한지 정밀 감정으로 가려 드립니다.
+                </p>
+                <button
+                  onClick={onStartGyeongsang}
+                  className="mt-3 flex w-full items-center justify-center rounded-xl border border-amber-100/25 bg-amber-100/[0.08] py-3 text-sm font-semibold text-amber-50 transition hover:bg-amber-100/[0.14]"
+                >
+                  경상 정밀 감정 받기
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Action Button inside Left Column for Desktop */}
