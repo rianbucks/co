@@ -18,6 +18,8 @@ export default function Home() {
   const [judgeResult, setJudgeResult] = useState<JudgeResult | null>(null);
   /** 지금 감정 결과로 등록한 랭킹 항목 id. 새 감정을 받거나 처음으로 돌아가면 지운다. */
   const [rankingEntryId, setRankingEntryId] = useState<string | null>(null);
+  /** 감정(S4)이 오류로 멈췄는지. 머리글에 '분석 중단'을 보여 준다. 감정을 다시 시작하면 지운다. */
+  const [judgingFailed, setJudgingFailed] = useState(false);
 
   const getStepLabel = (s: ScreenStep) => {
     switch (s) {
@@ -42,6 +44,7 @@ export default function Home() {
 
   const handleRecordingComplete = (blob: Blob) => {
     setAudioBlob(blob);
+    setJudgingFailed(false);
     setStep('S4');
   };
 
@@ -55,8 +58,11 @@ export default function Home() {
     setAudioBlob(null);
     setJudgeResult(null);
     setRankingEntryId(null);
+    setJudgingFailed(false);
     setStep('S1');
   };
+
+  const judgingStopped = step === 'S4' && judgingFailed;
 
   return (
     <div className="relative min-h-screen w-full bg-black text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
@@ -72,7 +78,8 @@ export default function Home() {
         <div>
           {/* iOS Frosted Header */}
           <Header
-            currentStep={getStepLabel(step)}
+            currentStep={judgingStopped ? '분석 중단' : getStepLabel(step)}
+            stopped={judgingStopped}
             onHomeClick={handleResetAll}
           />
 
@@ -101,10 +108,12 @@ export default function Home() {
                 audioBlob={audioBlob}
                 onSuccess={handleJudgingSuccess}
                 onRetry={() => {
+                  setJudgingFailed(false);
                   setStep('S3');
                   setTimeout(() => setStep('S4'), 50);
                 }}
                 onReset={handleResetAll}
+                onFailedChange={setJudgingFailed}
               />
             )}
 

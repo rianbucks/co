@@ -8,6 +8,8 @@ interface S4JudgingProps {
   onSuccess: (result: JudgeResult) => void;
   onRetry: () => void;
   onReset: () => void;
+  /** 오류로 멈췄는지 알린다(머리글에 '분석 중단'을 보여 주는 데 쓴다). */
+  onFailedChange?: (failed: boolean) => void;
 }
 
 const JUDGING_STEPS = [
@@ -42,7 +44,7 @@ const RERECORD_ERRORS = new Map<string, { title: string; message: string }>([
   ],
 ]);
 
-export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4JudgingProps) {
+export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFailedChange }: S4JudgingProps) {
   const [secElapsed, setSecElapsed] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
   const failed = errorInfo !== null;
@@ -79,6 +81,10 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
   useEffect(() => {
     if (failed) errorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [failed]);
+
+  useEffect(() => {
+    onFailedChange?.(failed);
+  }, [failed, onFailedChange]);
 
   useEffect(() => {
     if (hasCalledApiRef.current) return;
