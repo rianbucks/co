@@ -25,7 +25,7 @@ export class GeminiOutputError extends Error {
 export function createGeminiClient(settings: GeminiSettings): AiClient {
   // Interactions API의 정식 안정판 경로를 사용한다. SDK 기본 버전은
   // GOOGLE_GENAI_API_VERSION 환경 변수에 따라 달라질 수 있어 명시한다.
-  const ai = new GoogleGenAI({ apiKey: settings.apiKey, apiVersion: "v1" });
+  const ai = new GoogleGenAI({ apiKey: settings.apiKey, apiVersion: "v1beta" });
 
   return {
     async generate(request: AiRequest): Promise<string> {
