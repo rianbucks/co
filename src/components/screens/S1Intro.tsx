@@ -33,11 +33,12 @@ export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
           </div>
 
           <div className="mt-10 border-t border-white/10 pt-5">
-            <h2 className="text-sm font-semibold text-zinc-300">확인하는 권역</h2>
-            <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-base text-zinc-200 sm:grid-cols-3">
-              {REGIONS.map((region) => (
-                <li key={region} className="border-b border-white/10 py-2">
-                  {region}
+            <h2 className="text-sm font-semibold text-zinc-300">지원 지역</h2>
+            <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-base text-zinc-200">
+              {REGIONS.map((region, index) => (
+                <li key={region} className="inline-flex items-center gap-3 py-1">
+                  <span>{region}</span>
+                  {index < REGIONS.length - 1 && <span aria-hidden="true" className="text-zinc-600">·</span>}
                 </li>
               ))}
             </ul>
