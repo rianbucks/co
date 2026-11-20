@@ -15,7 +15,7 @@ import {
   type Segment,
 } from "./contract";
 import type { AcceptedModelOutput } from "./model-output";
-import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
+import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
 import {
   CONCEALMENT_SCORE_LIMIT,
   GRADE_TABLE,
@@ -179,10 +179,18 @@ export function selectOpinion(input: {
   top: RegionKey;
   score: number;
   parts: PartScores;
+  /** 모사 의심이면 소견 맨 끝에 '타 지역 방언 모사 의심.'을 붙인다. */
+  imitationSuspected?: boolean;
 }): string {
-  const base = OPINIONS[input.grade][dominantPart(input.parts)];
-  const concealed = input.top === "seoul_gyeonggi" && input.score < CONCEALMENT_SCORE_LIMIT;
-  return concealed ? `${base} ${CONCEALMENT_NOTE}` : base;
+  const notes = [OPINIONS[input.grade][dominantPart(input.parts)]];
+  if (input.top === "seoul_gyeonggi" && input.score < CONCEALMENT_SCORE_LIMIT) notes.push(CONCEALMENT_NOTE);
+  if (input.imitationSuspected) notes.push(IMITATION_NOTE);
+  return notes.join(" ");
+}
+
+/** 모사 의심일 때의 농도: 계산값의 절반. 0.5는 올린다(명세 4장). 예: 57 → 29 */
+export function halveIntensity(score: number): number {
+  return Math.floor((score + 1) / 2);
 }
 
 /** 감정서 발급 정보. 후처리와 분리해서 받는다(시간과 난수는 순수 함수 밖에서 만든다). */
@@ -208,7 +216,10 @@ export function buildJudgeResult(
   }
 
   const region = decideRegion(probabilities);
-  const score = computeIntensity(output.scores);
+  // 모사 의심이면 계산한 농도를 절반으로 낮추고, 등급과 소견도 낮춘 점수로 정한다.
+  const imitationSuspected = output.imitation_suspected;
+  const computed = computeIntensity(output.scores);
+  const score = imitationSuspected ? halveIntensity(computed) : computed;
   const { grade, gradeName } = gradeFor(score);
   const questionTranscripts =
     output.question_transcripts?.length === questions.length ? output.question_transcripts : null;
@@ -219,8 +230,9 @@ export function buildJudgeResult(
     issuedAt: issue.issuedAt,
     region: { ...region, probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
+    imitationSuspected,
     evidence: verifyEvidence(output.evidence, output.transcript, questionTranscripts),
-    opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores }),
+    opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores, imitationSuspected }),
     transcript: output.transcript,
     segments: buildSegments(questions, questionTranscripts),
   };

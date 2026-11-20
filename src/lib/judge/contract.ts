@@ -56,6 +56,11 @@ export interface JudgeResult {
     gradeName: string;
     parts: PartScores;
   };
+  /**
+   * 타 지역 방언 모사 의심(모델 판단). true면 intensity.score는 계산값의 절반이고
+   * 소견 끝에 '타 지역 방언 모사 의심.'이 붙는다.
+   */
+  imitationSuspected: boolean;
   evidence: Evidence[];
   opinion: string;
   /** 전체 받아쓰기 */

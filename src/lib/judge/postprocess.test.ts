@@ -10,7 +10,7 @@ import {
 } from "./contract";
 import { SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { parseModelOutput, type AcceptedModelOutput } from "./model-output";
-import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
+import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
 import {
   buildJudgeResult,
   buildSegments,
@@ -18,6 +18,7 @@ import {
   decideRegion,
   dominantPart,
   gradeFor,
+  halveIntensity,
   normalizeProbabilities,
   selectOpinion,
   verifyEvidence,
@@ -46,25 +47,33 @@ function acceptedSpecExample(): AcceptedModelOutput {
 }
 
 describe("computeIntensity: 농도 가중 합", () => {
-  it("7장 예시의 항목 점수로 68점을 낸다 (40×0.2 + 85×0.3 + 60×0.2 + 75×0.3)", () => {
+  it("7장 예시의 항목 점수로 68점을 낸다 (40×0.15 + 85×0.2 + 60×0.25 + 75×0.4 = 6 + 17 + 15 + 30)", () => {
     expect(
       computeIntensity({ vocabulary: 40, endings: 85, phonology: 60, intonation: 75 }),
     ).toBe(68);
   });
 
   it("가중치는 명세 4장 값이고 합이 100이다", () => {
-    expect(INTENSITY_WEIGHTS).toEqual({ vocabulary: 20, endings: 30, phonology: 20, intonation: 30 });
+    expect(INTENSITY_WEIGHTS).toEqual({ vocabulary: 15, endings: 20, phonology: 25, intonation: 40 });
   });
 
   it("소수점은 반올림한다(0.5는 올림)", () => {
-    // 어미 5점 × 0.3 = 1.5 → 2
-    expect(computeIntensity({ vocabulary: 0, endings: 5, phonology: 0, intonation: 0 })).toBe(2);
-    // 어휘 2점 × 0.2 = 0.4 → 0
-    expect(computeIntensity({ vocabulary: 2, endings: 0, phonology: 0, intonation: 0 })).toBe(0);
-    // 어휘 3점 × 0.2 = 0.6 → 1
-    expect(computeIntensity({ vocabulary: 3, endings: 0, phonology: 0, intonation: 0 })).toBe(1);
-    // 85×0.2 + 85×0.3 + 85×0.2 + 86×0.3 = 85.3 → 85
+    // 어휘 10점 × 0.15 = 1.5 → 2
+    expect(computeIntensity({ vocabulary: 10, endings: 0, phonology: 0, intonation: 0 })).toBe(2);
+    // 어미 2점 × 0.2 = 0.4 → 0
+    expect(computeIntensity({ vocabulary: 0, endings: 2, phonology: 0, intonation: 0 })).toBe(0);
+    // 어미 3점 × 0.2 = 0.6 → 1
+    expect(computeIntensity({ vocabulary: 0, endings: 3, phonology: 0, intonation: 0 })).toBe(1);
+    // 85×0.15 + 85×0.2 + 85×0.25 + 86×0.4 = 85.4 → 85
     expect(computeIntensity({ vocabulary: 85, endings: 85, phonology: 85, intonation: 86 })).toBe(85);
+  });
+
+  it("어휘와 어미만 높은 흉내 패턴은 예전 가중치로 57점이었지만 새 가중치로는 47점이다", () => {
+    const imitation = { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 };
+    const oldWeights = { vocabulary: 20, endings: 30, phonology: 20, intonation: 30 };
+    expect(computeIntensity(imitation, oldWeights)).toBe(57);
+    // 90×0.15 + 90×0.2 + 30×0.25 + 20×0.4 = 13.5 + 18 + 7.5 + 8 = 47
+    expect(computeIntensity(imitation)).toBe(47);
   });
 
   it("양 끝값은 0과 100이다", () => {
@@ -87,6 +96,17 @@ describe("computeIntensity: 농도 가중 합", () => {
         { vocabulary: 20, endings: 30, phonology: 20, intonation: 20 },
       ),
     ).toThrow(RangeError);
+  });
+});
+
+describe("halveIntensity: 모사 의심 농도", () => {
+  it("계산값의 절반이고 0.5는 올린다", () => {
+    expect(halveIntensity(57)).toBe(29);
+    expect(halveIntensity(47)).toBe(24);
+    expect(halveIntensity(68)).toBe(34);
+    expect(halveIntensity(100)).toBe(50);
+    expect(halveIntensity(1)).toBe(1);
+    expect(halveIntensity(0)).toBe(0);
   });
 });
 
@@ -357,6 +377,24 @@ describe("selectOpinion: 소견", () => {
     const parts = partsLedBy("endings");
     expect(selectOpinion({ grade: 1, top: "jeju", score: 5, parts })).toBe(OPINIONS[1].endings);
   });
+
+  it("모사 의심이면 소견 끝에 '타 지역 방언 모사 의심.'을 붙인다", () => {
+    const parts = partsLedBy("endings");
+    expect(selectOpinion({ grade: 2, top: "gyeongsang", score: 29, parts, imitationSuspected: true })).toBe(
+      `${OPINIONS[2].endings} ${IMITATION_NOTE}`,
+    );
+    expect(IMITATION_NOTE).toBe("타 지역 방언 모사 의심.");
+    expect(selectOpinion({ grade: 2, top: "gyeongsang", score: 29, parts, imitationSuspected: false })).toBe(
+      OPINIONS[2].endings,
+    );
+  });
+
+  it("출신지 은폐 의심과 함께면 모사 의심이 맨 끝에 온다", () => {
+    const parts = partsLedBy("vocabulary");
+    expect(
+      selectOpinion({ grade: 1, top: "seoul_gyeonggi", score: 12, parts, imitationSuspected: true }),
+    ).toBe(`${OPINIONS[1].vocabulary} ${CONCEALMENT_NOTE} ${IMITATION_NOTE}`);
+  });
 });
 
 describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
@@ -388,6 +426,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
+      imitationSuspected: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
@@ -414,6 +453,32 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       { question: null, type: "endings", quote: "뭐 했노", note: "다른 문항이라도 전체에 있으면 남는다" },
     ]);
     expect(result.transcript).toBe(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
+  });
+
+  it("모사 의심이면 농도를 계산값의 절반으로 낮추고 그 점수로 등급과 소견을 정한다", () => {
+    const output = {
+      ...acceptedSpecExample(),
+      scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+      imitation_suspected: true,
+    };
+    const result = buildJudgeResult(output, issue, SET_A);
+    // 계산값 47 → 절반 23.5 → 24, 2등급
+    expect(result.intensity).toMatchObject({ score: 24, grade: 2, gradeName: "고향 친구 전화 받으면 돌아옴" });
+    expect(result.imitationSuspected).toBe(true);
+    expect(result.opinion).toBe(`${OPINIONS[2].vocabulary} ${IMITATION_NOTE}`);
+    expect(result.intensity.parts).toEqual(output.scores);
+  });
+
+  it("모사 의심이 아니면 계산값 그대로다", () => {
+    const output = {
+      ...acceptedSpecExample(),
+      scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+      imitation_suspected: false,
+    };
+    const result = buildJudgeResult(output, issue, SET_A);
+    expect(result.intensity).toMatchObject({ score: 47, grade: 3 });
+    expect(result.imitationSuspected).toBe(false);
+    expect(result.opinion).toBe(OPINIONS[3].vocabulary);
   });
 
   it("확률 합이 100이 아니면 맞춘 값으로 판정한다", () => {

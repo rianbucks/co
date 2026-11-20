@@ -157,6 +157,7 @@ async function runOnce(
     mixed: result.region.mixed,
     score: result.intensity.score,
     grade: result.intensity.grade,
+    imitationSuspected: result.imitationSuspected,
     transcript: output.transcript,
     questionTranscripts: output.question_transcripts,
     // 운영과 같은 기준: 문항별 받아쓰기가 있으면 그 문항에서, 없으면 전체 받아쓰기에서 찾는다.

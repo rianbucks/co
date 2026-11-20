@@ -43,6 +43,7 @@ describe("POST /api/judge", () => {
       intensity: { score: 68, grade: 4, gradeName: "자막 필요" },
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
     });
+    expect(body.imitationSuspected).toBe(false);
     expect(body.evidence).toHaveLength(5);
     expect(body.evidence[0]).toEqual({
       question: 1,

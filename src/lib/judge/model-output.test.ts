@@ -123,6 +123,19 @@ describe("parseModelOutput", () => {
     ]);
   });
 
+  it("모사 의심은 true일 때만 true로 읽고, 없거나 boolean이 아니면 실패하지 않고 false로 둔다", () => {
+    const read = (value: unknown) => {
+      const parsed = parseModelOutput(JSON.stringify({ ...example(), imitation_suspected: value }));
+      return parsed.ok && parsed.value.audio_quality === "ok" ? parsed.value.imitation_suspected : "실패";
+    };
+    expect(read(true)).toBe(true);
+    expect(read(false)).toBe(false);
+    expect(read(undefined)).toBe(false);
+    expect(read(null)).toBe(false);
+    expect(read("true")).toBe(false);
+    expect(read(1)).toBe(false);
+  });
+
   it("권역 확률이 모두 0이면 zero_probabilities", () => {
     const regions = Object.fromEntries(REGION_KEYS.map((key) => [key, 0]));
     expect(parseModelOutput(JSON.stringify({ ...example(), regions }))).toEqual({
@@ -205,7 +218,7 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
 
   it("품질 불량일 때 비우는 필드는 null을 허용한다", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
-    for (const field of ["transcript", "question_transcripts", "regions", "scores", "evidence"]) {
+    for (const field of ["transcript", "question_transcripts", "regions", "scores", "imitation_suspected", "evidence"]) {
       expect(properties[field].type).toContain("null");
     }
     expect(properties.audio_quality.type).toBe("string");

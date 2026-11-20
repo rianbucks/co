@@ -24,6 +24,7 @@ export const SPEC_MODEL_OUTPUT_EXAMPLE = {
     jeju: 2,
   },
   scores: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
+  imitation_suspected: false,
   evidence: [
     { question: 1, type: "vocabulary", quote: "억수로", note: "'아주'를 뜻하는 경상 방언 어휘" },
     { question: 1, type: "endings", quote: "웬일이고", note: "의문사와 함께 쓰는 경상 방언 의문형 어미 '-고'" },

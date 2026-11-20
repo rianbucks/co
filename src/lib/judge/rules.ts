@@ -16,15 +16,16 @@ export const MIXED_LABEL = "혼합 방언";
 export const MIXED_THRESHOLD = 10;
 
 /**
- * 농도 가중치(명세 4장: 어휘 0.2, 어미 0.3, 음운 0.2, 억양 0.3).
+ * 농도 가중치(명세 4장: 어휘 0.15, 어미 0.2, 음운 0.25, 억양 0.4).
+ * 흉내 내기 쉬운 어휘와 어미보다 음운과 억양에 무게를 둔다.
  * 부동소수점 오차를 피하려고 정수 백분율로 둔다. 합은 100이어야 한다.
  * 가중치는 검증 결과로 조정한다.
  */
 export const INTENSITY_WEIGHTS: Record<PartKey, number> = {
-  vocabulary: 20,
-  endings: 30,
-  phonology: 20,
-  intonation: 30,
+  vocabulary: 15,
+  endings: 20,
+  phonology: 25,
+  intonation: 40,
 };
 
 /** 등급표(명세 4장). */
