@@ -288,14 +288,6 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
   };
 
   const isLastQuestion = currentIdx === lastQuestionIdx;
-  const statusLabel =
-    phase === 'recording'
-      ? 'ON AIR (녹음 중)'
-      : phase === 'paused'
-        ? '일시정지 · 다음 문항 대기'
-        : phase === 'processing'
-          ? '녹음 종료'
-          : '녹음 대기';
   const timerHint =
     phase === 'recording'
       ? isLastQuestion
@@ -315,7 +307,7 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
             {/* Step Counter Pill & Reset */}
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 items-center rounded-full bg-indigo-500/20 px-3 text-xs font-bold text-indigo-300">
+                <span className="record-question-index">
                   문항 {currentIdx + 1} / {questions.length}
                 </span>
                 <span className="text-xs font-medium text-zinc-400">
@@ -333,12 +325,9 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
 
             {/* Target & Situation Card */}
             <div className="mt-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 text-xs font-semibold text-purple-300">
-                <span>상대방:</span>
-                <span className="font-bold text-white">{currentQuestion.target}</span>
-              </div>
+              <p className="record-target">대화 상대 <strong>{currentQuestion.target}</strong></p>
 
-              <h3 className="mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
+              <h3 className="recording-prompt mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
                 {currentQuestion.situation}
               </h3>
             </div>
@@ -352,14 +341,6 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
         {/* Right Column: Studio Waveform & Controls */}
         <div className="flex flex-col justify-between gap-6 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-xl sm:p-8 lg:col-span-6">
           <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-300">오디오 레코딩 콘솔</span>
-              <span className={`flex items-center gap-1.5 text-xs font-semibold ${phase === 'recording' ? 'text-red-400' : 'text-zinc-500'}`}>
-                <span className={`h-2 w-2 rounded-full ${phase === 'recording' ? 'bg-red-500 animate-ping' : 'bg-zinc-600'}`} />
-                {statusLabel}
-              </span>
-            </div>
-
             {/* Large Audio Waveform Visualizer */}
             <div className="mt-6 flex flex-col items-center justify-center rounded-3xl border border-zinc-800/80 bg-black/60 p-8 shadow-inner">
               <div className="flex h-20 items-center justify-center gap-2">
@@ -409,10 +390,9 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
             {(phase === 'ready' || phase === 'paused') && (
               <button
                 onClick={phase === 'ready' ? handleStartFirstRecording : handleStartNextQuestion}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+                className="record-start-button flex w-full items-center justify-center rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                <span>문항 {currentIdx + 1} 녹음 시작 ({SECONDS_PER_QUESTION}초)</span>
+                <span>녹음 시작</span>
               </button>
             )}
 
@@ -421,9 +401,11 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
                 onClick={() => {
                   if (!isDoubleTap()) finishQuestion();
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+                aria-live="polite"
+                aria-label={isLastQuestion ? '녹음 중. 누르면 녹음을 완료하고 제출합니다.' : '녹음 중. 누르면 다음 문항으로 이동합니다.'}
+                className="recording-live-button flex w-full flex-col items-center justify-center gap-0.5 rounded-xl py-3 text-sm font-semibold text-white"
               >
-                <span>{isLastQuestion ? '녹음 완료 및 최종 제출' : '다음 문항으로'}</span>
+                <span className="recording-live-label">녹음 중</span>
               </button>
             )}
 
@@ -436,7 +418,7 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
 
             <button
               onClick={onResetAll}
-              className="w-full text-center text-xs text-zinc-500 transition hover:text-zinc-300"
+              className="secondary-action-button w-full text-center text-zinc-300 transition"
             >
               첫 화면으로 나가기
             </button>

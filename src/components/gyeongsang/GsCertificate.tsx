@@ -91,7 +91,7 @@ export default function GsCertificate({ result, origin, onBack, onRestart }: GsC
             <p className="text-[9px] font-semibold tracking-[0.2em] text-[#f3d9a4] sm:text-xs">
               GYEONGSANG DIALECT PRECISION APPRAISAL
             </p>
-            <h1 id="gs-certificate-title" className="mt-2 font-serif text-[1.65rem] font-black tracking-tight text-[#f6efe2] sm:text-5xl">
+            <h1 id="gs-certificate-title" className="mt-2 text-balance font-serif text-[1.65rem] font-black tracking-tight text-[#f6efe2] sm:text-5xl">
               {GS_CERTIFICATE_TITLE}
             </h1>
             <p className="mt-2 text-[11px] text-[#f3d9a4] sm:text-sm">원산지증명서 · 경상 정밀 감정</p>

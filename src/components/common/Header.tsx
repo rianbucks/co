@@ -3,9 +3,9 @@
 /** 머리글 탭: 일반 감정(S1~S7)과 경상 정밀 감정. */
 export type HeaderTab = 'general' | 'gyeongsang';
 
-const TABS: ReadonlyArray<{ key: HeaderTab; label: string; activeClass: string }> = [
-  { key: 'general', label: '일반 감정', activeClass: 'bg-white/[0.12] text-white' },
-  { key: 'gyeongsang', label: '경상 정밀 감정', activeClass: 'bg-amber-100/[0.12] text-amber-50' },
+const TABS: ReadonlyArray<{ key: HeaderTab; label: string }> = [
+  { key: 'general', label: '일반 감정' },
+  { key: 'gyeongsang', label: '경상 정밀 감정' },
 ];
 
 interface HeaderProps {
@@ -44,20 +44,18 @@ export default function Header({
           <span className="block text-xs text-zinc-400">사투리 음성 감정</span>
         </button>
 
-        <nav className="flex items-center gap-3 sm:gap-5">
+        <nav className="app-header-nav flex items-center gap-4 sm:gap-6">
           {onRankingClick && (
             <button
               onClick={onRankingClick}
-              className="whitespace-nowrap rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-zinc-200 transition hover:bg-white/10"
+              className="app-header-link whitespace-nowrap text-sm text-zinc-300 transition hover:text-white"
             >
               농도 랭킹
             </button>
           )}
           {currentStep && (
             <span
-              className={`whitespace-nowrap border-l border-zinc-700 pl-3 text-sm ${
-                stopped ? 'text-red-300' : 'text-zinc-400'
-              }`}
+              className={`app-header-step whitespace-nowrap text-sm ${stopped ? 'text-red-300' : 'text-zinc-500'}`}
             >
               {currentStep}
             </span>
@@ -84,9 +82,7 @@ export default function Header({
                   if (!active) onTabChange(tab.key);
                 }}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm transition ${
-                  active
-                    ? `${tab.activeClass} font-semibold`
-                    : 'text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
+                  active ? 'bg-sky-500/15 font-semibold text-sky-200' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
                 } disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-400`}
               >
                 {tab.label}

@@ -1,8 +1,11 @@
 import { SUBREGION_NAMES, type SubregionRatios } from '@/lib/gyeongsang/contract';
 
-/** 경북권과 경남권의 색. 결과 화면(어두운 배경)과 감정서(종이)에서 같은 색 계열을 쓴다. */
+/**
+ * 경북권과 경남권의 색. 결과 화면(어두운 배경)과 감정서(종이)에서 같은 색 계열(경북권 금색, 경남권 청색)을 쓴다.
+ * 공통 화면 스타일이 Tailwind 색 이름(amber 등)을 다시 칠하므로 고정 색 값을 쓴다.
+ */
 export const SUBREGION_COLORS = {
-  dark: { gyeongbuk: 'bg-amber-400', gyeongnam: 'bg-teal-400', track: 'bg-zinc-800' },
+  dark: { gyeongbuk: 'bg-[#d6b46a]', gyeongnam: 'bg-[#9bbbd5]', track: 'bg-zinc-800' },
   paper: { gyeongbuk: 'bg-[#b7791f]', gyeongnam: 'bg-[#2f6f73]', track: 'bg-[#e5dccb]' },
 } as const;
 

@@ -25,10 +25,10 @@ const STEP_LABELS: Record<GsStep, string> = {
 };
 
 const GS_JUDGING_STEPS: readonly JudgingStep[] = [
-  { id: 1, label: '구술 서류 접수', desc: '녹음 데이터 컨테이너 및 40초 무결성 검증' },
-  { id: 2, label: '경상 방언 특징 계측', desc: '어휘, 어미, 음운 변이의 경상 방언 특징 계측' },
-  { id: 3, label: '경북권·경남권 성분 대조', desc: '종결어미 패턴과 억양 곡선의 하위 권역 대조' },
-  { id: 4, label: '정밀 감정위원 심의 합의', desc: '성분 비율 및 경상 농도 등급 최종 확정' },
+  { id: 1, label: '녹음 상태 확인', desc: '음성이 잘 들어왔는지 확인합니다.' },
+  { id: 2, label: '경상 방언 특징 살펴보기', desc: '어휘, 어미, 발음에서 경상 방언의 특징을 확인합니다.' },
+  { id: 3, label: '경북권·경남권 비교', desc: '문장 끝 표현과 억양이 어느 쪽에 가까운지 살펴봅니다.' },
+  { id: 4, label: '결과 정리', desc: '성분 비율과 경상 농도를 정리합니다.' },
 ];
 
 /** 머리글에 보여 줄 정밀 감정의 진행 상태. */
@@ -51,24 +51,24 @@ interface GyeongsangFlowProps {
 function FlowBanner({ step, origin }: { step: GsStep; origin: OriginKey | null }) {
   const index = GS_STEPS.indexOf(step);
   return (
-    <div className="break-keep px-5 pt-5 sm:px-7 sm:pt-7 lg:px-10 lg:pt-8">
-      <div className="glass-panel px-4 py-3">
+    <div className="mx-auto w-full max-w-[1120px] break-keep px-5 pt-5 sm:px-8 sm:pt-8">
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <p className="whitespace-nowrap text-sm font-semibold text-amber-100">경상 방언 정밀 감정</p>
+            <p className="result-eyebrow whitespace-nowrap">경상 방언 정밀 감정</p>
             <p className="mt-0.5 truncate text-xs text-zinc-400">
               {index + 1}/{GS_STEPS.length} · {STEP_LABELS[step]}
             </p>
           </div>
           {origin && (
-            <span className="shrink-0 whitespace-nowrap rounded-lg border border-amber-100/25 bg-amber-100/[0.08] px-2.5 py-1 text-xs font-semibold text-amber-50">
+            <span className="shrink-0 whitespace-nowrap rounded-lg border border-zinc-700 px-2.5 py-1 text-xs text-zinc-200">
               신고 원산지 {ORIGIN_NAMES[origin]} · {SUBREGION_NAMES[ORIGIN_SUBREGION[origin]]}
             </span>
           )}
         </div>
         <div className="mt-2.5 grid grid-cols-6 gap-1" aria-hidden="true">
           {GS_STEPS.map((item, itemIndex) => (
-            <span key={item} className={`h-1 rounded-full ${itemIndex <= index ? 'bg-amber-200/80' : 'bg-white/10'}`} />
+            <span key={item} className={`h-1 rounded-full ${itemIndex <= index ? 'bg-[#9bbbd5]' : 'bg-zinc-800'}`} />
           ))}
         </div>
       </div>

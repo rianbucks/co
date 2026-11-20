@@ -25,10 +25,10 @@ interface S4JudgingProps<T> {
 }
 
 const JUDGING_STEPS: readonly JudgingStep[] = [
-  { id: 1, label: '구술 서류 접수', desc: '녹음 데이터 컨테이너 및 40초 무결성 검증' },
-  { id: 2, label: '어휘 및 음운 분석', desc: '지역 고유 어휘, 받침 축약 및 음운 변이 계측' },
-  { id: 3, label: '어미 및 억양 대조', desc: '종결어미 패턴 대조 및 고저 억양 곡선 산출' },
-  { id: 4, label: '전문 감정위원 심의 합의', desc: '6대 권역 확률 및 농도 등급 최종 확정' },
+  { id: 1, label: '녹음 상태 확인', desc: '음성이 잘 들어왔는지 확인합니다.' },
+  { id: 2, label: '어휘와 발음 살펴보기', desc: '지역에서 자주 쓰는 말과 발음 특징을 확인합니다.' },
+  { id: 3, label: '어미와 억양 살펴보기', desc: '문장 끝 표현과 말의 높낮이를 확인합니다.' },
+  { id: 4, label: '결과 정리', desc: '권역별 결과와 농도 점수를 정리합니다.' },
 ];
 
 /** 같은 녹음을 다시 보내도 결과가 같은 오류. 재시도 대신 다시 녹음으로 안내한다. */
@@ -217,41 +217,30 @@ export default function S4Judging<T = JudgeResult>({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-center">
 
-        {/* Left Column: Siri / AI Intelligence Aura Orb */}
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-8 shadow-2xl backdrop-blur-xl sm:p-12 lg:col-span-5">
-          <div className="relative flex h-36 w-36 items-center justify-center">
-            <div
-              className={`absolute inset-0 rounded-full blur-3xl ${
-                failed ? 'bg-red-500/20' : 'animate-pulse bg-gradient-to-tr from-indigo-500/40 via-purple-500/40 to-pink-500/40'
-              }`}
-            />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/20 bg-black/60 shadow-inner">
-              {failed ? (
-                <span className="text-3xl font-black text-red-400">!</span>
-              ) : (
-                <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
-              )}
+        {/* Plain status and elapsed time */}
+        <div className="flex flex-col justify-center rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-8 shadow-2xl backdrop-blur-xl sm:p-10 lg:col-span-5">
+          <div className="flex items-center gap-4">
+            <div className="judging-indicator" aria-hidden="true">
+              {failed ? <span>!</span> : <span className="judging-spinner" />}
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500">판정 상태</p>
+              <h2 className="mt-1 text-xl font-medium text-white">
+                {failed ? '심사 중단' : '음성 감정 진행 중'}
+              </h2>
             </div>
           </div>
-
-          <div className="mt-6 text-center">
-            <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-              {failed ? 'AI 감정위원회 심사 중단' : 'AI 감정위원회 심사 진행 중'}
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-              {failed
-                ? '심사가 중단되었습니다. 위의 안내에 따라 다시 진행해 주십시오.'
-                : '다차원 음운 및 억양 곡선 데이터를 기반으로 사투리 원산지와 농도를 산출하고 있습니다.'}
-            </p>
-          </div>
+          <p className="mt-5 text-sm leading-7 text-zinc-400">
+            {failed
+              ? '심사가 중단되었습니다. 위의 안내에 따라 다시 진행해 주십시오.'
+              : '녹음에서 확인된 어휘와 발음, 어미와 억양을 살펴보고 있습니다.'}
+          </p>
 
           {!errorInfo && (
-            <div className="mt-6 flex items-center gap-2 rounded-full border border-zinc-800 bg-black/50 px-4 py-2 text-xs text-zinc-400">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>소요 시간:</span>
-              <span className="font-mono font-bold text-white">{secElapsed}초</span>
-              <span>/ 최대 30초</span>
-            </div>
+            <p className="mt-6 border-t border-zinc-800 pt-4 text-sm text-zinc-400">
+              처리 시간 <strong className="ml-2 font-semibold text-white">{secElapsed}초</strong>
+              <span className="ml-2 text-zinc-500">최대 30초</span>
+            </p>
           )}
         </div>
 
@@ -296,9 +285,9 @@ export default function S4Judging<T = JudgeResult>({
                           {step.label}
                         </span>
                         {isCurrent && !failed && (
-                          <span className="flex items-center gap-1.5 text-[10px] font-medium text-indigo-400">
-                            <span className="h-1.5 w-1.5 animate-ping rounded-full bg-indigo-400" />
-                            실시간 분석 중
+                          <span className="flex items-center gap-2 text-xs font-medium text-indigo-300">
+                            <span className="judging-live-dot" />
+                            진행 중
                           </span>
                         )}
                       </div>

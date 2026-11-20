@@ -79,23 +79,17 @@ export default function S5Result({
 
             {/* Verdict Hero */}
             <div className="mt-6 text-center">
-              <span className="inline-block rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-semibold text-indigo-300">
+              <p className="result-eyebrow">
                 최종 판정 결과
-              </span>
+              </p>
 
               <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
                 {region.mixed ? '혼합 방언' : region.label}
               </h2>
 
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-700/60 bg-zinc-800/80 px-4 py-1.5 shadow-inner">
-                <span className="text-xs font-bold text-amber-400">
-                  {intensity.grade}등급
-                </span>
-                <span className="h-3 w-px bg-zinc-700" />
-                <span className="text-xs font-medium text-zinc-200">
-                  {intensity.gradeName}
-                </span>
-              </div>
+              <p className="mt-4 text-sm font-medium text-zinc-300">
+                {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
+              </p>
             </div>
 
             {/* Dialect Intensity Gauge Bar */}
@@ -125,15 +119,12 @@ export default function S5Result({
 
             {/* 1순위가 경상이면 경상 정밀 감정을 권한다 */}
             {onStartGyeongsang && region.top === 'gyeongsang' && (
-              <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                <div className="text-xs font-bold text-amber-200">경상 방언이 1순위로 판정되었습니다</div>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+              <div className="mt-6 rounded-2xl border border-zinc-800 p-4">
+                <p className="result-eyebrow">경상 방언이 1순위로 판정되었습니다</p>
+                <p className="mt-1 text-sm text-zinc-400">
                   경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽 성분이 강한지 정밀 감정으로 가려 드립니다.
                 </p>
-                <button
-                  onClick={onStartGyeongsang}
-                  className="mt-3 flex w-full items-center justify-center rounded-xl border border-amber-100/25 bg-amber-100/[0.08] py-3 text-sm font-semibold text-amber-50 transition hover:bg-amber-100/[0.14]"
-                >
+                <button onClick={onStartGyeongsang} className="secondary-action-button mt-3 w-full text-center transition">
                   경상 정밀 감정 받기
                 </button>
               </div>

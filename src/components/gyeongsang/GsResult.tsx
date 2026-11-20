@@ -22,7 +22,7 @@ interface GsResultProps {
 function EvidenceRow({ item }: { item: GsEvidence }) {
   return (
     <div className="rounded-2xl border border-zinc-800/60 bg-black/30 p-3.5 text-xs">
-      <span className="font-bold text-amber-200">&quot;{item.quote}&quot;</span>
+      <span className="font-bold text-indigo-300">&quot;{item.quote}&quot;</span>
       <p className="mt-1.5 border-l border-zinc-600 pl-3 text-xs text-zinc-400">{item.note}</p>
     </div>
   );
@@ -34,7 +34,7 @@ function HighlightedTranscript({ text, quotes }: { text: string; quotes: string[
     <>
       {splitHighlights(text, quotes).map((part, index) =>
         part.highlighted ? (
-          <mark key={index} className="rounded bg-amber-400/25 px-0.5 font-semibold not-italic text-amber-100">
+          <mark key={index} className="rounded px-0.5 font-semibold not-italic">
             {part.text}
           </mark>
         ) : (
@@ -62,7 +62,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
     <div className="screen-glass break-keep p-5 wrap-break-word sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:gap-8">
         {/* 왼쪽: 일치 여부, 성분, 농도 */}
-        <div className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-5">
+        <div className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/90 p-6 sm:p-8 lg:col-span-5">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-zinc-800/80 pb-3 text-[11px] text-zinc-400">
               <span className="whitespace-nowrap font-mono">{certificateNo}</span>
@@ -70,31 +70,29 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
             </div>
 
             <div className="mt-6 text-center">
-              <span className="inline-block rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-semibold text-amber-300">
-                경상 방언 정밀 감정 결과
-              </span>
-              <p className="mt-4 text-xs text-zinc-400">
-                신고 원산지 <span className="font-bold text-zinc-100">{ORIGIN_NAMES[origin]}</span> (
+              <p className="result-eyebrow">경상 방언 정밀 감정 결과</p>
+              <p className="mt-4 text-sm text-zinc-400">
+                신고 원산지 <span className="font-medium text-zinc-100">{ORIGIN_NAMES[origin]}</span> (
                 {SUBREGION_NAMES[match.subregion]})
               </p>
               <h2
                 className={`mt-2 text-balance text-3xl font-black tracking-tight sm:text-4xl ${
-                  match.matched ? 'text-emerald-300' : 'text-rose-300'
+                  match.matched ? 'text-emerald-300' : 'text-red-300'
                 }`}
               >
                 {match.label}
               </h2>
-              <p className="mt-2 text-xs text-zinc-400">
+              <p className="mt-2 text-sm text-zinc-400">
                 {SUBREGION_NAMES[match.subregion]} 성분 {match.ratio}% (일치 기준 {ORIGIN_MATCH_THRESHOLD}% 이상)
               </p>
             </div>
 
             <div className="mt-7 rounded-2xl border border-zinc-800/80 bg-black/50 p-5 text-zinc-200">
-              <div className="text-xs font-semibold text-zinc-400">감정 성분</div>
+              <div className="text-sm font-medium text-zinc-400">감정 성분</div>
               <div className="mt-3">
                 <SubregionBar subregions={subregions} />
               </div>
-              <p className="mt-3 flex flex-wrap gap-x-3 text-[11px] leading-relaxed text-zinc-500">
+              <p className="mt-3 flex flex-wrap gap-x-3 text-xs text-zinc-500">
                 {SUBREGION_KEYS.map((key) => (
                   <span key={key} className="whitespace-nowrap">
                     {SUBREGION_NAMES[key]}: {SUBREGION_AREAS[key]}
@@ -105,7 +103,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
 
             <div className="mt-4 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs font-semibold text-zinc-400">경상 농도</span>
+                <span className="text-sm font-medium text-zinc-400">경상 농도</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-black text-white">{intensity.score}</span>
                   <span className="text-xs text-zinc-500">/ 100점</span>
@@ -113,29 +111,24 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
               </div>
               <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 transition-all duration-700"
+                  className="h-full rounded-full bg-[#9bbbd5] transition-all duration-700"
                   style={{ width: `${intensity.score}%` }}
                 />
               </div>
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-zinc-700/60 bg-zinc-800/80 px-3.5 py-1 shadow-inner">
-                <span className="text-xs font-bold text-amber-400">{intensity.grade}등급</span>
-                <span className="h-3 w-px bg-zinc-700" />
-                <span className="text-xs font-medium text-zinc-200">{intensity.gradeName}</span>
-              </div>
+              <p className="mt-3 text-sm font-medium text-zinc-300">
+                {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
+              </p>
             </div>
           </div>
 
           <div className="mt-8 space-y-3">
             <button
               onClick={onGoToCertificate}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+              className="flex w-full items-center justify-center rounded-full bg-white py-4 text-sm font-bold text-black transition hover:bg-zinc-200"
             >
-              <span>정밀 감정서 발급</span>
+              정밀 감정서 발급
             </button>
-            <button
-              onClick={onRestart}
-              className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
-            >
+            <button onClick={onRestart} className="secondary-action-button w-full text-center transition">
               다시 정밀 감정받기
             </button>
           </div>
@@ -143,7 +136,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
 
         {/* 오른쪽: 항목 점수, 문항별 받아쓰기와 근거 */}
         <div className="space-y-6 lg:col-span-7">
-          <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
+          <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
             <h3 className="text-sm font-bold tracking-tight text-zinc-200">경상 방언 특징 세부 점수</h3>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {Object.entries(intensity.parts).map(([key, value]) => (
@@ -156,7 +149,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
           </div>
 
           {segments.length > 0 ? (
-            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
+            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
               <h3 className="text-sm font-bold tracking-tight text-zinc-200">문항별 구술 채록 및 근거 인용</h3>
               <div className="mt-4 space-y-4">
                 {segments.map((segment) => {
@@ -164,7 +157,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
                   return (
                     <div key={segment.question} className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
                       <div className="flex items-start gap-2.5">
-                        <span className="shrink-0 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-bold text-amber-300">
+                        <span className="shrink-0 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
                           문항 {segment.question}
                         </span>
                         <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
@@ -198,7 +191,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onRestart 
               </div>
             </div>
           ) : (
-            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
+            <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
               <h3 className="text-sm font-bold tracking-tight text-zinc-200">구술 음성 채록 및 근거 인용</h3>
               {transcript && (
                 <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/50 p-4">

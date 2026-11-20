@@ -170,9 +170,9 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
         <div className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-5">
           <div>
             <div className="text-center">
-              <span className="inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1 text-xs font-semibold text-amber-300">
+              <p className="ranking-eyebrow">
                 사투리 농도 랭킹
-              </span>
+              </p>
               <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
                 {!result ? '농도 랭킹' : mine ? '랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
               </h2>
@@ -190,7 +190,7 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
                 </div>
                 <div className="mt-2 flex items-end justify-between gap-3">
                   <div className="text-xs">
-                    <span className="font-bold text-amber-400">{result.intensity.grade}등급</span>
+                    <span className="font-bold text-indigo-300">{result.intensity.grade}등급</span>
                     <span className="ml-1.5 font-medium text-zinc-200">{result.intensity.gradeName}</span>
                   </div>
                   <div className="flex shrink-0 items-baseline gap-1">
