@@ -43,27 +43,23 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
   };
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
         
         {/* Left Column: Guidelines & Principles */}
         <div className="flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-7">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 text-xl text-indigo-400">
-                🎙️
-              </div>
-              <div>
-                <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                  사투리 감정 절차 및 개인정보 고지
-                </h2>
-                <p className="text-xs text-zinc-400">안전하고 정확한 감정을 위해 아래 사항을 안내해 드립니다.</p>
-              </div>
+            <div>
+              <p className="text-xs text-zinc-500">이용 전 확인</p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">
+                사투리 감정 절차 및 개인정보 고지
+              </h2>
+              <p className="text-xs text-zinc-400">아래 사항을 확인한 뒤 녹음을 시작해 주세요.</p>
             </div>
 
-            <div className="mt-6 space-y-3">
-              <div className="flex items-start gap-3.5 rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
-                <span className="text-lg">⏱️</span>
+            <div className="mt-6 divide-y divide-zinc-800 border-y border-zinc-800">
+              <div className="flex items-start gap-4 py-4">
+                <span className="pt-0.5 font-mono text-xs text-zinc-500">01</span>
                 <div>
                   <div className="text-xs font-bold text-zinc-200">상황극 4문항 구술 (총 40초)</div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
@@ -72,18 +68,18 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
-                <span className="text-lg">🛡️</span>
+              <div className="flex items-start gap-4 py-4">
+                <span className="pt-0.5 font-mono text-xs text-zinc-500">02</span>
                 <div>
-                  <div className="text-xs font-bold text-zinc-200">Google Gemini 음성 분석 안내</div>
+                  <div className="text-xs font-bold text-zinc-200">Google Gemini 음성 처리 안내</div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    녹음 음성은 판정을 위해 Google Gemini AI 서비스로 전송됩니다. 프로젝트 서버와 데이터베이스에는 음성 파일을 지속 저장하지 않습니다.
+                    녹음 음성은 판정을 위해 Google Gemini 서비스로 전송됩니다. 프로젝트 서버와 데이터베이스에는 판정 처리 후 음성을 저장하지 않습니다.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
-                <span className="text-lg">🏆</span>
+              <div className="flex items-start gap-4 py-4">
+                <span className="pt-0.5 font-mono text-xs text-zinc-500">03</span>
                 <div>
                   <div className="text-xs font-bold text-zinc-200">전국 랭킹 등록은 선택 사항</div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
@@ -125,7 +121,7 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
 
             {errorMessage && (
               <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-300">
-                <div className="font-semibold">⚠️ 마이크 권한 확인 필요</div>
+                <div className="font-semibold">마이크 권한 확인 필요</div>
                 <p className="mt-1 text-[11px] leading-relaxed text-red-400">{errorMessage}</p>
               </div>
             )}
@@ -143,7 +139,6 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
               }`}
             >
               <span>{micState === 'requesting' ? '마이크 연결 중...' : '마이크 허용하고 녹음실 입장'}</span>
-              <span>→</span>
             </button>
 
             <button

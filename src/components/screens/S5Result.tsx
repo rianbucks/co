@@ -20,7 +20,7 @@ function EvidenceRow({ item }: { item: Evidence }) {
         </span>
         <span className="font-bold text-indigo-300">&quot;{item.quote}&quot;</span>
       </div>
-      <p className="mt-1.5 text-xs text-zinc-400 pl-1">↳ {item.note}</p>
+      <p className="mt-1.5 border-l border-zinc-600 pl-3 text-xs text-zinc-400">{item.note}</p>
     </div>
   );
 }
@@ -58,7 +58,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
   const probEntries = Object.entries(region.probabilities).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-start">
 
         {/* Left Column: Official Verdict & Certificate Card */}
@@ -123,7 +123,6 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
               className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
             >
               <span>원산지증명서 발급 및 확인 (S6)</span>
-              <span>→</span>
             </button>
 
             <button
@@ -131,7 +130,6 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
               className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
             >
               <span>농도 랭킹 등록 (S7)</span>
-              <span>→</span>
             </button>
 
             <button
@@ -160,7 +158,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                   <div key={regKey} className="text-xs">
                     <div className="flex justify-between font-medium">
                       <span className={isTop ? 'font-bold text-indigo-300' : 'text-zinc-400'}>
-                        {label} {isTop && '★ 1순위'}
+                        {label} {isTop && '· 1순위'}
                       </span>
                       <span className="font-mono text-zinc-300">{prob}%</span>
                     </div>

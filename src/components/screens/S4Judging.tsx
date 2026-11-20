@@ -167,7 +167,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
   }, [audioBlob, onSuccess]);
 
   return (
-    <div className="p-5 sm:p-7 lg:p-10">
+    <div className="screen-glass p-5 sm:p-7 lg:p-10">
       {/* Error Notice: 오류가 나면 화면 맨 위에 안내와 버튼을 둔다 */}
       {errorInfo && (
         <div
@@ -176,7 +176,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
           className="mb-6 scroll-mt-24 rounded-3xl border border-red-500/40 bg-red-500/10 p-5 shadow-2xl shadow-red-500/5 backdrop-blur-xl sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8 lg:p-7"
         >
           <div>
-            <div className="text-base font-bold text-red-200 sm:text-lg">⚠️ {errorInfo.title}</div>
+            <div className="text-base font-bold text-red-200 sm:text-lg">{errorInfo.title}</div>
             <p className="mt-1.5 text-sm leading-relaxed text-red-300/90">{errorInfo.message}</p>
           </div>
           <button
