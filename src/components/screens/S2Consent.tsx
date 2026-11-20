@@ -84,6 +84,8 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
                   <div className="text-xs font-bold text-zinc-200">전국 랭킹 등록은 선택 사항</div>
                   <p className="mt-1 text-xs leading-relaxed text-zinc-400">
                     판정 완료 후 본인의 농도 결과를 랭킹에 공개하고자 할 때만 별도의 추가 저장 동의를 받습니다.
+                    등록하면 닉네임, 농도, 지역, 등급, 등록 시각을 저장하고, 경상 정밀 감정 랭킹은 신고 원산지와 경북권
+                    비율도 함께 저장합니다.
                   </p>
                 </div>
               </div>

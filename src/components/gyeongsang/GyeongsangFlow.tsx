@@ -9,11 +9,13 @@ import { ORIGIN_NAMES, ORIGIN_SUBREGION, type OriginKey } from '@/lib/gyeongsang
 import { GS_QUESTIONS, GS_QUESTION_SET_ID } from '@/lib/gyeongsang/questions';
 import GsCertificate from './GsCertificate';
 import GsOrigin from './GsOrigin';
+import GsRanking from './GsRanking';
 import GsResult from './GsResult';
 
 /** 안내(S2 재사용) → 원산지 신고 → 녹음(S3 재사용) → 심사(S4 재사용) → 정밀 결과 → 정밀 감정서 */
 const GS_STEPS = ['intro', 'origin', 'record', 'judging', 'result', 'certificate'] as const;
-type GsStep = (typeof GS_STEPS)[number];
+/** 진행 단계와, 어느 단계에서든 열 수 있는 정밀 랭킹 */
+type GsStep = (typeof GS_STEPS)[number] | 'ranking';
 
 const STEP_LABELS: Record<GsStep, string> = {
   intro: '안내',
@@ -22,6 +24,7 @@ const STEP_LABELS: Record<GsStep, string> = {
   judging: '분석 중',
   result: '정밀 결과',
   certificate: '정밀 감정서',
+  ranking: '정밀 랭킹',
 };
 
 const GS_JUDGING_STEPS: readonly JudgingStep[] = [
@@ -38,6 +41,8 @@ export interface GsFlowStatus {
   stopped: boolean;
   /** 녹음이나 심사 중(다른 탭으로 가면 작업을 잃는다) */
   busy: boolean;
+  /** 머리글의 '정밀 랭킹' 버튼. 녹음, 심사 중이거나 이미 랭킹을 보고 있으면 없다. */
+  openRanking?: () => void;
 }
 
 export const INITIAL_GS_STATUS: GsFlowStatus = { label: STEP_LABELS.intro, stopped: false, busy: false };
@@ -49,6 +54,16 @@ interface GyeongsangFlowProps {
 }
 
 function FlowBanner({ step, origin }: { step: GsStep; origin: OriginKey | null }) {
+  if (step === 'ranking') {
+    return (
+      <div className="mx-auto w-full max-w-[1120px] break-keep px-5 pt-5 sm:px-8 sm:pt-8">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+          <p className="result-eyebrow whitespace-nowrap">경상 방언 정밀 감정</p>
+          <p className="mt-0.5 text-xs text-zinc-400">정밀 랭킹 · 신고 원산지별로 나눠 봅니다</p>
+        </div>
+      </div>
+    );
+  }
   const index = GS_STEPS.indexOf(step);
   return (
     <div className="mx-auto w-full max-w-[1120px] break-keep px-5 pt-5 sm:px-8 sm:pt-8">
@@ -77,8 +92,8 @@ function FlowBanner({ step, origin }: { step: GsStep; origin: OriginKey | null }
 }
 
 /**
- * 경상 정밀 감정 탭의 흐름. 신고 원산지와 결과는 이 컴포넌트 안에만 두고 서버로 보내지 않는다.
- * 녹음은 set-gs 문항으로, 심사는 questionSetId=set-gs로 요청한다.
+ * 경상 정밀 감정 탭의 흐름. 녹음은 set-gs 문항으로, 심사는 questionSetId=set-gs로 요청한다.
+ * 신고 원산지는 이 컴포넌트 안에 두고, 정밀 랭킹에 등록할 때만 서버로 보낸다.
  */
 export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlowProps) {
   const [step, setStep] = useState<GsStep>('intro');
@@ -88,15 +103,21 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
   const [judgingFailed, setJudgingFailed] = useState(false);
   /** 심사 요청 번호. 재시도하면 늘려서 심사 화면을 새로 그린다(같은 녹음을 다시 보낸다). */
   const [attempt, setAttempt] = useState(0);
+  /** 지금 정밀 감정 결과로 등록한 정밀 랭킹 항목 id. 새로 감정하면 지운다. */
+  const [rankingEntryId, setRankingEntryId] = useState<string | null>(null);
+
+  const openRanking = useCallback(() => setStep('ranking'), []);
 
   useEffect(() => {
     const stopped = step === 'judging' && judgingFailed;
+    const busy = step === 'record' || step === 'judging';
     onStatusChange?.({
       label: stopped ? '분석 중단' : STEP_LABELS[step],
       stopped,
-      busy: step === 'record' || step === 'judging',
+      busy,
+      openRanking: busy || step === 'ranking' ? undefined : openRanking,
     });
-  }, [step, judgingFailed, onStatusChange]);
+  }, [step, judgingFailed, onStatusChange, openRanking]);
 
   // 단계가 바뀌면 화면 맨 위부터 보여 준다(아래쪽 버튼을 누르고 넘어오는 경우가 많다).
   useEffect(() => {
@@ -106,6 +127,7 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
   const restart = useCallback(() => {
     setAudioBlob(null);
     setResult(null);
+    setRankingEntryId(null);
     setJudgingFailed(false);
     setStep('intro');
   }, []);
@@ -119,6 +141,7 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
 
   const handleJudgingSuccess = useCallback((judged: GyeongsangResult) => {
     setResult(judged);
+    setRankingEntryId(null);
     setStep('result');
   }, []);
 
@@ -166,12 +189,30 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
           result={result}
           origin={origin}
           onGoToCertificate={() => setStep('certificate')}
+          onGoToRanking={openRanking}
           onRestart={restart}
         />
       )}
 
       {step === 'certificate' && result && origin && (
-        <GsCertificate result={result} origin={origin} onBack={() => setStep('result')} onRestart={restart} />
+        <GsCertificate
+          result={result}
+          origin={origin}
+          onBack={() => setStep('result')}
+          onGoToRanking={openRanking}
+          onRestart={restart}
+        />
+      )}
+
+      {step === 'ranking' && (
+        <GsRanking
+          result={result}
+          origin={origin}
+          entryId={rankingEntryId}
+          onRegistered={setRankingEntryId}
+          onBack={() => setStep('result')}
+          onApply={restart}
+        />
       )}
     </div>
   );

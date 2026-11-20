@@ -245,7 +245,7 @@ export function renderGsCertificate(result: GyeongsangResult, origin: OriginKey)
 
     context.fillStyle = color.muted;
     context.font = font(500, 19);
-    context.fillText('본 감정서는 음성 분석 결과를 기록한 문서이며, 신고 원산지는 저장하지 않습니다.', width / 2, 1488);
+    context.fillText('본 감정서는 음성 분석 결과를 기록한 문서입니다.', width / 2, 1488);
 
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);

@@ -117,7 +117,8 @@ export default function Home() {
               currentStep={general ? (judgingStopped ? '분석 중단' : getStepLabel(step)) : gsStatus.label}
               stopped={general ? judgingStopped : gsStatus.stopped}
               onHomeClick={handleHomeClick}
-              onRankingClick={general && showRankingLink ? () => setStep('S7') : undefined}
+              onRankingClick={general ? (showRankingLink ? () => setStep('S7') : undefined) : gsStatus.openRanking}
+              rankingLabel={general ? undefined : '정밀 랭킹'}
               activeTab={mode}
               onTabChange={handleTabChange}
               tabsDisabled={tabsDisabled}

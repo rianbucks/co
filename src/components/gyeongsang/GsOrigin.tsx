@@ -16,7 +16,7 @@ interface GsOriginProps {
   onPrev: () => void;
 }
 
-/** 경상 정밀 감정 2단계: 신고 원산지 선택. 고른 값은 서버로 보내지 않는다. */
+/** 경상 정밀 감정 2단계: 신고 원산지 선택. 고른 값은 정밀 랭킹에 등록할 때만 서버로 보낸다. */
 export default function GsOrigin({ selected, onSelect, onNext, onPrev }: GsOriginProps) {
   return (
     <div className="screen-glass break-keep p-5 wrap-break-word sm:p-7 lg:p-10">
@@ -79,7 +79,8 @@ export default function GsOrigin({ selected, onSelect, onNext, onPrev }: GsOrigi
             <div className="py-4">
               <dt className="text-sm font-medium text-zinc-200">신고 원산지 처리</dt>
               <dd className="mt-1 text-sm text-zinc-400">
-                신고 원산지는 서버로 보내거나 저장하지 않으며, 정밀 결과 화면과 감정서에만 표시합니다.
+                신고 원산지는 정밀 결과 화면과 감정서에 표시합니다. 정밀 랭킹에 등록할 때만 서버에 저장하고 랭킹에
+                공개합니다.
               </dd>
             </div>
           </dl>

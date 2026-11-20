@@ -16,6 +16,8 @@ interface GsCertificateProps {
   result: GyeongsangResult;
   origin: OriginKey;
   onBack: () => void;
+  /** 정밀 감정 랭킹(등록과 조회) */
+  onGoToRanking: () => void;
   onRestart: () => void;
 }
 
@@ -29,7 +31,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** 경상 방언 정밀 감정서: 신고 원산지, 감정 성분, 일치 여부, 농도, 등급, 직인. PNG 저장과 공유. */
-export default function GsCertificate({ result, origin, onBack, onRestart }: GsCertificateProps) {
+export default function GsCertificate({ result, origin, onBack, onGoToRanking, onRestart }: GsCertificateProps) {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const match = judgeOriginMatch(origin, result.subregions);
@@ -162,7 +164,7 @@ export default function GsCertificate({ result, origin, onBack, onRestart }: GsC
             </div>
 
             <p className="mt-5 text-center text-[10px] leading-4 text-[#8a6d4f] sm:text-xs">
-              본 감정서는 음성 분석 결과를 기록한 문서이며, 신고 원산지는 저장하지 않습니다.
+              본 감정서는 음성 분석 결과를 기록한 문서입니다.
             </p>
           </div>
         </article>
@@ -183,6 +185,9 @@ export default function GsCertificate({ result, origin, onBack, onRestart }: GsC
             {busy ? '이미지 생성 중…' : '공유'}
           </button>
         </div>
+        <button onClick={onGoToRanking} className="secondary-action-button mt-3 w-full text-center transition">
+          정밀 랭킹 등록
+        </button>
         {message && (
           <p role="status" className="mt-3 text-center text-sm text-amber-300">
             {message}

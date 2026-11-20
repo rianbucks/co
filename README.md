@@ -7,11 +7,12 @@
 - 화면 S1~S7: 첫 화면, 안내와 동의, 녹음, 심사 중, 결과, 감정서, 농도 랭킹
 - `POST /api/judge`: 판정 파이프라인(명세 4장, 7장). 첫 시도가 실패하면 대체 모델로 1회 재시도
 - 경상 정밀 감정 탭(명세 12장): 머리글 탭(S1에는 머리글이 없어 S1 버튼), 1순위가 경상인 S5의 권유 버튼으로 들어간다. 신고 원산지(대구, 경북, 부산, 울산, 경남)를 고르고 `set-gs` 문항을 녹음하면 경북권·경남권 성분 비율, 경상 농도와 등급, 원산지 일치 여부를 보여 주고 정밀 감정서(PNG 저장, 공유)를 발급한다
+- 정밀 감정 랭킹(명세 12장): 기존 랭킹과 따로 저장하는 정밀 감정 전용 랭킹. 전체, 대구·경북, 부산·울산·경남(신고 원산지 기준)으로 나눠 본다. `POST /api/gyeongsang-ranking`, `GET /api/gyeongsang-ranking`, 운영자용 `DELETE /api/gyeongsang-ranking/{id}`
 - 농도 랭킹(명세 확장 1): 음성 없이 닉네임과 농도만 공개. `POST /api/ranking`, `GET /api/ranking`, 운영자용 `DELETE /api/ranking/{id}`
 - 호출 제한(감정: IP당 하루 60회와 전체 1,500회, 랭킹 등록: IP당 하루 60회)과 랭킹 저장: Upstash Redis
 - 정확도 검증 스크립트(명세 3장)
 
-음성과 받아쓰기는 어디에도 저장하지 않습니다. 랭킹에 저장하는 값은 닉네임, 농도, 지역, 등급, 등록 시각뿐입니다. 경상 정밀 감정은 서버에 아무것도 저장하지 않고, 신고 원산지는 서버로 보내지도 않습니다(화면과 정밀 감정서에만 씁니다). 정밀 감정 전용 랭킹은 아직 없습니다. 확장 2(표준어 검정)는 없고, 확장 3(지역 세분화)은 경상만 경상 정밀 감정 탭으로 만들었습니다.
+음성과 받아쓰기는 어디에도 저장하지 않습니다. 랭킹에 저장하는 값은 닉네임, 농도, 지역, 등급, 등록 시각뿐입니다. 정밀 감정 랭킹에 저장하는 값은 닉네임, 신고 원산지, 경상 농도, 경북권 비율, 등록 시각뿐입니다. 신고 원산지는 정밀 감정 랭킹에 등록할 때만 서버로 보냅니다. 확장 2(표준어 검정)는 없고, 확장 3(지역 세분화)은 경상만 경상 정밀 감정 탭으로 만들었습니다.
 
 ## 화면 디자인 참고
 
@@ -42,7 +43,7 @@ npm run dev
 | `GEMINI_THINKING_LEVEL` | 사고 수준. `gemini-3.8-flash`는 `low`, `medium`, `high`만 지원한다 | `medium` |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Upstash Redis REST 주소와 토큰(호출 제한과 랭킹 저장). Vercel Marketplace로 연결하면 자동으로 들어간다. 읽기 전용 토큰은 쓰지 않는다 | 없음 |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Upstash를 직접 넣을 때 쓰는 이름. 둘 중 하나라도 있으면 `KV_REST_API_*`보다 먼저 쓴다 | 없음 |
-| `ADMIN_TOKEN` | 운영자 토큰. 랭킹 항목 삭제(`DELETE /api/ranking/{id}`)에 쓴다. 공백 없는 16자 이상이어야 하며, 없거나 짧으면 삭제 요청을 모두 거절한다 | 없음 |
+| `ADMIN_TOKEN` | 운영자 토큰. 랭킹 항목 삭제(`DELETE /api/ranking/{id}`, `DELETE /api/gyeongsang-ranking/{id}`)에 쓴다. 공백 없는 16자 이상이어야 하며, 없거나 짧으면 삭제 요청을 모두 거절한다 | 없음 |
 
 Production에서 Upstash 연결 값이 없으면 감정과 랭킹 API를 거절합니다(500 `server_error`). 가짜 응답 모드는 예외로, 호출 제한 없이 감정하고 랭킹은 인스턴스 메모리를 씁니다(등록은 403). 로컬에서는 Upstash가 없으면 프로세스 메모리로 대신합니다.
 
@@ -75,7 +76,7 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-gs" http://localhost:3000/
 - 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
 - 성공 응답에는 전체 받아쓰기 `transcript`와 문항별 받아쓰기 `segments`가 들어가며, 둘 다 서버에 저장하지 않습니다. 근거(`evidence`)는 문항 번호 `question`을 달고 그 문항의 받아쓰기로 검증합니다. 모델이 문항별 받아쓰기를 문항 수만큼 주지 않으면 `segments`는 빈 배열이고 근거는 전체 받아쓰기로 검증합니다(명세 4장, 7장).
 - 감정에 성공하면 랭킹 등록 자격(농도, 1순위 권역, 등급, 가짜 응답 여부, flags 여부)을 감정 `id`로 1시간 저장합니다.
-- `set-gs`의 성공 응답은 정밀 감정 결과(`subregions`, `intensity`, `evidence`, `transcript`, `segments`, `g_`로 시작하는 `id`)입니다. 경상 방언으로 보기 어려우면 422 `rejected`, `reason: "not_gyeongsang"`입니다. 호출 제한은 일반 감정과 합쳐 세고, 랭킹 등록 자격은 남기지 않습니다.
+- `set-gs`의 성공 응답은 정밀 감정 결과(`subregions`, `intensity`, `evidence`, `transcript`, `segments`, `g_`로 시작하는 `id`)입니다. 경상 방언으로 보기 어려우면 422 `rejected`, `reason: "not_gyeongsang"`입니다. 호출 제한은 일반 감정과 합쳐 세고, 정밀 감정 랭킹 등록 자격(경상 농도, 경북권 비율, 가짜 응답 여부, flags 여부)을 정밀 감정 `id`로 1시간 저장합니다.
 
 랭킹 API의 형식과 오류는 명세 7장에 있습니다.
 
@@ -89,15 +90,26 @@ curl -X POST -H "Content-Type: application/json" \
 curl "http://localhost:3000/api/ranking?limit=50&id=r_0123456789ab"
 ```
 
+정밀 감정 랭킹은 같은 규칙으로 따로 등록하고 조회합니다. 등록할 때 신고 원산지(`daegu`, `gyeongbuk`, `busan`, `ulsan`, `gyeongnam`)를 함께 보내고, 조회는 `area`(`all`, `gyeongbuk`, `gyeongnam`)로 신고 원산지별 보기를 고릅니다. 등록 한도(IP당 하루 60회)는 기존 랭킹 등록과 합쳐 셉니다.
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"judgmentId":"g_0123456789ab","nickname":"대구토박이","origin":"daegu"}' \
+  http://localhost:3000/api/gyeongsang-ranking
+
+curl "http://localhost:3000/api/gyeongsang-ranking?area=gyeongbuk&limit=50&id=gr_0123456789ab"
+```
+
 ## 랭킹 운영
 
 부적절한 닉네임은 조회 응답에서 항목 `id`를 찾아 지웁니다. 지운 감정 결과는 다시 등록할 수 없습니다.
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://<배포 주소>/api/ranking/r_0123456789ab
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://<배포 주소>/api/gyeongsang-ranking/gr_0123456789ab
 ```
 
-대회가 끝나면 Upstash 콘솔에서 랭킹 키(`co:ranking`, `co:ranking:entries`)를 지웁니다. 감정 기록(`co:judgment:*`)은 1시간, 호출 제한 키는 다음 날 0시(KST)에 저절로 만료됩니다. 키 구조는 명세 7장 데이터 모델에 있습니다.
+대회가 끝나면 Upstash 콘솔에서 랭킹 키(`co:ranking`, `co:ranking:entries`)와 정밀 감정 랭킹 키(`co:gs:ranking`, `co:gs:ranking:gyeongbuk`, `co:gs:ranking:gyeongnam`, `co:gs:ranking:entries`)를 지웁니다. 감정 기록(`co:judgment:*`, `co:gs:judgment:*`)은 1시간, 호출 제한 키는 다음 날 0시(KST)에 저절로 만료됩니다. 키 구조는 명세 7장 데이터 모델에 있습니다.
 
 ## 정확도 검증
 
@@ -113,7 +125,9 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | --- | --- |
 | `src/app/page.tsx` | 화면 전환(S1~S7), 머리글 탭(일반 감정, 경상 정밀 감정)과 상태 |
 | `src/components/screens/` | 화면 S1~S7. 랭킹 화면은 `S7Ranking.tsx` |
-| `src/components/gyeongsang/` | 경상 정밀 감정 흐름(`GyeongsangFlow.tsx`), 원산지 신고, 정밀 결과, 정밀 감정서와 PNG 그리기 |
+| `src/components/gyeongsang/` | 경상 정밀 감정 흐름(`GyeongsangFlow.tsx`), 원산지 신고, 정밀 결과, 정밀 감정서와 PNG 그리기, 정밀 감정 랭킹(`GsRanking.tsx`) |
+| `src/app/api/gyeongsang-ranking/route.ts`, `[id]/route.ts` | 정밀 감정 랭킹 등록, 조회, 운영자 삭제 |
+| `src/lib/gyeongsang/ranking/` | 정밀 감정 랭킹 규칙(`service.ts`), 저장소(`store.ts`, 키 `co:gs:*`), 응답 타입(`contract.ts`) |
 | `src/app/api/judge/route.ts` | `POST /api/judge` |
 | `src/app/api/ranking/route.ts` | `POST /api/ranking`, `GET /api/ranking` |
 | `src/app/api/ranking/[id]/route.ts` | `DELETE /api/ranking/{id}` (운영자) |
