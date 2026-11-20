@@ -45,14 +45,18 @@ const RERECORD_ERRORS = new Map<string, { title: string; message: string }>([
 export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4JudgingProps) {
   const [secElapsed, setSecElapsed] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
+  const failed = errorInfo !== null;
 
   const hasCalledApiRef = useRef(false);
   const requestCompletedRef = useRef(false);
   const timedOutRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const errorPanelRef = useRef<HTMLDivElement | null>(null);
   const currentStepIndex = secElapsed >= 12 ? 3 : secElapsed >= 6 ? 2 : secElapsed >= 2 ? 1 : 0;
 
+  // 경과 시간 타이머. 오류가 나면 정리되어 경과 시간과 단계 진행이 그 자리에서 멈춘다.
   useEffect(() => {
+    if (failed) return;
     let elapsed = 0;
     const timer = setInterval(() => {
       elapsed += 1;
@@ -69,7 +73,12 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [failed]);
+
+  // 오류 안내는 화면 맨 위에 있다. 녹음 화면에서 내려와 있던 스크롤 위치와 상관없이 보이게 한다.
+  useEffect(() => {
+    if (failed) errorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [failed]);
 
   useEffect(() => {
     if (hasCalledApiRef.current) return;
@@ -153,23 +162,53 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
 
   return (
     <div className="p-5 sm:p-7 lg:p-10">
+      {/* Error Notice: 오류가 나면 화면 맨 위에 안내와 버튼을 둔다 */}
+      {errorInfo && (
+        <div
+          ref={errorPanelRef}
+          role="alert"
+          className="mb-6 scroll-mt-24 rounded-3xl border border-red-500/40 bg-red-500/10 p-5 shadow-2xl shadow-red-500/5 backdrop-blur-xl sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8 lg:p-7"
+        >
+          <div>
+            <div className="text-base font-bold text-red-200 sm:text-lg">⚠️ {errorInfo.title}</div>
+            <p className="mt-1.5 text-sm leading-relaxed text-red-300/90">{errorInfo.message}</p>
+          </div>
+          <button
+            onClick={errorInfo.canRetry ? onRetry : onReset}
+            className="mt-4 w-full shrink-0 rounded-full bg-white py-3.5 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98] lg:mt-0 lg:w-auto lg:px-10"
+          >
+            {errorInfo.canRetry ? '재시도' : '처음부터 다시 녹음하기'}
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-center">
 
         {/* Left Column: Siri / AI Intelligence Aura Orb */}
         <div className="flex flex-col items-center justify-center rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-8 shadow-2xl backdrop-blur-xl sm:p-12 lg:col-span-5">
           <div className="relative flex h-36 w-36 items-center justify-center">
-            <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-tr from-indigo-500/40 via-purple-500/40 to-pink-500/40 blur-3xl" />
+            <div
+              className={`absolute inset-0 rounded-full blur-3xl ${
+                failed ? 'bg-red-500/20' : 'animate-pulse bg-gradient-to-tr from-indigo-500/40 via-purple-500/40 to-pink-500/40'
+              }`}
+            />
             <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/20 bg-black/60 shadow-inner">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+              {failed ? (
+                <span className="text-3xl font-black text-red-400">!</span>
+              ) : (
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+              )}
             </div>
           </div>
 
           <div className="mt-6 text-center">
             <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-              AI 감정위원회 심사 진행 중
+              {failed ? 'AI 감정위원회 심사 중단' : 'AI 감정위원회 심사 진행 중'}
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-              다차원 음운 및 억양 곡선 데이터를 기반으로 사투리 원산지와 농도를 산출하고 있습니다.
+              {failed
+                ? '심사가 중단되었습니다. 위의 안내에 따라 다시 진행해 주십시오.'
+                : '다차원 음운 및 억양 곡선 데이터를 기반으로 사투리 원산지와 농도를 산출하고 있습니다.'}
             </p>
           </div>
 
@@ -223,7 +262,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
                         <span className={`text-xs font-semibold ${isCurrent ? 'text-white' : isDone ? 'text-zinc-300' : 'text-zinc-500'}`}>
                           {step.label}
                         </span>
-                        {isCurrent && (
+                        {isCurrent && !failed && (
                           <span className="flex items-center gap-1.5 text-[10px] font-medium text-indigo-400">
                             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-indigo-400" />
                             실시간 분석 중
@@ -237,30 +276,6 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset }: S4
               })}
             </div>
           </div>
-
-          {errorInfo && (
-            <div className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-300">
-              <div className="font-bold">⚠️ {errorInfo.title}</div>
-              <p className="mt-1 text-[11px] leading-relaxed text-red-400">{errorInfo.message}</p>
-              <div className="mt-3">
-                {errorInfo.canRetry ? (
-                  <button
-                    onClick={onRetry}
-                    className="w-full rounded-full bg-white py-3 text-xs font-bold text-black hover:bg-zinc-200"
-                  >
-                    재시도
-                  </button>
-                ) : (
-                  <button
-                    onClick={onReset}
-                    className="w-full rounded-full bg-white py-3 text-xs font-bold text-black hover:bg-zinc-200"
-                  >
-                    처음부터 다시 녹음하기
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
       </div>
