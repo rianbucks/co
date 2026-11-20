@@ -75,6 +75,7 @@ describe("judge: 성공", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
+      imitationSuspected: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
@@ -289,6 +290,22 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       grade: 4,
       flagged: false,
     });
+  });
+
+  it("모사 의심이면 낮춘 농도와 등급을 기록한다(랭킹에 흉내 점수가 그대로 오르지 않는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const { ai } = scriptedAi(
+      JSON.stringify({
+        ...SPEC_MODEL_OUTPUT_EXAMPLE,
+        scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+        imitation_suspected: true,
+      }),
+    );
+
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 24, grade: 2 } });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 24, grade: 2 }));
   });
 
   it("모델이 flags를 붙이면 flagged로 기록한다", async () => {

@@ -34,6 +34,8 @@ export interface RunRecord {
   mixed?: boolean;
   score?: number;
   grade?: Grade;
+  /** 모사 의심(true면 score는 이미 절반으로 낮춘 값) */
+  imitationSuspected?: boolean;
   evidence?: EvidenceCheck[];
   transcript?: string;
   /** 문항별 받아쓰기. 모델이 문항 수만큼 주지 않았으면 null */
@@ -387,7 +389,7 @@ export function toDetailsMarkdown(records: readonly RunRecord[]): string {
     lines.push(`- 정답: ${REGION_NAMES[record.expected]}`, `- 응답 시간: ${seconds(record.latencyMs)}`);
     if (record.status === "ok" && record.top) {
       lines.push(
-        `- 판정: ${REGION_NAMES[record.top]}${record.mixed ? " (혼합)" : ""}, 농도 ${record.score}점, ${record.grade}등급`,
+        `- 판정: ${REGION_NAMES[record.top]}${record.mixed ? " (혼합)" : ""}, 농도 ${record.score}점, ${record.grade}등급${record.imitationSuspected ? ", 모사 의심(농도 절반)" : ""}`,
         `- 받아쓰기: ${record.transcript ?? ""}`,
         ...(record.questionTranscripts
           ? [

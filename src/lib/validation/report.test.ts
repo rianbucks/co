@@ -227,6 +227,28 @@ describe("출력 파일", () => {
     expect(details).toContain("- 문항별 받아쓰기: 없음 (문항 수만큼 오지 않아 전체 받아쓰기로 근거를 확인)");
   });
 
+  it("모사 의심이면 판정 줄에 적는다", () => {
+    const details = toDetailsMarkdown([
+      {
+        file: "d.webm",
+        expected: "jeolla",
+        model: "gemini-3.8-flash",
+        run: 1,
+        status: "ok",
+        latencyMs: 5_000,
+        top: "gyeongsang",
+        mixed: false,
+        score: 24,
+        grade: 2,
+        imitationSuspected: true,
+        transcript: "억수로",
+        questionTranscripts: null,
+        evidence: [],
+      },
+    ]);
+    expect(details).toContain("- 판정: 경상, 농도 24점, 2등급, 모사 의심(농도 절반)");
+  });
+
   it("문항별 받아쓰기가 있으면 문항마다 적고, 근거에 문항 번호를 붙인다", () => {
     const details = toDetailsMarkdown([
       {
@@ -252,6 +274,7 @@ describe("출력 파일", () => {
       ["- 문항별 받아쓰기:", "  - 문항 1: 억수로 오랜만이네", "  - 문항 2: 뭐 했노", "  - 문항 3: (답 없음)", "  - 문항 4: (답 없음)"].join("\n"),
     );
     expect(details).toContain('  - ✓ 문항 1 [vocabulary] "억수로" — 아주');
+    expect(details).toContain("- 판정: 경상, 농도 68점, 4등급\n");
     expect(details).toContain('  - ✗ 문항 1 [endings] "뭐 했노" — 다른 문항');
   });
 });

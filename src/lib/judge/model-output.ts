@@ -29,6 +29,8 @@ export type AcceptedModelOutput = {
   question_transcripts: string[] | null;
   regions: RegionProbabilities;
   scores: PartScores;
+  /** 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르다고 모델이 본 경우. 없거나 boolean이 아니면 false */
+  imitation_suspected: boolean;
   /** question은 1~문항 수의 정수가 아니면 null이다. */
   evidence: Evidence[];
 };
@@ -84,7 +86,8 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
       },
       scores: {
         type: ["object", "null"],
-        description: "표준어와의 차이. 차이가 없으면 0에 가깝게",
+        description:
+          "1순위 권역의 특징이 나타나는 정도. 다른 권역의 특징은 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게",
         properties: {
           vocabulary: scoreProperty("어휘"),
           endings: scoreProperty("어미"),
@@ -92,6 +95,10 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
           intonation: scoreProperty("억양"),
         },
         required: [...PART_KEYS],
+      },
+      imitation_suspected: {
+        type: ["boolean", "null"],
+        description: "어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true",
       },
       evidence: {
         type: ["array", "null"],
@@ -120,6 +127,7 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
       "question_transcripts",
       "regions",
       "scores",
+      "imitation_suspected",
       "evidence",
     ],
   };
@@ -146,6 +154,8 @@ const rawOutputSchema = z.object({
   scores: z
     .object({ vocabulary: score, endings: score, phonology: score, intonation: score })
     .nullish(),
+  // 모사 의심은 형식이 달라도 실패시키지 않는다(true일 때만 true로 읽는다).
+  imitation_suspected: z.unknown().optional(),
   evidence: z
     .array(
       z.object({
@@ -225,6 +235,7 @@ export function parseModelOutput(text: string, questionCount: number): ParseResu
       question_transcripts: readQuestionTranscripts(raw.question_transcripts, questionCount),
       regions,
       scores,
+      imitation_suspected: raw.imitation_suspected === true,
       evidence: evidence.map((item) => ({
         question: readQuestionNumber(item.question, questionCount),
         type: item.type,
