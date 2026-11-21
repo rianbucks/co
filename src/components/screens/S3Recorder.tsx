@@ -77,9 +77,9 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
     mixedKinds && kind === 'question' && currentIdx > 0 && questionKind(questions[currentIdx - 1]) === 'convert';
 
   /**
-   * 바꿔 말하기 문항이 섞인 세트는 문항마다 안내와 바꿔 말할 문장을 읽어야 한다. 휴대폰에서는 앞 화면이나 버튼을 누른
-   * 자리의 스크롤이 남아 문항 카드 윗부분(형식 전환 안내 포함)이 머리글 밑에 가리므로, 새 문항이 나오면 카드를 올린다.
-   * 상황극만 있는 세트(set-a, 경상 정밀 감정)는 지금 동작 그대로 둔다.
+   * 바꿔 말하기 문항이 섞인 세트(set-b, 경상 정밀 감정 set-gs)는 문항마다 안내와 바꿔 말할 문장을 읽어야 한다.
+   * 휴대폰에서는 앞 화면이나 버튼을 누른 자리의 스크롤이 남아 문항 카드 윗부분(형식 전환 안내 포함)이 머리글 밑에
+   * 가리므로, 새 문항이 나오면 카드를 올린다. 상황극만 있는 세트(set-a)는 지금 동작 그대로 둔다.
    */
   useEffect(() => {
     if (!mixedKinds) return;
@@ -325,21 +325,27 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
   const target = currentQuestion.target;
   const timerText = `00:${secLeft < 10 ? `0${secLeft}` : secLeft}`;
 
+  /** 문항에 요청 문구가 있으면(정밀 감정 5번) 그 문구가 안내다. '이번에는 상황에 맞게 자유롭게 말해 주십시오.'는 두지 않는다. */
+  const ownRequest = Boolean(currentQuestion.followUp);
+
   /*
    * 배치: 휴대폰(한 열)은 안내 → 바꿔 말할 문장 → 타이머와 녹음 시작 버튼 → 주의 문구 순서다.
    * 안내, 문장, 시작 버튼이 스크롤 없이 한 화면(375×667 이상)에 들어오도록 휴대폰에서는 여백과 파형을 줄인다.
    * 넓은 화면(lg)은 왼쪽에 문항 카드와 주의 문구, 오른쪽에 파형·타이머·버튼을 둔다.
    * 휴대폰은 flex로 쌓는다. 전역 CSS의 '.screen-glass > .grid { gap: 24px }'를 피해 간격을 줄이기 위해서다.
+   * 휴대폰에서는 녹음 중에 누를 수 없는 머리글 탭 줄을 숨긴다(hide-header-tabs, scripts/build-css.mjs).
+   * 문항 카드(record-card)는 그만큼 낮아진 머리글 바로 아래로 올리고, 타이머 상자(record-timer)는 전역 CSS가
+   * 큰 카드에 주는 여백(20px) 대신 이 파일의 여백(px-4 py-2.5)을 쓴다.
    */
   return (
-    <div className="screen-glass p-4 sm:p-7 lg:p-10">
+    <div className="hide-header-tabs screen-glass p-4 sm:p-7 lg:p-10">
       <div className="flex flex-col gap-3 sm:gap-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-6">
 
         {/* 문항 카드 (scroll-mt: 고정 머리글 높이만큼 띄운다) */}
         <section
           ref={questionCardRef}
           aria-label={`문항 ${currentIdx + 1}`}
-          className="scroll-mt-[136px] rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-3.5 shadow-2xl backdrop-blur-xl sm:p-6 lg:col-span-6 lg:col-start-1 lg:row-start-1 lg:p-8"
+          className="record-card scroll-mt-[136px] rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-3.5 shadow-2xl backdrop-blur-xl sm:p-6 lg:col-span-6 lg:col-start-1 lg:row-start-1 lg:p-8"
         >
           {/* 문항 번호, 종류, 처음부터 다시 */}
           <div className="flex items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
@@ -379,14 +385,23 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
               </>
             ) : (
               <>
-                {/* 형식 전환: 바꿔 말하기가 끝나고 상황극이 시작될 때 */}
+                {/*
+                  형식 전환: 바꿔 말하기가 끝나고 상황극이 시작될 때.
+                  문항에 요청 문구가 있으면(정밀 감정 5번) 그 문구가 안내이므로 형식 전환은 한 줄로만 알린다.
+                */}
                 {formatChanged ? (
-                  <div role="status" className="rounded-2xl border border-[#416785] bg-[#202f3b] px-4 py-2.5 sm:py-3">
+                  <div
+                    role="status"
+                    className={`rounded-2xl border border-[#416785] bg-[#202f3b] px-4 ${ownRequest ? 'py-1.5' : 'py-2.5 sm:py-3'}`}
+                  >
                     <p className="text-xs font-semibold text-[#9bbbd5]">형식이 바뀝니다 · 바꿔 말하기는 끝났습니다</p>
-                    <p className="mt-1 text-lg font-bold leading-snug text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
+                    {!ownRequest && (
+                      <p className="mt-1 text-lg font-bold leading-snug text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
+                    )}
                   </div>
                 ) : (
-                  mixedKinds && (
+                  mixedKinds &&
+                  !ownRequest && (
                     <p className="text-lg font-bold leading-snug text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
                   )
                 )}
@@ -405,11 +420,16 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
                 >
                   {currentQuestion.situation}
                 </h3>
-                {/* 다른 사람의 말(정밀 감정 5번의 어설픈 흉내): 화자의 말이 아니므로 점선 상자로 구분한다 */}
+                {/*
+                  다른 사람의 말(정밀 감정 5번의 어설픈 흉내): 화자의 말이 아니므로 점선 상자로 구분한다.
+                  표지는 점선 테두리 위에 얹어(record-quote-label) 상자 높이를 줄인다.
+                */}
                 {currentQuestion.quote && (
-                  <figure className="mt-2.5 rounded-2xl border border-dashed border-zinc-600 bg-black/30 px-4 py-2.5 sm:py-3">
-                    <figcaption className="text-xs font-semibold text-zinc-400">{currentQuestion.quote.label}</figcaption>
-                    <blockquote className="mt-1 text-balance text-lg font-bold leading-snug text-white">
+                  <figure className="record-quote relative mt-5 rounded-2xl border border-dashed border-zinc-600 px-4 pb-2.5 pt-3">
+                    <figcaption className="record-quote-label absolute -top-2.5 left-3 px-1.5 text-xs font-semibold text-zinc-400">
+                      {currentQuestion.quote.label}
+                    </figcaption>
+                    <blockquote className="text-balance text-lg font-bold leading-snug text-white">
                       &ldquo;{currentQuestion.quote.text}&rdquo;
                     </blockquote>
                   </figure>
@@ -425,7 +445,7 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
         {/* 녹음 패널: 파형, 타이머, 버튼 */}
         <div className="flex flex-col gap-3 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-4 backdrop-blur-xl sm:gap-6 sm:p-6 lg:col-span-6 lg:col-start-7 lg:row-span-2 lg:row-start-1 lg:justify-between lg:p-8">
           <div>
-            <div className="rounded-2xl border border-zinc-800/80 bg-black/60 px-4 py-2.5 shadow-inner lg:rounded-3xl lg:p-8">
+            <div className="record-timer rounded-2xl border border-zinc-800/80 bg-black/60 px-4 py-2.5 shadow-inner lg:rounded-3xl lg:p-8">
               {/* 휴대폰: 파형과 타이머를 한 줄에 / 넓은 화면: 파형 아래에 타이머 */}
               <div className="flex items-center justify-between gap-3 lg:flex-col lg:justify-center lg:gap-0">
                 <div className="flex h-6 items-center gap-1 lg:h-20 lg:justify-center lg:gap-2" aria-hidden="true">
