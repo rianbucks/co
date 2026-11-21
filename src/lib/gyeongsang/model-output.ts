@@ -1,15 +1,13 @@
 /**
  * 경상 정밀 감정의 모델 출력 형식(명세 12장). 일반 감정의 형식(../judge/model-output.ts)은 그대로 두고,
- * 품질, flags, 문항별 받아쓰기를 읽는 방식만 같이 쓴다.
+ * 품질과 문항별 받아쓰기를 읽는 방식만 같이 쓴다. 녹음 내용(욕설, 개인정보)을 표시하는 필드는 두지 않는다.
  */
 import { z } from "zod";
 import { PART_KEYS, type PartScores, type RejectReason } from "../judge/contract";
 import {
   AUDIO_QUALITIES,
-  FLAGS,
   readQuestionNumber,
   readQuestionTranscripts,
-  type Flag,
   type OutputProblem,
 } from "../judge/model-output";
 import {
@@ -23,7 +21,6 @@ import {
 /** 검증을 통과한 정밀 감정 출력. */
 export type GsAcceptedOutput = {
   audio_quality: "ok";
-  flags: Flag[];
   not_gyeongsang: false;
   transcript: string;
   /** 문항 수만큼의 문자열 배열이 아니면 null(전체 받아쓰기로 근거를 검증한다) */
@@ -34,8 +31,8 @@ export type GsAcceptedOutput = {
   evidence: GsEvidence[];
 };
 /** 모델이 경상 방언으로 보기 어렵다고 표시한 출력. 나머지 필드는 쓰지 않는다. */
-export type GsNotGyeongsangOutput = { audio_quality: "ok"; flags: Flag[]; not_gyeongsang: true };
-export type GsRejectedOutput = { audio_quality: RejectReason; flags: Flag[] };
+export type GsNotGyeongsangOutput = { audio_quality: "ok"; not_gyeongsang: true };
+export type GsRejectedOutput = { audio_quality: RejectReason };
 export type GsModelOutput = GsAcceptedOutput | GsNotGyeongsangOutput | GsRejectedOutput;
 
 const scoreProperty = (description: string) => ({
@@ -59,12 +56,6 @@ export function buildGsModelOutputSchema(questionCount: number): Record<string, 
         enum: [...AUDIO_QUALITIES],
         description:
           "ok: 판정 가능, too_short: 말소리가 3초 미만, no_speech: 말소리 없음, noisy: 주변 소음으로 판정 불가",
-      },
-      flags: {
-        type: "array",
-        items: { type: "string", enum: [...FLAGS] },
-        description:
-          "욕설이나 혐오 표현이 들리면 profanity, 실명이나 전화번호 같은 개인정보가 들리면 personal_info. 없으면 빈 배열",
       },
       transcript: {
         type: ["string", "null"],
@@ -127,7 +118,6 @@ export function buildGsModelOutputSchema(questionCount: number): Record<string, 
     },
     required: [
       "audio_quality",
-      "flags",
       "transcript",
       "question_transcripts",
       "not_gyeongsang",
@@ -142,7 +132,6 @@ const score = z.number().int().min(0).max(100);
 
 const rawOutputSchema = z.object({
   audio_quality: z.enum(AUDIO_QUALITIES),
-  flags: z.array(z.enum(FLAGS)),
   transcript: z.string().nullish(),
   // 문항별 받아쓰기, 근거의 문항 번호, 경상 방언 여부는 형식이 달라도 실패시키지 않는다(아래에서 따로 읽는다).
   question_transcripts: z.unknown().optional(),
@@ -162,7 +151,7 @@ export type GsParseResult =
 
 /**
  * 모델이 돌려준 JSON 텍스트를 검증한다. 실패하면 형식 오류로 보고 재시도 대상이 된다.
- * - 품질이 ok가 아니면 audio_quality와 flags만 쓴다.
+ * - 품질이 ok가 아니면 audio_quality만 쓴다.
  * - not_gyeongsang이 true면 나머지 필드는 보지 않는다. true가 아닌 값(false, null, 없음, 다른 형식)은 false로 읽는다.
  * - 그 밖에는 transcript, subregions, scores, evidence가 모두 있어야 하고 성분 비율 합이 0보다 커야 한다.
  */
@@ -181,10 +170,10 @@ export function parseGsModelOutput(text: string, questionCount: number): GsParse
 
   const raw = parsed.data;
   if (raw.audio_quality !== "ok") {
-    return { ok: true, value: { audio_quality: raw.audio_quality, flags: raw.flags } };
+    return { ok: true, value: { audio_quality: raw.audio_quality } };
   }
   if (raw.not_gyeongsang === true) {
-    return { ok: true, value: { audio_quality: "ok", flags: raw.flags, not_gyeongsang: true } };
+    return { ok: true, value: { audio_quality: "ok", not_gyeongsang: true } };
   }
 
   const { transcript, subregions, scores, evidence } = raw;
@@ -199,7 +188,6 @@ export function parseGsModelOutput(text: string, questionCount: number): GsParse
     ok: true,
     value: {
       audio_quality: "ok",
-      flags: raw.flags,
       not_gyeongsang: false,
       transcript,
       question_transcripts: readQuestionTranscripts(raw.question_transcripts, questionCount),

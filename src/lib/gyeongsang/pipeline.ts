@@ -30,8 +30,6 @@ export interface GsJudgmentSummary {
   intensity: number;
   /** 경북권 비율(경남권은 100에서 뺀 값) */
   gyeongbuk: number;
-  /** 모델이 flags(욕설, 개인정보)를 붙였는지 */
-  flagged: boolean;
 }
 
 export interface GsJudgeDeps extends AiRetryDeps {
@@ -89,7 +87,6 @@ export async function judgeGyeongsang(input: GsJudgeInput, deps: GsJudgeDeps): P
         id: result.id,
         intensity: result.intensity.score,
         gyeongbuk: result.subregions.gyeongbuk,
-        flagged: output.flags.length > 0,
       });
     } catch (error) {
       (deps.log ?? defaultLog)("judgment_record_failed", describeError(error));

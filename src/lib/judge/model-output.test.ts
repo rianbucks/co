@@ -28,10 +28,9 @@ describe("parseModelOutput", () => {
     expect(four.ok && four.value.audio_quality === "ok" && four.value.question_transcripts).toBeNull();
   });
 
-  it("품질 불량이면 나머지가 null이어도 받아들이고 audio_quality와 flags만 남긴다", () => {
+  it("품질 불량이면 나머지가 null이어도 받아들이고 audio_quality만 남긴다", () => {
     const text = JSON.stringify({
       audio_quality: "no_speech",
-      flags: [],
       transcript: null,
       regions: null,
       scores: null,
@@ -39,21 +38,24 @@ describe("parseModelOutput", () => {
     });
     expect(parseModelOutput(text)).toEqual({
       ok: true,
-      value: { audio_quality: "no_speech", flags: [] },
+      value: { audio_quality: "no_speech" },
     });
   });
 
   it("품질 불량이면 나머지 필드가 빠져 있어도 받아들인다", () => {
-    expect(parseModelOutput(JSON.stringify({ audio_quality: "too_short", flags: [] }))).toEqual({
+    expect(parseModelOutput(JSON.stringify({ audio_quality: "too_short" }))).toEqual({
       ok: true,
-      value: { audio_quality: "too_short", flags: [] },
+      value: { audio_quality: "too_short" },
     });
   });
 
-  it("flags를 그대로 넘긴다", () => {
-    const output = { ...example(), flags: ["profanity", "personal_info"] };
-    const parsed = parseModelOutput(JSON.stringify(output));
-    expect(parsed.ok && parsed.value.flags).toEqual(["profanity", "personal_info"]);
+  it("녹음 내용 표시(flags)는 받지 않는다: 이전 형식으로 flags가 와도 무시하고 실패시키지 않는다", () => {
+    const parsed = parseModelOutput(JSON.stringify({ ...example(), flags: ["profanity", "personal_info"] }));
+    expect(parsed).toEqual({ ok: true, value: example() });
+    expect(parseModelOutput(JSON.stringify({ audio_quality: "noisy", flags: ["hate"] }))).toEqual({
+      ok: true,
+      value: { audio_quality: "noisy" },
+    });
   });
 
   it("JSON이 아니면 invalid_json", () => {
@@ -68,10 +70,8 @@ describe("parseModelOutput", () => {
       "권역이 빠짐",
       { regions: { seoul_gyeonggi: 4, gangwon: 3, chungcheong: 3, gyeongsang: 84, jeolla: 6 } },
     ],
-    ["알 수 없는 flag", { flags: ["hate"] }],
     ["알 수 없는 근거 종류", { evidence: [{ type: "grammar", quote: "뭇나", note: "" }] }],
     ["알 수 없는 품질 값", { audio_quality: "bad" }],
-    ["flags 없음", { flags: undefined }],
   ])("형식이 다르면 schema_mismatch: %s", (_name, patch) => {
     const output = { ...example(), ...patch };
     expect(parseModelOutput(JSON.stringify(output))).toEqual({
@@ -230,7 +230,6 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
     expect(Object.keys(properties)).toEqual([
       "audio_quality",
-      "flags",
       "transcript",
       "question_transcripts",
       "evidence",
@@ -274,6 +273,6 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
       expect(properties[field].type).toContain("null");
     }
     expect(properties.audio_quality.type).toBe("string");
-    expect(properties.flags.type).toBe("array");
+    expect(properties).not.toHaveProperty("flags");
   });
 });

@@ -10,7 +10,6 @@ import { DEFAULT_QUESTION_SET_ID, isGeneralQuestionSetId, type GeneralQuestionSe
  */
 export const SET_A_MODEL_OUTPUT_EXAMPLE = {
   audio_quality: "ok",
-  flags: [],
   transcript:
     "어, 니가 웬일이고? 억수로 오랜만이네 니 지금 웃음이 나오나? 퍼뜩 안 오고 뭐 했노 그래 입고 나가모 얼어 죽는데이 할매 이거 진짜 맛있네예, 한 그릇 더 묵을게예",
   question_transcripts: [
@@ -71,7 +70,6 @@ export const SET_A_MODEL_OUTPUT_EXAMPLE = {
  */
 export const SPEC_MODEL_OUTPUT_EXAMPLE = {
   audio_quality: "ok",
-  flags: [],
   transcript:
     "니 어디고? 와 이래 안 오노? 언제 올 끼고? 니 와 그라노? 무슨 일 있나? 괜찮나? 뭐라꼬? 잘 안 들린다. 다시 말해 바라. 아이다, 그기 아이고. 내 말 좀 들어 바라. 어, 니가 웬일이고? 억수로 오랜만이네 니 지금 웃음이 나오나? 퍼뜩 안 오고 뭐 했노",
   question_transcripts: [

@@ -3,7 +3,7 @@
  * Production은 Upstash Redis, Upstash가 없는 로컬은 메모리를 쓴다.
  *
  * Redis 키
- * - co:gs:judgment:{정밀 감정 id}         정밀 감정할 때 서버가 남기는 등록 자격: 경상 농도, 경북권 비율, 가짜 응답 여부, flags 여부. 1시간 뒤 만료
+ * - co:gs:judgment:{정밀 감정 id}         정밀 감정할 때 서버가 남기는 등록 자격: 경상 농도, 경북권 비율, 가짜 응답 여부. 1시간 뒤 만료
  * - co:gs:judgment:{정밀 감정 id}:ranked  감정 1건당 1회만 등록하도록 SET NX로 잡는 표시(값은 항목 id). 1시간 뒤 만료
  * - co:gs:ranking:entries                 해시. 항목 id → 항목 JSON(닉네임, 신고 원산지, 경상 농도, 경북권 비율, 등록 시각)
  * - co:gs:ranking                         정렬 집합(전체). 경상 농도 순, 같으면 먼저 등록한 순
@@ -23,8 +23,6 @@ export interface GsJudgmentRecord {
   gyeongbuk: number;
   /** 가짜 응답 모드(MOCK_AI)의 결과. 랭킹에 올릴 수 없다. */
   mock: boolean;
-  /** 모델이 flags(욕설, 개인정보)를 붙인 결과. 랭킹에 올릴 수 없다. */
-  flagged: boolean;
 }
 
 export interface GsRankedEntry {
@@ -68,7 +66,6 @@ const judgmentRecordSchema = z.object({
   intensity: ratioSchema,
   gyeongbuk: ratioSchema,
   mock: z.boolean(),
-  flagged: z.boolean(),
 });
 
 const entrySchema = z.object({
@@ -82,8 +79,8 @@ const entrySchema = z.object({
 
 /** 정해 둔 필드만 남긴다. 호출부가 다른 값을 실어 보내도 저장되지 않는다. */
 function pickJudgment(record: GsJudgmentRecord): GsJudgmentRecord {
-  const { intensity, gyeongbuk, mock, flagged } = record;
-  return { intensity, gyeongbuk, mock, flagged };
+  const { intensity, gyeongbuk, mock } = record;
+  return { intensity, gyeongbuk, mock };
 }
 
 function pickEntry(entry: GsRankingEntry): GsRankingEntry {

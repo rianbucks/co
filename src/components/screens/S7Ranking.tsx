@@ -36,7 +36,7 @@ function registerErrorMessage(error: unknown, reason: unknown): string {
     case 'not_eligible':
       if (reason === 'mock') return '가짜 응답 모드(MOCK)로 받은 결과는 랭킹에 등록할 수 없습니다.';
       if (reason === 'uncertain') return '판정 유보 결과는 랭킹에 등록할 수 없습니다.';
-      return '욕설이나 개인정보가 감지된 녹음의 결과는 랭킹에 등록할 수 없습니다.';
+      return '이 감정 결과는 랭킹에 등록할 수 없습니다.';
     case 'already_registered':
       return '이미 랭킹에 등록된 감정 결과입니다. 감정 1건당 한 번만 등록할 수 있습니다.';
     case 'rate_limited':

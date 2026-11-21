@@ -32,8 +32,11 @@ describe("buildGsSystemInstruction", () => {
     );
   });
 
-  it("규칙 8개를 번호 순서대로 담는다", () => {
-    expect(rules()).toHaveLength(8);
+  it("규칙 7개를 번호 순서대로 담고, 녹음 내용(욕설, 개인정보)을 표시하게 하지 않는다", () => {
+    for (const word of ["flags", "profanity", "personal_info", "욕설", "개인정보"]) {
+      expect(instruction).not.toContain(word);
+    }
+    expect(rules()).toHaveLength(7);
     rules().forEach((line, index) => expect(line.startsWith(`${index + 1}. `)).toBe(true));
   });
 

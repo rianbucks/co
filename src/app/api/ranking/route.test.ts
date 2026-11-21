@@ -8,7 +8,6 @@ const RECORD: JudgmentRecord = {
   region: "gyeongsang",
   grade: 4,
   mock: false,
-  flagged: false,
   uncertain: false,
 };
 
@@ -167,7 +166,6 @@ describe("감정과 랭킹 연결", () => {
       region: "gyeongsang",
       grade: 4,
       mock: true,
-      flagged: false,
       uncertain: false,
     });
 

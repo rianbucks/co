@@ -3,7 +3,7 @@
  * 규칙은 기존 농도 랭킹(../../ranking/service.ts)과 같다:
  * - 경상 농도와 경북권 비율은 클라이언트가 아니라 정밀 감정할 때 서버가 남긴 기록에서 읽는다(점수 위조 방지).
  * - 감정 1건당 1회, 감정 후 1시간 안에만 등록한다. 닉네임 규칙과 운영자 삭제도 같다.
- * - 가짜 응답 모드의 결과와 flags(욕설, 개인정보)가 붙은 결과는 등록하지 않는다.
+ * - 가짜 응답 모드의 결과는 등록하지 않는다. 음성과 받아쓰기를 저장하거나 공개하지 않으므로 녹음 내용으로는 막지 않는다.
  * 신고 원산지는 사용자가 고른 값이라 등록 요청으로 받는다. 보기(대구·경북, 부산·울산·경남)는 이 값으로 나눈다.
  */
 import { randomBytes } from "node:crypto";
@@ -71,7 +71,7 @@ function parseRegisterBody(body: unknown): { judgmentId: string; nickname: strin
 
 /**
  * POST /api/gyeongsang-ranking. 본문에서는 judgmentId, nickname, origin만 쓰고, 점수 같은 다른 값은 무시한다.
- * 순서: 형식(신고 원산지 포함) → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답, flags) → IP당 하루 한도 → 1회 등록
+ * 순서: 형식(신고 원산지 포함) → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답) → IP당 하루 한도 → 1회 등록
  */
 export async function registerGsRanking(
   input: { body: unknown; clientIp: string | null },
@@ -88,7 +88,6 @@ export async function registerGsRanking(
   const record = await deps.store.getJudgment(request.judgmentId);
   if (!record) return rankingError({ error: "not_found" });
   if (record.mock) return rankingError({ error: "not_eligible", reason: "mock" });
-  if (record.flagged) return rankingError({ error: "not_eligible", reason: "flagged" });
 
   const limit = await deps.rateLimiter.check({ ip: input.clientIp });
   if (!limit.allowed) return rankingError({ error: "rate_limited" });

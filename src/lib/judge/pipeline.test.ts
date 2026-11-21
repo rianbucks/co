@@ -205,7 +205,6 @@ describe("judge: 품질 불량", () => {
     async (quality) => {
       const output = JSON.stringify({
         audio_quality: quality,
-        flags: [],
         transcript: null,
         regions: null,
         scores: null,
@@ -301,7 +300,7 @@ describe("judge: AI 실패와 재시도", () => {
 });
 
 describe("judge: 랭킹 등록 자격 기록", () => {
-  it("성공하면 id, 농도, 1순위 권역, 등급, flags 여부, 판정 유보 여부만 기록한다", async () => {
+  it("성공하면 id, 농도, 1순위 권역, 등급, 판정 유보 여부만 기록한다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
 
     const response = await judge(makeInput(), makeDeps({ recordJudgment }));
@@ -313,7 +312,6 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       intensity: 68,
       region: "gyeongsang",
       grade: 4,
-      flagged: false,
       uncertain: false,
     });
   });
@@ -351,20 +349,26 @@ describe("judge: 랭킹 등록 자격 기록", () => {
     );
   });
 
-  it("모델이 flags를 붙이면 flagged로 기록한다", async () => {
+  it("녹음 내용으로는 등록을 막지 않는다: 모델이 이전 형식으로 flags를 붙여도 기록에 남기지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
     const { ai } = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, flags: ["profanity"] }));
 
-    await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
 
-    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ flagged: true }));
+    expect(response.status).toBe(200);
+    expect(recordJudgment).toHaveBeenCalledWith({
+      id: "j_000000000001",
+      intensity: 68,
+      region: "gyeongsang",
+      grade: 4,
+      uncertain: false,
+    });
   });
 
   it("품질 불량, AI 실패, 호출 제한이면 기록하지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
     const rejected = JSON.stringify({
       audio_quality: "too_short",
-      flags: [],
       transcript: null,
       regions: null,
       scores: null,

@@ -16,7 +16,7 @@ import {
 const T0 = Date.parse("2026-11-20T10:00:00+09:00");
 const HOUR_MS = 60 * 60 * 1000;
 
-const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false, flagged: false };
+const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false };
 
 function entry(overrides: Partial<GsRankingEntry> & Pick<GsRankingEntry, "id">): GsRankingEntry {
   return {
@@ -198,6 +198,15 @@ describe("Upstash 정밀 랭킹 저장소의 요청", () => {
       expect([RANKING_KEYS.entries, RANKING_KEYS.order]).not.toContain(key);
       expect(key.startsWith("co:gs:")).toBe(true);
     }
+  });
+
+  it("flags 여부가 남은 이전 기록도 읽고 그 값은 버린다(녹음 내용으로는 등록을 막지 않는다)", async () => {
+    const store = createUpstashGsRankingStore({
+      url: "https://fake.upstash.io",
+      token: "test-token",
+      fetcher: async () => Response.json([{ result: JSON.stringify({ ...RECORD, flagged: true }) }]),
+    });
+    await expect(store.getJudgment("g_000000000001")).resolves.toEqual(RECORD);
   });
 
   it("HTTP 오류는 예외로 올리고, 깨진 값은 기록이 없는 것으로 본다", async () => {

@@ -19,13 +19,12 @@ import { REGION_NAMES } from "./rules";
 export const AUDIO_QUALITIES = ["ok", ...REJECT_REASONS] as const;
 export type AudioQuality = (typeof AUDIO_QUALITIES)[number];
 
-export const FLAGS = ["profanity", "personal_info"] as const;
-export type Flag = (typeof FLAGS)[number];
-
-/** 검증을 통과한 모델 출력. 품질이 ok가 아니면 audio_quality와 flags만 쓴다. */
+/**
+ * 검증을 통과한 모델 출력. 품질이 ok가 아니면 audio_quality만 쓴다.
+ * 음성과 받아쓰기를 저장하거나 공개하지 않으므로 녹음 내용(욕설, 개인정보)을 표시하는 필드는 두지 않는다.
+ */
 export type AcceptedModelOutput = {
   audio_quality: "ok";
-  flags: Flag[];
   transcript: string;
   /**
    * 문항 순서대로의 받아쓰기. 모델이 문항 수만큼의 문자열 배열로 주지 않았으면 null이다.
@@ -39,7 +38,7 @@ export type AcceptedModelOutput = {
   /** 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르다고 모델이 본 경우. 없거나 boolean이 아니면 false */
   imitation_suspected: boolean;
 };
-export type RejectedModelOutput = { audio_quality: RejectReason; flags: Flag[] };
+export type RejectedModelOutput = { audio_quality: RejectReason };
 export type ModelOutput = AcceptedModelOutput | RejectedModelOutput;
 
 const scoreProperty = (description: string) => ({
@@ -65,12 +64,6 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
         enum: [...AUDIO_QUALITIES],
         description:
           "ok: 판정 가능, too_short: 말소리가 3초 미만, no_speech: 말소리 없음, noisy: 주변 소음으로 판정 불가",
-      },
-      flags: {
-        type: "array",
-        items: { type: "string", enum: [...FLAGS] },
-        description:
-          "욕설이나 혐오 표현이 들리면 profanity, 실명이나 전화번호 같은 개인정보가 들리면 personal_info. 없으면 빈 배열",
       },
       transcript: {
         type: ["string", "null"],
@@ -134,7 +127,6 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
     },
     required: [
       "audio_quality",
-      "flags",
       "transcript",
       "question_transcripts",
       "evidence",
@@ -149,7 +141,6 @@ const score = z.number().int().min(0).max(100);
 
 const rawOutputSchema = z.object({
   audio_quality: z.enum(AUDIO_QUALITIES),
-  flags: z.array(z.enum(FLAGS)),
   transcript: z.string().nullish(),
   // 문항별 받아쓰기, 근거의 문항 번호와 권역은 형식이 달라도 실패시키지 않는다(아래에서 따로 읽는다).
   question_transcripts: z.unknown().optional(),
@@ -234,7 +225,7 @@ export function parseModelOutput(text: string, questionCount: number): ParseResu
 
   const raw = parsed.data;
   if (raw.audio_quality !== "ok") {
-    return { ok: true, value: { audio_quality: raw.audio_quality, flags: raw.flags } };
+    return { ok: true, value: { audio_quality: raw.audio_quality } };
   }
 
   const { transcript, evidence, regions, scores } = raw;
@@ -251,7 +242,6 @@ export function parseModelOutput(text: string, questionCount: number): ParseResu
     ok: true,
     value: {
       audio_quality: "ok",
-      flags: raw.flags,
       transcript,
       question_transcripts: readQuestionTranscripts(raw.question_transcripts, questionCount),
       evidence: evidence.map((item) => ({

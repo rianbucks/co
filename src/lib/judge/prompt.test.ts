@@ -101,8 +101,8 @@ describe("buildSystemInstruction: 상황극만 있는 세트(set-a)", () => {
   /** 규칙 줄에서 출력 필드 이름이 처음 나오는 규칙 번호 */
   const ruleOf = (field: string) => rules().findIndex((line) => line.includes(`. ${field}`)) + 1;
 
-  it("규칙 9개를 번호 순서대로 담는다", () => {
-    expect(rules()).toHaveLength(9);
+  it("규칙 8개를 번호 순서대로 담는다", () => {
+    expect(rules()).toHaveLength(8);
     rules().forEach((line, index) => expect(line.startsWith(`${index + 1}. `)).toBe(true));
   });
 
@@ -192,7 +192,7 @@ describe("buildSystemInstruction: 바꿔 말하기 문항이 섞인 세트(set-b
   });
 
   it("나머지 규칙은 set-a와 같고(문항 수만 6) 번호만 하나씩 밀린다", () => {
-    expect(rules()).toHaveLength(10);
+    expect(rules()).toHaveLength(9);
     rules().forEach((line, index) => expect(line.startsWith(`${index + 1}. `)).toBe(true));
     const body = (line: string) => line.replace(/^\d+\. /, "");
     const others = rules().filter((_, index) => index !== 2).map(body);
@@ -208,6 +208,15 @@ describe("buildSystemInstruction: 바꿔 말하기 문항이 섞인 세트(set-b
   it("문항 수 6: 문항별 받아쓰기 6개, 근거의 문항 번호 1~6", () => {
     expect(instruction).toContain("같은 방식으로 적은 6개의 배열이다");
     expect(instruction).toContain("문항 번호(1~6)");
+  });
+});
+
+describe("buildSystemInstruction: 녹음 내용(욕설, 개인정보)을 표시하게 하지 않는다", () => {
+  it.each(["set-a", "set-b"])("%s 지시문에는 flags 규칙이 없다", (setId) => {
+    const instruction = buildSystemInstruction(findQuestionSet(setId)!);
+    for (const word of ["flags", "profanity", "personal_info", "욕설", "개인정보"]) {
+      expect(instruction).not.toContain(word);
+    }
   });
 });
 
