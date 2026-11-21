@@ -4,7 +4,8 @@ import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE } from "@/lib/jud
 import { GS_MOCK_MODEL_OUTPUT } from "@/lib/gyeongsang/mock";
 import { GS_QUESTION_TEXTS } from "@/lib/gyeongsang/questions";
 import { DAILY_IP_LIMIT } from "@/lib/rate-limit";
-import { POST } from "./route";
+import { DEFAULT_AI_TIMING } from "@/lib/judge/pipeline";
+import { POST, maxDuration } from "./route";
 
 const WAV_HEADER = new Uint8Array([
   ...[..."RIFF"].map((c) => c.charCodeAt(0)),
@@ -37,6 +38,12 @@ function useMemoryRateLimiter() {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+});
+
+describe("route 실행 시간", () => {
+  it("maxDuration(초)은 AI 호출 전체 제한(40초)보다 크다", () => {
+    expect(maxDuration * 1000).toBeGreaterThan(DEFAULT_AI_TIMING.totalMs);
+  });
 });
 
 describe("POST /api/judge", () => {

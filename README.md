@@ -5,7 +5,7 @@
 ## 지금 구현된 것
 
 - 화면 S1~S7: 첫 화면, 안내와 동의, 녹음, 심사 중, 결과, 감정서, 농도 랭킹
-- `POST /api/judge`: 판정 파이프라인(명세 4장, 7장). 첫 시도가 실패하면 대체 모델로 1회 재시도
+- `POST /api/judge`: 판정 파이프라인(명세 4장, 7장). 첫 시도가 실패하면 대체 모델로 1회 재시도. 첫 시도 25초, 재시도까지 40초 안에 끝내고, 화면(S4)은 45초까지 기다린다(`src/lib/judge/timing.ts`)
 - 경상 정밀 감정 탭(명세 12장): 머리글 탭(S1에는 머리글이 없어 S1 버튼), 1순위가 경상인 S5의 권유 버튼으로 들어간다. 신고 원산지(대구, 경북, 부산, 울산, 경남)를 고르고 `set-gs` 문항을 녹음하면 경북권·경남권 성분 비율, 경상 농도와 등급, 원산지 일치 여부를 보여 주고 정밀 감정서(PNG 저장, 공유)를 발급한다
 - 정밀 감정 랭킹(명세 12장): 기존 랭킹과 따로 저장하는 정밀 감정 전용 랭킹. 전체, 대구·경북, 부산·울산·경남(신고 원산지 기준)으로 나눠 본다. `POST /api/gyeongsang-ranking`, `GET /api/gyeongsang-ranking`, 운영자용 `DELETE /api/gyeongsang-ranking/{id}`
 - 농도 랭킹(명세 확장 1): 음성 없이 닉네임과 농도만 공개. `POST /api/ranking`, `GET /api/ranking`, 운영자용 `DELETE /api/ranking/{id}`
@@ -136,6 +136,7 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | `src/app/api/ranking/route.ts` | `POST /api/ranking`, `GET /api/ranking` |
 | `src/app/api/ranking/[id]/route.ts` | `DELETE /api/ranking/{id}` (운영자) |
 | `src/lib/judge/pipeline.ts` | 서버 검사 → 호출 제한 → AI 호출(실패하면 대체 모델로 1회 재시도) → 후처리 → 랭킹 등록 자격 기록 |
+| `src/lib/judge/timing.ts` | 응답 제한 시간: AI 첫 시도 25초, 전체 40초, 심사 화면 대기 45초와 단계 전환 시각. 일반 감정과 경상 정밀 감정이 같이 쓴다 |
 | `src/lib/judge/postprocess.ts` | 후처리 순수 함수: 확률 정규화, 근거 검증, 판정 유보, 농도, 등급, 판정 지역, 소견 |
 | `src/lib/judge/rules.ts` | 권역 이름, 판정 지역 표기(혼합 방언, 판정 유보), 농도 가중치, 등급표 |
 | `src/lib/judge/opinions.ts` | 소견 문구(등급 × 가장 높은 항목, 20개) |

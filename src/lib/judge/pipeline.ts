@@ -19,6 +19,7 @@ import { buildModelOutputSchema, parseModelOutput } from "./model-output";
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
 import { USER_TEXT, buildSystemInstruction } from "./prompt";
 import { findQuestionSet } from "./questions";
+import { AI_FIRST_ATTEMPT_MS, AI_TOTAL_MS } from "./timing";
 
 /** 처음 1번은 주 모델, 재시도 1번은 대체 모델(명세 7장 502 ai_error, 11장). */
 export const MAX_AI_ATTEMPTS = 2;
@@ -26,16 +27,16 @@ export const MAX_AI_ATTEMPTS = 2;
 export interface AiTiming {
   /** 첫 시도의 제한 시간 */
   firstAttemptMs: number;
-  /** 첫 시도와 재시도를 합친 제한 시간. S4 화면이 30초에 재시도 안내를 띄우므로 그 전에 끝낸다. */
+  /** 첫 시도와 재시도를 합친 제한 시간. S4 화면이 45초에 재시도 안내를 띄우므로 그 전에 끝낸다. */
   totalMs: number;
   /** 남은 시간이 이보다 짧으면 재시도하지 않는다. */
   minRetryMs: number;
 }
 
-/** 검증 단계에서 실제 응답 시간을 재고 조정한다. */
+/** 첫 시도 25초, 전체 40초(./timing.ts). 검증 단계에서 실제 응답 시간을 재고 조정한다. */
 export const DEFAULT_AI_TIMING: AiTiming = {
-  firstAttemptMs: 20_000,
-  totalMs: 25_000,
+  firstAttemptMs: AI_FIRST_ATTEMPT_MS,
+  totalMs: AI_TOTAL_MS,
   minRetryMs: 1_000,
 };
 

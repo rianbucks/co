@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
 import { GENERAL_QUESTION_SET_ID } from '@/lib/judge/questions';
+import { JUDGING_WAIT_LIMIT_SEC, judgingStepIndex } from '@/lib/judge/timing';
 
-/** 심사 단계 표시. 경과 시간(2초, 6초, 12초)에 따라 4단계를 차례로 보여 준다. */
+/** 심사 단계 표시. 경과 시간(3초, 9초, 18초)에 따라 4단계를 차례로 보여 준다(src/lib/judge/timing.ts). */
 export interface JudgingStep {
   id: number;
   label: string;
@@ -78,7 +79,7 @@ export default function S4Judging<T = JudgeResult>({
   const timedOutRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const errorPanelRef = useRef<HTMLDivElement | null>(null);
-  const currentStepIndex = secElapsed >= 12 ? 3 : secElapsed >= 6 ? 2 : secElapsed >= 2 ? 1 : 0;
+  const currentStepIndex = judgingStepIndex(secElapsed);
 
   // 경과 시간 타이머. 오류가 나면 정리되어 경과 시간과 단계 진행이 그 자리에서 멈춘다.
   useEffect(() => {
@@ -87,12 +88,13 @@ export default function S4Judging<T = JudgeResult>({
     const timer = setInterval(() => {
       elapsed += 1;
       setSecElapsed(elapsed);
-      if (elapsed >= 30 && !requestCompletedRef.current && !timedOutRef.current) {
+      // 서버는 AI 호출을 40초 안에 끝낸다. 45초가 지나도 응답이 없으면 요청을 끊고 재시도를 안내한다.
+      if (elapsed >= JUDGING_WAIT_LIMIT_SEC && !requestCompletedRef.current && !timedOutRef.current) {
         timedOutRef.current = true;
         abortControllerRef.current?.abort();
         setErrorInfo({
           title: '심사 소요 시간 초과',
-          message: '대기 시간이 30초를 경과했습니다. 네트워크를 확인 후 다시 시도해 주십시오.',
+          message: `대기 시간이 ${JUDGING_WAIT_LIMIT_SEC}초를 경과했습니다. 네트워크를 확인 후 다시 시도해 주십시오.`,
           canRetry: true,
         });
       }
@@ -243,7 +245,7 @@ export default function S4Judging<T = JudgeResult>({
           {!errorInfo && (
             <p className="mt-6 border-t border-zinc-800 pt-4 text-sm text-zinc-400">
               처리 시간 <strong className="ml-2 font-semibold text-white">{secElapsed}초</strong>
-              <span className="ml-2 text-zinc-500">최대 30초</span>
+              <span className="ml-2 text-zinc-500">최대 {JUDGING_WAIT_LIMIT_SEC}초</span>
             </p>
           )}
         </div>
