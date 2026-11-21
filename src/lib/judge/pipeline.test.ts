@@ -75,7 +75,7 @@ describe("judge: 성공", () => {
       intensity: {
         score: 68,
         grade: 4,
-        gradeName: "자막 필요",
+        gradeName: "지역 말투가 뚜렷하게 들려요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
       imitationSuspected: false,

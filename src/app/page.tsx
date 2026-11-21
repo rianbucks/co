@@ -104,12 +104,15 @@ export default function Home() {
   };
 
   const handleTabChange = (tab: HeaderTab) => {
-    if (tab === 'gyeongsang' && gsSession === null) startGyeongsang();
-    else setMode(tab);
+    if (tab === 'gyeongsang') {
+      if (gsSession === null) setGsSession(1);
+      else if (step === 'S7') gsStatus.openRanking?.();
+    } else if (gsStatus.isRanking && step !== 'S7') {
+      navigate('S7');
+    }
+    setMode(tab);
   };
 
-  /** S1에는 머리글(탭)이 없으므로 S1 버튼이 탭 대신 진행하던 정밀 감정으로 간다. 없으면 새로 시작한다. */
-  const openGyeongsang = () => handleTabChange('gyeongsang');
 
   /** 로고: 일반 감정 첫 화면으로 돌아가고 정밀 감정 흐름도 지운다. */
   const handleHomeClick = () => {
@@ -151,6 +154,7 @@ export default function Home() {
               stopped={general ? judgingStopped : gsStatus.stopped}
               onBack={!general ? handleHomeClick : step === 'S3' ? () => recorderControls.current?.requestExit() : goBack}
               rankingLabel={general ? undefined : '정밀 랭킹'}
+              rankingView={general ? step === 'S7' : gsStatus.isRanking}
               activeTab={mode} onTabChange={handleTabChange} tabsDisabled={tabsDisabled}
               onRankingClick={!general ? gsStatus.openRanking : showRankingLink ? () => navigate('S7') : undefined}
             />
@@ -159,7 +163,7 @@ export default function Home() {
           {/* Main Screens */}
           <main className="w-full">
             {general && step === 'S1' && (
-              <S1Intro onStartGyeongsang={openGyeongsang} nickname={rankingNickname} onNicknameChange={setRankingNickname} onNext={() => navigate('S2')} onViewRanking={() => navigate('S7')} />
+              <S1Intro onStartGyeongsang={startGyeongsang} nickname={rankingNickname} onNicknameChange={setRankingNickname} onNext={() => navigate('S2')} onViewRanking={() => navigate('S7')} />
             )}
 
             {general && step === 'S2' && (
@@ -227,7 +231,10 @@ export default function Home() {
               <div hidden={general}>
                 <GyeongsangFlow
                   key={gsSession}
+                  initialStep={step === 'S7' ? 'ranking' : 'intro'}
+                  nickname={rankingNickname} onNicknameChange={setRankingNickname}
                   onExit={() => setMode('general')}
+                  onHome={() => { setMode('general'); handleResetAll(); }}
                   onStatusChange={setGsStatus}
                 />
               </div>

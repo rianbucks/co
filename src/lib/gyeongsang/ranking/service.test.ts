@@ -66,7 +66,7 @@ describe("registerGsRanking", () => {
           intensity: 69,
           gyeongbuk: 64,
           grade: 4,
-          gradeName: "자막 필요",
+          gradeName: "지역 말투가 뚜렷하게 들려요",
           matched: true,
           registeredAt: "2026-11-20T14:03:00+09:00",
         },
@@ -220,7 +220,7 @@ describe("toGsView", () => {
     expect(toGsView({ rank: 1, entry: { ...base, origin: "ulsan" } })).toMatchObject({
       matched: true,
       grade: 1,
-      gradeName: "서울 사람인 척하는 중",
+      gradeName: "지역 말투가 거의 드러나지 않아요",
     });
     expect(toGsView({ rank: 1, entry: { ...base, origin: "gyeongbuk" } }).matched).toBe(true);
   });

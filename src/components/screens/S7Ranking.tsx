@@ -1,5 +1,7 @@
 'use client';
 
+import RankingForm from '@/components/common/RankingForm';
+
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
 import type { RankingEntryView, RankingList, RankingRegistered } from '@/lib/ranking/contract';
@@ -84,7 +86,6 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
   const listData = list.status === 'ready' ? list.data : null;
   const mine = listData?.me ?? (registered && registered.id === entryId ? registered : null);
   const entryMissing = Boolean(entryId) && !mine && list.status === 'ready';
-  const nicknameLength = [...nickname.normalize('NFC').trim()].length;
 
   const handleReload = () => {
     setList({ status: 'loading' });
@@ -146,14 +147,9 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
         {/* Left Column: My Result & Registration */}
         <div data-enter="1" className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-5">
           <div>
-            <div className="text-center">
-              <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                {!result ? '농도 랭킹' : mine ? '랭킹 등록 완료' : '랭킹에 등록하기'}
-              </h2>
-              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-                점수가 같으면 먼저 등록한 사람이 앞서요.
-              </p>
-            </div>
+            <h2 className="ranking-card-title">
+              {!result ? '일반 감정 신청' : mine ? '랭킹 등록 완료' : '랭킹에 등록하기'}
+            </h2>
 
             {/* My Judgment Summary */}
             {result && (
@@ -176,7 +172,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
             )}
 
             {result?.region.uncertain ? <p>판정 유보 결과는 랭킹에 등록할 수 없습니다.</p> : mine ? (
-              <div ref={myRankPanel} tabIndex={-1} className="mt-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-center">
+              <div ref={myRankPanel} tabIndex={-1} className="mt-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-left">
                 <div className="text-xs font-semibold text-indigo-300">내 순위</div>
                 <div className="mt-1 text-5xl font-black tracking-tight text-white">
                   {mine.rank}
@@ -192,62 +188,27 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
                 등록한 항목을 찾을 수 없습니다. 운영자가 삭제했을 수 있습니다.
               </div>
             ) : entryId ? (
-              <div className="mt-3 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-center text-xs text-zinc-400">
+              <div className="mt-3 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-left text-xs text-zinc-400">
                 내 순위를 불러오는 중입니다...
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="mt-3 space-y-2" noValidate>
-                <div>
-                  <label htmlFor="ranking-nickname" className="text-xs font-semibold text-zinc-300">
-                    {result ? '랭킹 닉네임' : '랭킹 닉네임 (선택)'}
-                  </label>
-                  <input
-                    id="ranking-nickname"
-                    type="text"
-                    value={nickname}
-                    onChange={(event) => {
-                      onNicknameChange(event.target.value);
-                      if (formError && !formError.final) setFormError(null);
-                    }}
-                    placeholder="한글, 영문, 숫자 2~10자"
-                    aria-describedby="nickname-help"
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={submitDisabled}
-                    className="mt-2 w-full rounded-2xl border border-zinc-700/60 bg-black/50 px-4 py-3.5 text-sm font-semibold text-white outline-none transition placeholder:font-normal placeholder:text-zinc-600 focus:border-indigo-400/70 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
-                  />
-                  <div id="nickname-help" className="mt-1.5 flex justify-between text-[11px] text-zinc-500">
-                    <span>띄어쓰기와 기호는 쓸 수 없습니다</span>
-                    <span className={nicknameLength > NICKNAME_MAX_LENGTH ? 'text-red-400' : ''}>
-                      {nicknameLength}/{NICKNAME_MAX_LENGTH}
-                    </span>
-                  </div>
-                </div>
-
-                {result ? <div className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-[11px] leading-relaxed text-zinc-400">
+              <RankingForm
+                inputId="ranking-nickname"
+                nickname={nickname}
+                onChange={value => {
+                  onNicknameChange(value);
+                  if (formError && !formError.final) setFormError(null);
+                }}
+                onSubmit={handleSubmit}
+                disabled={submitDisabled}
+                error={formError?.message}
+                disclosure={result && <>
                   등록하면 <span className="font-semibold text-zinc-200">닉네임, 농도, 지역, 등급, 등록 시각</span>이
                   랭킹에 공개됩니다. 음성과 받아쓰기는 저장하지 않으며, 기록은 대회 종료 후 1주 안에 모두 삭제합니다.
                   부적절한 닉네임은 운영자가 삭제할 수 있습니다.
-                </div> : <p className="text-sm text-zinc-400">미리 적어두면 감정이 끝난 뒤 이 이름으로 등록할 수 있어요. 랭킹에 공개할지는 그때 정해요.</p>}
-
-                {formError && (
-                  <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-xs leading-relaxed text-red-300">
-                    {formError.message}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitDisabled}
-                  className={`flex w-full items-center justify-center gap-2 rounded-full py-4 text-sm font-bold transition active:scale-[0.98] ${
-                    submitDisabled
-                      ? 'cursor-not-allowed bg-zinc-800 text-zinc-500'
-                      : 'bg-white text-black shadow-xl shadow-white/10 hover:bg-zinc-200'
-                  }`}
-                >
-                  <span>{!result ? '감정 신청' : submitting ? '등록하는 중...' : '공개에 동의하고 랭킹 등록'}</span>
-                </button>
-              </form>
+                </>}
+                action={!result ? '일반 감정 시작' : submitting ? '등록하는 중...' : '공개에 동의하고 랭킹 등록'}
+              />
             )}
           </div>
 
@@ -255,14 +216,14 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
             {result && (
               <button
                 onClick={onBack}
-                className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
+                className="ranking-form-action secondary-action-button"
               >
                 이전 화면으로
               </button>
             )}
             <button
               onClick={onResetAll}
-              className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
+              className="ranking-form-action secondary-action-button"
             >
               {result ? '다시 감정하기' : '첫 화면으로 돌아가기'}
             </button>
@@ -271,42 +232,41 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
 
         {/* Right Column: Top 50 Leaderboard */}
         <div data-enter="2" className={result ? "lg:col-span-7" : "ranking-first lg:col-span-7"}>
-          <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
-            <div className="flex items-baseline justify-between gap-3">
-              <h3 className="text-sm font-bold tracking-tight text-zinc-200">농도 상위 50명</h3>
+          <section aria-labelledby="general-ranking-heading" className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
+            <h1 className="ranking-card-title" id="general-ranking-heading">일반 감정 랭킹</h1>
+            <p className="mt-2 text-xs text-zinc-500">사투리 농도가 높은 순서예요. 점수가 같으면 먼저 등록한 사람이 앞서요.</p>
+            <div className="mt-4 flex items-baseline justify-between gap-3">
+              <span className="text-sm font-bold text-zinc-200">상위 50명</span>
               {listData && (
-                <span className="text-[11px] text-zinc-400">
-                  총 {listData.total.toLocaleString('ko-KR')}명 등록
+                <span className="whitespace-nowrap text-xs text-zinc-400">
+                  {listData.total.toLocaleString('ko-KR')}명 등록
                 </span>
               )}
             </div>
 
             {list.status === 'loading' && (
-              <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/40 p-3 text-center text-xs text-zinc-400">
+              <div className="py-6 text-left text-sm text-zinc-400">
                 랭킹을 불러오는 중입니다...
               </div>
             )}
 
             {list.status === 'error' && (
-              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-center text-xs text-red-300">
+              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-left text-sm text-red-300">
                 <div>랭킹을 불러오지 못했습니다.</div>
-                <button
-                  onClick={handleReload}
-                  className="mt-3 rounded-full border border-zinc-700/60 bg-zinc-800/60 px-4 py-2 text-[11px] font-semibold text-zinc-200 transition hover:bg-zinc-700 active:scale-95"
-                >
+                <button onClick={handleReload} className="secondary-action-button mt-3 w-full text-center transition">
                   다시 불러오기
                 </button>
               </div>
             )}
 
             {listData && listData.entries.length === 0 && (
-              <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/40 p-3 text-center text-xs leading-relaxed text-zinc-400">
-                아직 등록된 점수가 없어요.
+              <div className="py-6 text-left text-sm text-zinc-400">
+                아직 등록된 기록이 없어요.
               </div>
             )}
 
             {listData && listData.entries.length > 0 && (
-              <ol className="ranking-rows" aria-label="농도 랭킹 상위 50명">
+              <ol className="ranking-rows mt-4 space-y-2" aria-label="농도 랭킹 상위 50명">
                 {listData.entries.map((item) => (
                   <RankingRow key={item.id} item={item} isMine={item.id === mine?.id} />
                 ))}
@@ -318,7 +278,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
                 )}
               </ol>
             )}
-          </div>
+          </section>
         </div>
 
       </div>

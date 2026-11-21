@@ -1,5 +1,7 @@
 'use client';
 
+import RankingForm from '@/components/common/RankingForm';
+
 import { FormEvent, useEffect, useState } from 'react';
 import { SUBREGION_NAMES, type GyeongsangResult } from '@/lib/gyeongsang/contract';
 import { ORIGIN_NAMES, ORIGIN_SUBREGION, judgeOriginMatch, type OriginKey } from '@/lib/gyeongsang/origin';
@@ -11,10 +13,11 @@ import {
   type GsRankingList,
   type GsRankingRegistered,
 } from '@/lib/gyeongsang/ranking/contract';
-import { GS_QUESTIONS } from '@/lib/gyeongsang/questions';
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
 
 interface GsRankingProps {
+  nickname: string;
+  onNicknameChange: (value: string) => void;
   /** 지금 정밀 감정 결과. 감정 없이 들어오면 null이고, 이때는 순위만 보여 준다. */
   result: GyeongsangResult | null;
   /** 정밀 감정 때 고른 신고 원산지. 등록할 때 함께 보낸다. */
@@ -23,6 +26,7 @@ interface GsRankingProps {
   entryId: string | null;
   onRegistered: (entryId: string) => void;
   /** 정밀 결과로 돌아가기(결과가 있을 때) */
+  onHome: () => void;
   onBack: () => void;
   /** 정밀 감정 받기(결과 없이 들어왔을 때) */
   onApply: () => void;
@@ -94,9 +98,9 @@ function RankingRow({ item, isMine }: { item: GsRankingEntryView; isMine: boolea
  * 경상 정밀 감정 랭킹. 기존 농도 랭킹(S7)과 따로 저장되고, 경상 정밀 감정 탭 안에서만 보인다.
  * 보기는 전체, 대구·경북, 부산·울산·경남이고 나누는 기준은 신고 원산지다.
  */
-export default function GsRanking({ result, origin, entryId, onRegistered, onBack, onApply }: GsRankingProps) {
+export default function GsRanking({ nickname, onNicknameChange, result, origin, entryId, onRegistered, onBack, onHome, onApply }: GsRankingProps) {
   const [area, setArea] = useState<GsRankingArea>('all');
-  const [nickname, setNickname] = useState('');
+
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<{ message: string; final: boolean } | null>(null);
   /** 방금 등록한 항목. 목록을 다시 받기 전까지 내 순위(전체)를 보여 준다. */
@@ -132,7 +136,6 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
   const mine =
     listData?.me ?? (registered && registered.id === entryId && area === 'all' ? registered : null);
   const entryMissing = Boolean(entryId) && inMyArea && !mine && listData !== null;
-  const nicknameLength = [...nickname.trim()].length;
   const myMatch = result && origin ? judgeOriginMatch(origin, result.subregions) : null;
 
   const changeArea = (next: GsRankingArea) => {
@@ -148,14 +151,21 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!result || !origin || submitting || entryId || formError?.final) return;
+    if (submitting || entryId || formError?.final) return;
 
+    if (!result && !nickname.trim()) return onApply();
     const checked = checkNickname(nickname);
     if (!checked.ok) {
       setFormError({ message: registerErrorMessage('invalid_nickname', checked.problem), final: false });
       return;
     }
 
+    if (!result) {
+      onNicknameChange(checked.value);
+      onApply();
+      return;
+    }
+    if (!origin) return;
     setSubmitting(true);
     setFormError(null);
     try {
@@ -193,15 +203,9 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
         {/* 왼쪽: 내 결과와 등록 */}
         <div className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/90 p-6 sm:p-8 lg:col-span-5">
           <div>
-            <div className="text-center">
-              <p className="ranking-eyebrow">경상 정밀 감정 랭킹</p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight text-white">
-                {!result ? '정밀 감정 랭킹' : entryId ? '정밀 랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
-              </h2>
-              <p className="mt-2 text-sm text-zinc-400">
-                경상 농도가 높은 순으로 상위 50명을 보여 드립니다. 농도가 같으면 먼저 등록한 분이 앞섭니다.
-              </p>
-            </div>
+            <h2 className="ranking-card-title">
+              {!result ? '정밀 감정 신청' : entryId ? '정밀 랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
+            </h2>
 
             {result && origin && myMatch && (
               <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
@@ -226,22 +230,8 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
               </div>
             )}
 
-            {!result ? (
-              <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5 text-center">
-                <p className="text-sm font-medium text-zinc-200">정밀 감정을 받으면 랭킹에 등록할 수 있습니다</p>
-                <p className="mt-1.5 text-xs text-zinc-400">
-                  원산지를 신고하고 {GS_QUESTIONS.length}개 문항에 평소 말투로 답하면 경상 농도와 경북권·경남권 성분이
-                  나옵니다.
-                </p>
-                <button
-                  onClick={onApply}
-                  className="mt-4 flex w-full items-center justify-center rounded-full bg-white py-4 text-sm font-bold text-black transition hover:bg-zinc-200"
-                >
-                  정밀 감정 받기
-                </button>
-              </div>
-            ) : mine ? (
-              <div className="mt-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-center">
+            {mine ? (
+              <div className="mt-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-left">
                 <div className="text-sm font-medium text-indigo-300">
                   내 순위 · {GS_RANKING_AREA_NAMES[area]}
                 </div>
@@ -255,7 +245,7 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
                 </div>
               </div>
             ) : entryId && !inMyArea && myArea ? (
-              <div className="mt-6 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-center text-sm text-zinc-400">
+              <div className="mt-6 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-left text-sm text-zinc-400">
                 내 기록은 &lsquo;{GS_RANKING_AREA_NAMES[myArea]}&rsquo; 보기에 있습니다.
                 <button onClick={() => changeArea(myArea)} className="secondary-action-button mt-3 w-full text-center transition">
                   {GS_RANKING_AREA_NAMES[myArea]} 보기
@@ -266,76 +256,52 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
                 등록한 항목을 찾을 수 없습니다. 운영자가 삭제했을 수 있습니다.
               </div>
             ) : entryId ? (
-              <div className="mt-6 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-center text-sm text-zinc-400">
+              <div className="mt-6 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-left text-sm text-zinc-400">
                 내 순위를 불러오는 중입니다...
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="mt-6 space-y-3" noValidate>
-                <div>
-                  <label htmlFor="gs-ranking-nickname" className="text-sm font-medium text-zinc-300">
-                    닉네임
-                  </label>
-                  <input
-                    id="gs-ranking-nickname"
-                    type="text"
-                    value={nickname}
-                    onChange={(event) => {
-                      setNickname(event.target.value);
-                      if (formError && !formError.final) setFormError(null);
-                    }}
-                    placeholder="한글, 영문, 숫자 2~10자"
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={submitDisabled}
-                    className="mt-2 w-full rounded-2xl border border-zinc-700/60 bg-black/50 px-4 py-3.5 text-sm font-semibold text-white outline-none transition placeholder:font-normal placeholder:text-zinc-600 disabled:opacity-60"
-                  />
-                  <div className="mt-1.5 flex justify-between text-xs text-zinc-500">
-                    <span>띄어쓰기와 기호는 쓸 수 없습니다</span>
-                    <span className={nicknameLength > NICKNAME_MAX_LENGTH ? 'text-red-400' : ''}>
-                      {nicknameLength}/{NICKNAME_MAX_LENGTH}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-xs text-zinc-400">
+              <RankingForm
+                inputId="gs-ranking-nickname"
+                nickname={nickname}
+                onChange={value => {
+                  onNicknameChange(value);
+                  if (formError && !formError.final) setFormError(null);
+                }}
+                onSubmit={handleSubmit}
+                disabled={submitDisabled}
+                error={formError?.message}
+                disclosure={result && <>
                   등록하면 <span className="font-semibold text-zinc-200">닉네임, 신고 원산지, 경상 농도, 경북권 비율, 등록 시각</span>이
                   정밀 감정 랭킹에 공개됩니다. 음성과 받아쓰기는 저장하지 않으며, 기록은 대회 종료 후 1주 안에 모두
                   삭제합니다. 부적절한 닉네임은 운영자가 삭제할 수 있습니다.
-                </div>
-
-                {formError && (
-                  <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
-                    {formError.message}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitDisabled}
-                  className={`flex w-full items-center justify-center rounded-full py-4 text-sm font-bold transition ${
-                    submitDisabled ? 'cursor-not-allowed bg-zinc-800 text-zinc-500 opacity-60' : 'bg-white text-black hover:bg-zinc-200'
-                  }`}
-                >
-                  {submitting ? '등록하는 중...' : '공개에 동의하고 정밀 랭킹 등록'}
-                </button>
-              </form>
+                </>}
+                action={!result ? '경상권 정밀 감정 받기' : submitting ? '등록하는 중...' : '공개에 동의하고 정밀 랭킹 등록'}
+              />
             )}
           </div>
 
-          {result && (
-            <div className="mt-8">
-              <button onClick={onBack} className="secondary-action-button w-full text-center transition">
-                정밀 결과로 돌아가기
-              </button>
-            </div>
-          )}
+          <div className="mt-3 grid gap-2 sm:grid-flow-col">
+            <button onClick={result ? onBack : onHome} className="ranking-form-action secondary-action-button">
+              {result ? '이전 화면으로' : '첫 화면으로 돌아가기'}
+            </button>
+            {result && <button onClick={onApply} className="ranking-form-action secondary-action-button">다시 감정하기</button>}
+          </div>
         </div>
 
         {/* 오른쪽: 보기별 상위 50명 */}
-        <div className="space-y-6 lg:col-span-7">
-          <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
-            <div className="flex items-baseline justify-between gap-3">
-              <h3 className="text-sm font-bold tracking-tight text-zinc-200">정밀 감정 랭킹 TOP 50</h3>
+        <div className={result ? "space-y-6 lg:col-span-7" : "ranking-first space-y-6 lg:col-span-7"}>
+          <section aria-labelledby="gs-area-heading" className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
+            <h1 className="ranking-card-title" id="gs-area-heading">경상 정밀 감정 랭킹</h1>
+            <div role="group" aria-label="출신 지역 필터" className="gs-area-filter">
+              {GS_RANKING_AREAS.map(key => (
+                <button key={key} type="button" aria-pressed={key === area} onClick={() => changeArea(key)}>
+                  {GS_RANKING_AREA_NAMES[key]}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">등록한 출신 지역별 순위예요. 농도가 같으면 먼저 등록한 사람이 앞서요.</p>
+            <div className="mt-4 flex items-baseline justify-between gap-3">
+              <span className="text-sm font-bold text-zinc-200">상위 50명</span>
               {listData && (
                 <span className="whitespace-nowrap text-xs text-zinc-400">
                   {listData.total.toLocaleString('ko-KR')}명 등록
@@ -343,34 +309,14 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
               )}
             </div>
 
-            <div role="group" aria-label="랭킹 보기" className="mt-4 flex gap-1 rounded-xl border border-zinc-800 p-1">
-              {GS_RANKING_AREAS.map((key) => {
-                const active = key === area;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => changeArea(key)}
-                    className={`flex-auto whitespace-nowrap rounded-lg px-1.5 py-2 text-sm transition ${
-                      active ? 'bg-sky-500/15 font-semibold text-sky-200' : 'text-zinc-400 hover:text-zinc-200'
-                    }`}
-                  >
-                    {GS_RANKING_AREA_NAMES[key]}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-xs text-zinc-500">보기는 AI 판정이 아니라 신고 원산지로 나눕니다.</p>
-
             {list.status === 'loading' && (
-              <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/40 p-6 text-center text-sm text-zinc-400">
+              <div className="py-6 text-left text-sm text-zinc-400">
                 랭킹을 불러오는 중입니다...
               </div>
             )}
 
             {list.status === 'error' && (
-              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-center text-sm text-red-300">
+              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-left text-sm text-red-300">
                 <div>랭킹을 불러오지 못했습니다.</div>
                 <button onClick={handleReload} className="secondary-action-button mt-3 w-full text-center transition">
                   다시 불러오기
@@ -379,13 +325,13 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
             )}
 
             {listData && listData.entries.length === 0 && (
-              <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/40 p-6 text-center text-sm text-zinc-400">
-                아직 이 보기에 등록된 기록이 없습니다.
+              <div className="py-6 text-left text-sm text-zinc-400">
+                아직 등록된 기록이 없어요.
               </div>
             )}
 
             {listData && listData.entries.length > 0 && (
-              <ol className="mt-4 space-y-2" aria-label={`정밀 감정 랭킹 ${GS_RANKING_AREA_NAMES[area]} 상위 50명`}>
+              <ol className="ranking-rows mt-4 space-y-2" aria-label={`정밀 감정 랭킹 ${GS_RANKING_AREA_NAMES[area]} 상위 50명`}>
                 {listData.entries.map((item) => (
                   <RankingRow key={item.id} item={item} isMine={item.id === mine?.id} />
                 ))}
@@ -399,7 +345,7 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
                 )}
               </ol>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </div>

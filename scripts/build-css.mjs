@@ -366,6 +366,27 @@ body {
 .answer-detail { border-bottom: 1px solid var(--rule); padding-bottom: 4px; }
 .answer-detail summary { cursor: pointer; padding: 10px 2px; font-size: 14px; }
 .answer-detail summary > span:first-child { margin-right: 6px; }
+.app-shell main button.ranking-form-action {
+  width: 100%; min-height: 44px; padding: 10px 14px;
+  font-size: 15px !important; font-weight: 600 !important; line-height: 1.4 !important;
+}
+.app-shell main .ranking-form-hint { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.app-shell main .ranking-card-title {
+  margin: 0; text-align: left; color: var(--ink);
+  font-size: clamp(21px, 2.5vw, 25px) !important; font-weight: 650 !important;
+  line-height: 1.35 !important; letter-spacing: -.035em; word-break: keep-all;
+}
+.app-shell input.nickname-input {
+  display: block; width: 100%; min-width: 0; height: 44px; padding-inline: 12px;
+  background: linear-gradient(155deg, #87baff20, transparent 65%), #12273bc9 !important;
+  border: 1px solid var(--glass-edge) !important; border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 #d4e7ff26; font-size: 16px;
+}
+.app-shell input.nickname-input::placeholder { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .nickname-input:placeholder-shown:not(:focus):enabled { animation: nickname-invite 1.5s ease-in-out 1; }
+  @keyframes nickname-invite { 50% { box-shadow: 0 0 0 3px #91bfff44; } }
+}
 .ranking-rows { margin-top: 8px; }
 .ranking-rows li { border: 0; border-bottom: 1px solid var(--rule); border-radius: 0 !important; background: transparent !important; padding: 8px 2px; }
 @media (max-width: 1023px) { .ranking-first { order: -1; } }
@@ -621,6 +642,9 @@ body:has(.discard-dialog[open]) { overflow: hidden; }
   .intro-description { font-size: 15px; }
   .intro-footer { flex-wrap: wrap; gap: 8px; }
 }
+.gs-area-filter { display: grid; grid-template-columns: .7fr 1fr 1.4fr; gap: 5px; margin-top: 8px; }
+.gs-area-filter button { color: #c8d6eb; background: #172b45; border: 1px solid #47607e; }
+.gs-area-filter button[aria-pressed="true"] { color: #10243a; background: #b7d3ff; font-weight: 700 !important; }
 `;
 
   const compiler = await compile(srcCss, {

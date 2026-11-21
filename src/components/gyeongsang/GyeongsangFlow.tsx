@@ -37,6 +37,7 @@ const GS_JUDGING_STEPS: readonly JudgingStep[] = [
 /** 머리글에 보여 줄 정밀 감정의 진행 상태. */
 export interface GsFlowStatus {
   label: string;
+  isRanking: boolean;
   /** 심사가 오류로 멈춤 */
   stopped: boolean;
   /** 녹음이나 심사 중(다른 탭으로 가면 작업을 잃는다) */
@@ -45,25 +46,20 @@ export interface GsFlowStatus {
   openRanking?: () => void;
 }
 
-export const INITIAL_GS_STATUS: GsFlowStatus = { label: STEP_LABELS.intro, stopped: false, busy: false };
+export const INITIAL_GS_STATUS: GsFlowStatus = { label: STEP_LABELS.intro, isRanking: false, stopped: false, busy: false };
 
 interface GyeongsangFlowProps {
+  initialStep: 'intro' | 'ranking';
+  nickname: string;
+  onNicknameChange: (value: string) => void;
   /** 안내 화면에서 '이전 화면으로'를 누르면 일반 감정 탭으로 돌아간다. */
   onExit: () => void;
+  onHome: () => void;
   onStatusChange?: (status: GsFlowStatus) => void;
 }
 
 function FlowBanner({ step, origin }: { step: GsStep; origin: OriginKey | null }) {
-  if (step === 'ranking') {
-    return (
-      <div className="mx-auto w-full max-w-[1120px] break-keep px-5 pt-5 sm:px-8 sm:pt-8">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3">
-          <p className="result-eyebrow whitespace-nowrap">경상 방언 정밀 감정</p>
-          <p className="mt-0.5 text-xs text-zinc-400">정밀 랭킹 · 신고 원산지별로 나눠 봅니다</p>
-        </div>
-      </div>
-    );
-  }
+  if (step === 'ranking') return null;
   const index = GS_STEPS.indexOf(step);
   return (
     <div className="mx-auto w-full max-w-[1120px] break-keep px-5 pt-5 sm:px-8 sm:pt-8">
@@ -95,8 +91,8 @@ function FlowBanner({ step, origin }: { step: GsStep; origin: OriginKey | null }
  * 경상 정밀 감정 탭의 흐름. 녹음은 set-gs 문항으로, 심사는 questionSetId=set-gs로 요청한다.
  * 신고 원산지는 이 컴포넌트 안에 두고, 정밀 랭킹에 등록할 때만 서버로 보낸다.
  */
-export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlowProps) {
-  const [step, setStep] = useState<GsStep>('intro');
+export default function GyeongsangFlow({ initialStep, onExit, onHome, onStatusChange, nickname, onNicknameChange }: GyeongsangFlowProps) {
+  const [step, setStep] = useState<GsStep>(initialStep);
   const [origin, setOrigin] = useState<OriginKey | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [result, setResult] = useState<GyeongsangResult | null>(null);
@@ -113,6 +109,7 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
     const busy = step === 'record' || step === 'judging';
     onStatusChange?.({
       label: stopped ? '분석 중단' : STEP_LABELS[step],
+      isRanking: step === 'ranking',
       stopped,
       busy,
       openRanking: busy || step === 'ranking' ? undefined : openRanking,
@@ -208,13 +205,14 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
       )}
 
       {step === 'ranking' && (
-        <GsRanking
+        <GsRanking nickname={nickname} onNicknameChange={onNicknameChange}
           result={result}
           origin={origin}
           entryId={rankingEntryId}
           onRegistered={setRankingEntryId}
           onBack={() => setStep('result')}
           onApply={restart}
+          onHome={onHome}
         />
       )}
     </div>

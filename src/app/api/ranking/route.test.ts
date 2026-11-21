@@ -85,7 +85,7 @@ describe("POST /api/ranking", () => {
       intensity: 99,
       region: "gyeongsang",
       grade: 5,
-      gradeName: "무형문화재 지정 검토 대상",
+      gradeName: "말하는 내내 지역 말투가 짙게 드러나요",
     });
     expect(entry.id).toMatch(/^r_[0-9a-f]{12}$/);
     expect(entry.registeredAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/);

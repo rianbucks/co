@@ -8,10 +8,16 @@ const TABS: ReadonlyArray<{ key: HeaderTab; label: string }> = [
   { key: 'gyeongsang', label: '경상 정밀 감정' },
 ];
 
+const RANKING_LABELS: Record<HeaderTab, string> = {
+  general: '일반감정 랭킹',
+  gyeongsang: '정밀감정 랭킹',
+};
+
 interface HeaderProps {
   currentStep?: string;
   /** 진행이 멈춘 상태(예: 감정 오류). */
   stopped?: boolean;
+  rankingView?: boolean;
   onBack?: () => void;
   /** 있으면 랭킹 버튼을 보여 준다. */
   onRankingClick?: () => void;
@@ -28,6 +34,7 @@ interface HeaderProps {
 export default function Header({
   currentStep,
   stopped = false,
+  rankingView = false,
   onBack,
   onRankingClick,
   rankingLabel = '농도 랭킹',
@@ -67,7 +74,7 @@ export default function Header({
       {/* 휴대폰의 녹음(S3)과 심사(S4) 화면에서는 CSS가 이 탭 줄을 숨긴다(누를 수 없는 줄이라 화면을 녹음에 쓴다) */}
       {onTabChange && (
         <nav
-          aria-label="감정 종류"
+          aria-label={rankingView ? "랭킹 종류" : "감정 종류"}
           className="app-header-tabs mx-auto mt-3 grid max-w-5xl grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
         >
           {TABS.map((tab) => {
@@ -87,7 +94,7 @@ export default function Header({
                   active ? 'bg-sky-500/15 font-semibold text-sky-200' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
                 } disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-400`}
               >
-                {tab.label}
+                {rankingView ? RANKING_LABELS[tab.key] : tab.label}
               </button>
             );
           })}
