@@ -2,6 +2,7 @@
 
 import { Evidence, JudgeResult } from '@/lib/judge/contract';
 import { splitHighlights } from '@/lib/judge/highlight';
+import { UNCERTAIN_PREFIX, regionVerdictLabel, uncertainDetail } from '@/lib/judge/rules';
 import { REGION_KOREAN_NAMES, PART_KOREAN_NAMES } from '@/types/screen';
 
 interface S5ResultProps {
@@ -84,8 +85,19 @@ export default function S5Result({
               </p>
 
               <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-                {region.mixed ? '혼합 방언' : region.label}
+                {region.uncertain ? (
+                  <>
+                    {UNCERTAIN_PREFIX} <span className="whitespace-nowrap">{uncertainDetail(region.top)}</span>
+                  </>
+                ) : (
+                  regionVerdictLabel(region)
+                )}
               </h2>
+              {region.uncertain && (
+                <p className="mt-2 text-sm text-zinc-400">
+                  확인된 근거가 1순위 권역을 충분히 뒷받침하지 않아 판정을 유보합니다.
+                </p>
+              )}
 
               <p className="mt-4 text-sm font-medium text-zinc-300">
                 {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
@@ -120,7 +132,9 @@ export default function S5Result({
             {/* 1순위가 경상이면 경상 정밀 감정을 권한다 */}
             {onStartGyeongsang && region.top === 'gyeongsang' && (
               <div className="mt-6 rounded-2xl border border-zinc-800 p-4">
-                <p className="result-eyebrow">경상 방언이 1순위로 판정되었습니다</p>
+                <p className="result-eyebrow">
+                  {region.uncertain ? '경상 방언이 1순위로 추정되었습니다' : '경상 방언이 1순위로 판정되었습니다'}
+                </p>
                 <p className="mt-1 text-sm text-zinc-400">
                   경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽 성분이 강한지 정밀 감정으로 가려 드립니다.
                 </p>

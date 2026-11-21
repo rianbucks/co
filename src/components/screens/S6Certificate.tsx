@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { JudgeResult } from '@/lib/judge/contract';
+import { UNCERTAIN_PREFIX, regionVerdictLabel, uncertainDetail } from '@/lib/judge/rules';
 import { REGION_KOREAN_NAMES } from '@/types/screen';
 
 interface S6CertificateProps {
@@ -112,9 +113,17 @@ function renderCertificate(result: JudgeResult): Promise<Blob> {
     context.fillStyle = muted;
     context.font = '600 22px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
     context.fillText('판정 지역', width / 2, 545);
+    // 판정 유보 문구는 길어서 판정 칸(900) 안에 들어가도록 글자를 줄인다.
+    const verdict = regionVerdictLabel(result.region);
+    let verdictSize = 53;
+    const verdictFont = (size: number) => `700 ${size}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif`;
+    context.font = verdictFont(verdictSize);
+    while (verdictSize > 30 && context.measureText(verdict).width > 840) {
+      verdictSize -= 2;
+      context.font = verdictFont(verdictSize);
+    }
     context.fillStyle = accent;
-    context.font = '700 53px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
-    context.fillText(result.region.mixed ? '혼합 방언' : result.region.label, width / 2, 620);
+    context.fillText(verdict, width / 2, 620);
     context.fillStyle = ink;
     context.font = '600 27px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
     context.fillText(`${result.intensity.grade}등급 · ${result.intensity.gradeName}`, width / 2, 680);
@@ -261,7 +270,15 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
 
           <div className="relative mt-6 rounded-2xl bg-[#eef2f6] px-4 py-7 text-center sm:mt-8 sm:py-9">
             <p className="text-xs font-semibold text-slate-500 sm:text-sm">판정 지역</p>
-            <p className="mt-2 text-2xl font-black text-[#315b83] sm:text-4xl">{result.region.mixed ? '혼합 방언' : result.region.label}</p>
+            <p className="mt-2 text-2xl font-black text-[#315b83] sm:text-4xl">
+              {result.region.uncertain ? (
+                <>
+                  {UNCERTAIN_PREFIX} <span className="whitespace-nowrap">{uncertainDetail(result.region.top)}</span>
+                </>
+              ) : (
+                regionVerdictLabel(result.region)
+              )}
+            </p>
             <p className="mt-3 text-sm font-bold sm:text-base">{result.intensity.grade}등급 · {result.intensity.gradeName}</p>
             <p className="mt-2 text-sm font-bold sm:text-lg">사투리 농도 {result.intensity.score} / 100점</p>
           </div>

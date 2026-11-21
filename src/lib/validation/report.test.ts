@@ -196,6 +196,7 @@ describe("출력 파일", () => {
   it("runs.csv는 BOM과 머리글로 시작하고 쉼표나 따옴표가 든 칸을 감싼다", () => {
     const csv = toRunsCsv(RECORDS);
     expect(csv.startsWith("﻿file,expected,model,run,status")).toBe(true);
+    expect(csv.split("\n")[0]).toContain(",mixed,uncertain,score,");
     expect(csv).toContain(',"timeout, ""60s"""\n');
     expect(csv.trim().split("\n")).toHaveLength(RECORDS.length + 1);
   });
@@ -247,6 +248,29 @@ describe("출력 파일", () => {
       },
     ]);
     expect(details).toContain("- 판정: 경상, 농도 24점, 2등급, 모사 의심(농도 절반)");
+  });
+
+  it("판정 유보면 판정 줄에 적고, 근거에 그 특징이 가리키는 권역을 붙인다", () => {
+    const details = toDetailsMarkdown([
+      {
+        file: "e.webm",
+        expected: "jeolla",
+        model: "gemini-3.8-flash",
+        run: 1,
+        status: "ok",
+        latencyMs: 5_000,
+        top: "gyeongsang",
+        mixed: false,
+        uncertain: true,
+        score: 68,
+        grade: 4,
+        transcript: "뭐 하요",
+        questionTranscripts: null,
+        evidence: [{ question: null, type: "endings", region: "jeolla", quote: "하요", note: "전라", kept: true }],
+      },
+    ]);
+    expect(details).toContain("- 판정: 경상 (판정 유보), 농도 68점, 4등급");
+    expect(details).toContain('  - ✓ [endings · jeolla] "하요" — 전라');
   });
 
   it("문항별 받아쓰기가 있으면 문항마다 적고, 근거에 문항 번호를 붙인다", () => {

@@ -155,6 +155,7 @@ async function runOnce(
     usage,
     top: result.region.top,
     mixed: result.region.mixed,
+    uncertain: result.region.uncertain,
     score: result.intensity.score,
     grade: result.intensity.grade,
     imitationSuspected: result.imitationSuspected,
@@ -171,7 +172,7 @@ async function runOnce(
 function describe(record: RunRecord): string {
   switch (record.status) {
     case "ok":
-      return `${record.top}${record.mixed ? "(혼합)" : ""} ${record.score}점`;
+      return `${record.top}${record.mixed ? "(혼합)" : ""}${record.uncertain ? "(유보)" : ""} ${record.score}점`;
     case "rejected":
       return `품질 반려 ${record.quality}`;
     default:
