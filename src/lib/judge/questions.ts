@@ -117,6 +117,16 @@ export function convertTarget(questions: readonly QuestionItem[]): string | null
   return questions.find((question) => questionKind(question) === "convert")?.target ?? null;
 }
 
+/**
+ * 지시문과 문항별 받아쓰기(segments)에 쓰는 문항 문구 전체: 상황 문구, 따옴표로 감싼 인용, 요청 문구 순서다.
+ * 인용과 요청 문구가 없는 문항(일반 감정의 set-a, set-b)은 상황 문구 그대로다.
+ */
+export function questionText(question: Pick<QuestionItem, "situation" | "quote" | "followUp">): string {
+  return [question.situation, question.quote ? `"${question.quote.text}"` : "", question.followUp ?? ""]
+    .filter((part) => part.length > 0)
+    .join(" ");
+}
+
 /** 녹음 길이(초): 문항 수 × 10초 */
 export function recordingSeconds(questions: readonly QuestionItem[]): number {
   return questions.length * SECONDS_PER_QUESTION;

@@ -9,8 +9,8 @@ import {
   type JudgeErrorBody,
   type JudgeErrorCode,
   type PartScores,
+  type JudgeSegment,
   type RejectReason,
-  type Segment,
 } from "../judge/contract";
 
 /** 경상 방언의 두 성분: 경북권(대구·경북)과 경남권(부산·울산·경남). 이 순서는 비율이 같을 때의 우선순위다. */
@@ -57,8 +57,11 @@ export interface GyeongsangResult {
   evidence: GsEvidence[];
   /** 전체 받아쓰기 */
   transcript: string;
-  /** 문항별 받아쓰기(문항 순서). 모델이 문항 수만큼 주지 않았으면 빈 배열이다. */
-  segments: Segment[];
+  /**
+   * 문항별 받아쓰기(문항 순서). 일반 감정과 같이 문항 종류(kind)를 싣는다.
+   * 모델이 문항 수만큼 주지 않았으면 빈 배열이다.
+   */
+  segments: JudgeSegment[];
 }
 
 /** 경상 방언으로 보기 어려운 녹음이라 정밀 감정을 하지 않았다는 반려 사유. */

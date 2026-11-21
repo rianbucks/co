@@ -3,12 +3,13 @@
  * 농도 계산, 등급표, 문항별 받아쓰기, 인용 정규화는 일반 감정의 함수를 그대로 쓴다.
  */
 import {
-  buildSegments,
+  buildJudgeSegments,
   computeIntensity,
   gradeFor,
   normalizeQuoteText,
   type IssueInfo,
 } from "../judge/postprocess";
+import type { QuestionItem } from "@/types/screen";
 import { SUBREGION_KEYS, type GsEvidence, type GyeongsangResult, type SubregionRatios } from "./contract";
 import type { GsAcceptedOutput } from "./model-output";
 
@@ -73,13 +74,13 @@ export function verifyGsEvidence(
 }
 
 /**
- * 경상 방언으로 확인된 모델 출력으로 정밀 감정 결과를 만든다. questions는 녹음한 문항 문구(문항 순서)다.
+ * 경상 방언으로 확인된 모델 출력으로 정밀 감정 결과를 만든다. questions는 녹음한 문항(문항 순서)이고 문항 수는 정해져 있지 않다.
  * 농도는 경상 방언 특징 기준의 항목 점수에 일반 감정과 같은 가중치를 매긴 값이고, 등급표도 같다.
  */
 export function buildGyeongsangResult(
   output: GsAcceptedOutput,
   issue: IssueInfo,
-  questions: readonly string[],
+  questions: readonly QuestionItem[],
 ): GyeongsangResult {
   const subregions = normalizeSubregions(output.subregions);
   if (!subregions) {
@@ -99,6 +100,6 @@ export function buildGyeongsangResult(
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
     evidence: verifyGsEvidence(output.evidence, output.transcript, questionTranscripts),
     transcript: output.transcript,
-    segments: buildSegments(questions, questionTranscripts),
+    segments: buildJudgeSegments(questions, questionTranscripts),
   };
 }

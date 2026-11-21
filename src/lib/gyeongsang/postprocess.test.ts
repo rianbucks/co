@@ -3,12 +3,12 @@ import type { GyeongsangResult } from "./contract";
 import { GS_MOCK_MODEL_OUTPUT } from "./mock";
 import { parseGsModelOutput, type GsAcceptedOutput } from "./model-output";
 import { buildGyeongsangResult, normalizeSubregions, verifyGsEvidence } from "./postprocess";
-import { GS_QUESTION_TEXTS } from "./questions";
+import { GS_QUESTIONS, GS_QUESTION_TEXTS } from "./questions";
 
 const ISSUE = { id: "g_000000000001", certificateNo: "제2026-경상-000001호", issuedAt: "2026-11-20T14:03:00+09:00" };
 
 function acceptedMock(): GsAcceptedOutput {
-  const parsed = parseGsModelOutput(JSON.stringify(GS_MOCK_MODEL_OUTPUT), GS_QUESTION_TEXTS.length);
+  const parsed = parseGsModelOutput(JSON.stringify(GS_MOCK_MODEL_OUTPUT), GS_QUESTIONS.length);
   if (!parsed.ok || parsed.value.audio_quality !== "ok" || parsed.value.not_gyeongsang) {
     throw new Error("가짜 출력이 검증을 통과하지 못했다");
   }
@@ -107,13 +107,25 @@ describe("buildGyeongsangResult", () => {
       },
       evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
       transcript: GS_MOCK_MODEL_OUTPUT.transcript,
-      segments: GS_QUESTION_TEXTS.map((prompt, index) => ({
+      segments: GS_QUESTIONS.map((question, index) => ({
         question: index + 1,
-        prompt,
+        kind: question.kind!,
+        prompt: GS_QUESTION_TEXTS[index],
         transcript: GS_MOCK_MODEL_OUTPUT.question_transcripts[index],
       })),
     };
-    expect(buildGyeongsangResult(acceptedMock(), ISSUE, GS_QUESTION_TEXTS)).toEqual(expected);
+    const result = buildGyeongsangResult(acceptedMock(), ISSUE, GS_QUESTIONS);
+    expect(result).toEqual(expected);
+    // 6문항: 바꿔 말하기 4개 다음에 상황 질문 2개. 5번 문구에는 흉내 문장이 따옴표로 들어간다.
+    expect(result.segments.map((segment) => segment.kind)).toEqual([
+      "convert",
+      "convert",
+      "convert",
+      "convert",
+      "question",
+      "question",
+    ]);
+    expect(result.segments[4].prompt).toContain('"니 지금 뭐 하나? 내랑 같이 밥 먹으러 가노?"');
   });
 
   it("성분 비율의 합을 100으로 맞추고, 받아쓰기에 없는 인용은 버린다", () => {
@@ -121,18 +133,19 @@ describe("buildGyeongsangResult", () => {
       ...acceptedMock(),
       subregions: { gyeongbuk: 30, gyeongnam: 90 },
       evidence: [
-        { question: 4, quote: "주이소", note: "있음" },
-        { question: 4, quote: "주이소예", note: "없음" },
+        { question: 6, quote: "주이소", note: "있음" },
+        { question: 6, quote: "주이소예", note: "없음" },
+        { question: 5, quote: "뭐 하나", note: "5번 흉내 문장에만 있고 화자의 말에는 없다" },
       ],
     };
-    const result = buildGyeongsangResult(output, ISSUE, GS_QUESTION_TEXTS);
+    const result = buildGyeongsangResult(output, ISSUE, GS_QUESTIONS);
     expect(result.subregions).toEqual({ gyeongbuk: 25, gyeongnam: 75 });
-    expect(result.evidence).toEqual([{ question: 4, quote: "주이소", note: "있음" }]);
+    expect(result.evidence).toEqual([{ question: 6, quote: "주이소", note: "있음" }]);
   });
 
   it("문항별 받아쓰기가 없으면 segments는 빈 배열이고 근거는 전체 받아쓰기로 검증한다", () => {
     const output: GsAcceptedOutput = { ...acceptedMock(), question_transcripts: null };
-    const result = buildGyeongsangResult(output, ISSUE, GS_QUESTION_TEXTS);
+    const result = buildGyeongsangResult(output, ISSUE, GS_QUESTIONS);
     expect(result.segments).toEqual([]);
     expect(result.evidence).toHaveLength(GS_MOCK_MODEL_OUTPUT.evidence.length);
     expect(result.evidence.every((item) => item.question === null)).toBe(true);
@@ -143,7 +156,7 @@ describe("buildGyeongsangResult", () => {
       ...acceptedMock(),
       scores: { vocabulary: 0, endings: 0, phonology: 0, intonation: 0 },
     };
-    expect(buildGyeongsangResult(output, ISSUE, GS_QUESTION_TEXTS).intensity).toMatchObject({
+    expect(buildGyeongsangResult(output, ISSUE, GS_QUESTIONS).intensity).toMatchObject({
       score: 0,
       grade: 1,
       gradeName: "서울 사람인 척하는 중",
@@ -152,6 +165,6 @@ describe("buildGyeongsangResult", () => {
 
   it("성분 비율 합이 0이면 RangeError(검증에서 걸러졌어야 한다)", () => {
     const output: GsAcceptedOutput = { ...acceptedMock(), subregions: { gyeongbuk: 0, gyeongnam: 0 } };
-    expect(() => buildGyeongsangResult(output, ISSUE, GS_QUESTION_TEXTS)).toThrow(RangeError);
+    expect(() => buildGyeongsangResult(output, ISSUE, GS_QUESTIONS)).toThrow(RangeError);
   });
 });

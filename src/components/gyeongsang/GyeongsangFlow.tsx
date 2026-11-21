@@ -154,7 +154,7 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
     <div>
       <FlowBanner step={step} origin={step === 'intro' ? null : origin} />
 
-      {step === 'intro' && <S2Consent onNext={() => setStep('origin')} onPrev={onExit} />}
+      {step === 'intro' && <S2Consent questions={GS_QUESTIONS} onNext={() => setStep('origin')} onPrev={onExit} />}
 
       {step === 'origin' && (
         <GsOrigin

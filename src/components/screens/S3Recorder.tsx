@@ -405,6 +405,18 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
                 >
                   {currentQuestion.situation}
                 </h3>
+                {/* 다른 사람의 말(정밀 감정 5번의 어설픈 흉내): 화자의 말이 아니므로 점선 상자로 구분한다 */}
+                {currentQuestion.quote && (
+                  <figure className="mt-2.5 rounded-2xl border border-dashed border-zinc-600 bg-black/30 px-4 py-2.5 sm:py-3">
+                    <figcaption className="text-xs font-semibold text-zinc-400">{currentQuestion.quote.label}</figcaption>
+                    <blockquote className="mt-1 text-balance text-lg font-bold leading-snug text-white">
+                      &ldquo;{currentQuestion.quote.text}&rdquo;
+                    </blockquote>
+                  </figure>
+                )}
+                {currentQuestion.followUp && (
+                  <p className="mt-2.5 text-xl font-bold leading-snug tracking-tight text-white">{currentQuestion.followUp}</p>
+                )}
               </>
             )}
           </div>

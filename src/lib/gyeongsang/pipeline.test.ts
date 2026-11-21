@@ -7,7 +7,7 @@ import { GS_MOCK_MODEL_OUTPUT, gsMockAiClient } from "./mock";
 import { buildGsModelOutputSchema } from "./model-output";
 import { judgeGyeongsang, type GsJudgeDeps, type GsJudgeInput } from "./pipeline";
 import { buildGsSystemInstruction } from "./prompt";
-import { GS_QUESTION_TEXTS } from "./questions";
+import { GS_QUESTIONS, GS_QUESTION_TEXTS } from "./questions";
 
 const WAV_HEADER = [..."RIFF"].map((c) => c.charCodeAt(0)).concat(
   [0x24, 0, 0, 0],
@@ -68,9 +68,10 @@ describe("judgeGyeongsang: 성공", () => {
         },
         evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
         transcript: GS_MOCK_MODEL_OUTPUT.transcript,
-        segments: GS_QUESTION_TEXTS.map((prompt, index) => ({
+        segments: GS_QUESTIONS.map((question, index) => ({
           question: index + 1,
-          prompt,
+          kind: question.kind,
+          prompt: GS_QUESTION_TEXTS[index],
           transcript: GS_MOCK_MODEL_OUTPUT.question_transcripts[index],
         })),
       },
@@ -85,11 +86,11 @@ describe("judgeGyeongsang: 성공", () => {
 
     expect(requests).toEqual([
       {
-        systemInstruction: buildGsSystemInstruction(GS_QUESTION_TEXTS),
+        systemInstruction: buildGsSystemInstruction(GS_QUESTIONS),
         userText: USER_TEXT,
         audio: new Uint8Array(await audio.arrayBuffer()),
         mimeType: "audio/wav",
-        responseSchema: buildGsModelOutputSchema(4),
+        responseSchema: buildGsModelOutputSchema(6),
         timeoutMs: 25_000,
         useFallbackModel: false,
       },

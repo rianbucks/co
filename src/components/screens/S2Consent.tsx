@@ -8,27 +8,36 @@ import {
   hasConvertQuestions,
   recordingSeconds,
 } from '@/lib/judge/questions';
+import type { QuestionItem } from '@/types/screen';
 
-const KIND_COUNTS = countQuestionKinds(GENERAL_QUESTIONS);
-const TOTAL_SECONDS = recordingSeconds(GENERAL_QUESTIONS);
-
-/** 절차 안내 01. 바꿔 말하기 문항이 섞인 세트(set-b)와 상황극만 있는 세트(set-a)의 문구가 다르다. */
-const RECORDING_GUIDE = hasConvertQuestions(GENERAL_QUESTIONS)
-  ? {
-      title: `바꿔 말하기 ${KIND_COUNTS.convert}문항, 상황극 ${KIND_COUNTS.question}문항 구술 (총 ${TOTAL_SECONDS}초)`,
-      detail: `먼저 화면에 나오는 문장 ${KIND_COUNTS.convert}개를 ${convertTarget(GENERAL_QUESTIONS)}에게 말하듯 평소 말투로 바꿔 말합니다. 글자 그대로 읽지 않으셔도 됩니다. 이어지는 상황극 ${KIND_COUNTS.question}개에는 상황에 맞게 자유롭게 답변합니다.`,
-    }
-  : {
-      title: `상황극 ${GENERAL_QUESTIONS.length}문항 구술 (총 ${TOTAL_SECONDS}초)`,
-      detail: `화면에 제시되는 ${GENERAL_QUESTIONS.length}가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 평소 말투로 답변합니다.`,
+/**
+ * 절차 안내 01: 녹음할 문항의 구성과 녹음 길이.
+ * 바꿔 말하기 문항이 섞인 세트(일반 감정 set-b, 경상 정밀 감정 set-gs)와 상황극만 있는 세트(set-a)의 문구가 다르다.
+ */
+function recordingGuide(questions: readonly QuestionItem[]): { title: string; detail: string } {
+  const counts = countQuestionKinds(questions);
+  const seconds = recordingSeconds(questions);
+  if (hasConvertQuestions(questions)) {
+    return {
+      title: `바꿔 말하기 ${counts.convert}문항, 상황극 ${counts.question}문항 구술 (총 ${seconds}초)`,
+      detail: `먼저 화면에 나오는 문장 ${counts.convert}개를 ${convertTarget(questions)}에게 말하듯 평소 말투로 바꿔 말합니다. 글자 그대로 읽지 않으셔도 됩니다. 이어지는 상황극 ${counts.question}개에는 상황에 맞게 자유롭게 답변합니다.`,
     };
+  }
+  return {
+    title: `상황극 ${questions.length}문항 구술 (총 ${seconds}초)`,
+    detail: `화면에 제시되는 ${questions.length}가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 평소 말투로 답변합니다.`,
+  };
+}
 
 interface S2ConsentProps {
   onNext: () => void;
   onPrev: () => void;
+  /** 녹음할 문항. 없으면 일반 감정 문항. 경상 정밀 감정은 set-gs 문항을 넘긴다. */
+  questions?: readonly QuestionItem[];
 }
 
-export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
+export default function S2Consent({ onNext, onPrev, questions = GENERAL_QUESTIONS }: S2ConsentProps) {
+  const RECORDING_GUIDE = recordingGuide(questions);
   const [agreed, setAgreed] = useState(false);
   const [micState, setMicState] = useState<'idle' | 'requesting' | 'denied'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
