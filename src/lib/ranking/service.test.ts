@@ -28,6 +28,7 @@ const RECORD: JudgmentRecord = {
   grade: 4,
   mock: false,
   flagged: false,
+  uncertain: false,
 };
 
 let clock: number;
@@ -168,6 +169,16 @@ describe("registerRanking", () => {
       status: 403,
       body: { error: "not_eligible", reason: "flagged" },
     });
+    expect(state.entries.size).toBe(0);
+  });
+
+  it("판정 유보 결과는 403 not_eligible(uncertain)이고 한도를 쓰지 않는다", async () => {
+    await store.saveJudgment("j_00000000000d", { ...RECORD, uncertain: true });
+    await expect(register({ judgmentId: "j_00000000000d", nickname: "닉네임" })).resolves.toEqual({
+      status: 403,
+      body: { error: "not_eligible", reason: "uncertain" },
+    });
+    expect(limiter.check).not.toHaveBeenCalled();
     expect(state.entries.size).toBe(0);
   });
 

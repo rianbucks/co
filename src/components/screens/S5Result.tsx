@@ -95,7 +95,8 @@ export default function S5Result({
               </h2>
               {region.uncertain && (
                 <p className="mt-2 text-sm text-zinc-400">
-                  확인된 근거가 1순위 권역을 충분히 뒷받침하지 않아 판정을 유보합니다.
+                  확인된 근거가 1순위 권역을 충분히 뒷받침하지 않아 판정을 유보합니다. 유보된 결과는 랭킹에 등록할 수
+                  없습니다.
                 </p>
               )}
 
@@ -158,7 +159,7 @@ export default function S5Result({
               onClick={onGoToRanking}
               className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
             >
-              <span>농도 랭킹 등록 (S7)</span>
+              <span>{region.uncertain ? '농도 랭킹 보기 (S7)' : '농도 랭킹 등록 (S7)'}</span>
             </button>
 
             <button

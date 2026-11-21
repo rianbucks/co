@@ -9,6 +9,7 @@ const RECORD: JudgmentRecord = {
   grade: 4,
   mock: false,
   flagged: false,
+  uncertain: false,
 };
 
 /** 테스트 환경(NODE_ENV=test)에서 라우트가 쓰는 메모리 저장소와 같은 저장소 */
@@ -117,6 +118,13 @@ describe("POST /api/ranking", () => {
     expect(await response.json()).toEqual({ error: "invalid_nickname", reason: "characters" });
   });
 
+  it("판정 유보 결과는 403 not_eligible(uncertain)", async () => {
+    await localStore().saveJudgment("j_aaaaaaaaaaa5", { ...RECORD, uncertain: true });
+    const response = await POST(postJson({ judgmentId: "j_aaaaaaaaaaa5", nickname: "유보결과" }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "not_eligible", reason: "uncertain" });
+  });
+
   it("감정 기록이 없으면 404 not_found", async () => {
     const response = await POST(postJson({ judgmentId: "j_aaaaaaaaaaa4", nickname: "없는기록" }));
     expect(response.status).toBe(404);
@@ -160,6 +168,7 @@ describe("감정과 랭킹 연결", () => {
       grade: 4,
       mock: true,
       flagged: false,
+      uncertain: false,
     });
 
     const response = await POST(postJson({ judgmentId: result.id, nickname: "가짜응답" }));
