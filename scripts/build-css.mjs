@@ -243,6 +243,23 @@ body {
   .screen-glass [class*="rounded-3xl"]:not([role="alert"]) { padding: 20px !important; }
 }
 
+/*
+ * 녹음 화면(S3): 휴대폰 한 화면에 안내, 문장, 녹음 시작 버튼이 들어오게 한다.
+ * - 녹음(S3)과 심사(S4) 중에는 머리글 탭 줄을 누를 수 없으므로 휴대폰에서는 숨긴다(hide-header-tabs).
+ *   :has()를 지원하지 않는 브라우저는 탭 줄과 문항 카드 위치가 전과 같다.
+ * - 문항 카드와 오류 안내는 탭 줄을 숨겨 낮아진 머리글(약 74px) 바로 아래로 올린다.
+ * - 타이머 상자는 lg:rounded-3xl 때문에 위 규칙의 20px 여백을 받는다. 휴대폰에서는 원래 여백(px-4 py-2.5)으로 둔다.
+ * - 정밀 감정 5번의 흉내 상자는 표지를 점선 테두리 위에 얹는다. 표지 바탕은 문항 카드 바탕과 같다.
+ */
+@media (max-width: 640px) {
+  .app-shell:has(.hide-header-tabs) .app-header-tabs { display: none; }
+  .app-shell:has(.hide-header-tabs) .record-card { scroll-margin-top: 76px; }
+  .app-shell:has(.hide-header-tabs) .judging-error-panel { scroll-margin-top: 84px; }
+  .screen-glass .record-timer[class*="rounded-3xl"]:not([role="alert"]) { padding: 10px 16px !important; }
+}
+.app-shell figure.record-quote[class*="border"] { border-color: #5b6872 !important; }
+.record-quote-label { background: var(--sheet); }
+
 .intro-page { color: var(--ink); }
 .intro-masthead, .intro-wordmark, .intro-record-heading, .intro-edition, .intro-regions ul, .intro-footer {
   display: flex;

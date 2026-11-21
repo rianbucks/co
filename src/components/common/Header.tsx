@@ -66,10 +66,11 @@ export default function Header({
         </nav>
       </div>
 
+      {/* 휴대폰의 녹음(S3)과 심사(S4) 화면에서는 CSS가 이 탭 줄을 숨긴다(누를 수 없는 줄이라 화면을 녹음에 쓴다) */}
       {onTabChange && (
         <nav
           aria-label="감정 종류"
-          className="mx-auto mt-3 grid max-w-5xl grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
+          className="app-header-tabs mx-auto mt-3 grid max-w-5xl grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
         >
           {TABS.map((tab) => {
             const active = tab.key === activeTab;
