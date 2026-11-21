@@ -1,89 +1,155 @@
 'use client';
 
+import BrandInfo from '@/components/common/BrandInfo';
+
+import { useRef, useState } from 'react';
+import NoticePopup from '@/components/common/NoticePopup';
+import NicknameInvite from '@/components/common/NicknameInvite';
+import styles from './IntroHero.module.css';
+import { GRADE_TABLE, REGION_NAMES } from '@/lib/judge/rules';
+import { QUESTIONS } from '@/types/screen';
+import DesktopIntroDetails from '@/components/common/DesktopIntroDetails';
+
 interface S1IntroProps {
+  nickname: string;
+  onNicknameChange: (value: string) => void;
   onNext: () => void;
-  /** 감정 없이 농도 랭킹(S7)을 본다. */
   onViewRanking: () => void;
 }
 
-const REGIONS = ['서울·경기', '강원', '충청', '경상', '전라', '제주'];
-
 const STEPS = [
-  { title: '네 가지 질문에 답하기', detail: '문항마다 최대 10초, 평소 말투로 답합니다.' },
-  { title: '말소리 특징 살펴보기', detail: '어휘, 어미, 음운, 억양을 함께 확인합니다.' },
-  { title: '결과 확인하기', detail: '권역별 결과와 농도 점수를 확인하고 저장합니다.' },
+  ['말하기', '친구에게 전화가 온 상황처럼, 질문마다 최대 10초 동안 답해요.'],
+  ['말투 분석', 'AI가 어휘와 어미, 발음과 억양을 살펴 6개 지역과 비교해요.'],
+  ['감정서 받기', '가까운 지역과 사투리 농도를 보고 감정서를 이미지로 저장해요.'],
 ];
 
-export default function S1Intro({ onNext, onViewRanking }: S1IntroProps) {
+// 행정 경계를 생략하고 각 방언 지역의 대략적인 위치를 표시한다.
+const MAP_POINTS = [
+  { region: 'seoul_gyeonggi', x: 112, y: 61, left: true },
+  { region: 'gangwon', x: 159, y: 47, left: false },
+  { region: 'chungcheong', x: 117, y: 102, left: true },
+  { region: 'gyeongsang', x: 166, y: 139, left: false },
+  { region: 'jeolla', x: 109, y: 156, left: true },
+  { region: 'jeju', x: 95, y: 217, left: true },
+] as const;
+
+function RegionDiagram({ miniature = false }: { miniature?: boolean }) {
   return (
-    <div className="intro-page mx-auto w-full max-w-6xl px-5 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
+    <svg viewBox={miniature ? '73 9 125 221' : '0 0 272 235'}
+      className={miniature ? styles.miniMap : styles.map}
+      role={miniature ? undefined : 'img'} aria-hidden={miniature || undefined}
+      aria-label={miniature ? undefined : '대한민국 지원 지역 지도. 북서쪽 서울·경기, 북동쪽 강원, 중서부 충청, 동남쪽 경상, 남서쪽 전라, 남쪽 섬 제주.'}>
+      <g fill="#39607f" stroke="#91c8e2" strokeWidth="1.6" strokeLinejoin="round">
+        <path d="M88 55 L98 48 96 41 105 38 109 31 120 34 129 30 140 31 149 26 158 14
+          Q165 31 174 43 Q188 65 191 83 L189 104 192 118 188 130 195 127 192 142
+          185 151 181 166 170 172 165 178 155 175 151 183 143 179 138 185 132 179
+          127 188 121 183 114 192 109 186 99 195 95 189 88 195 87 186 81 189
+          85 179 79 178 86 171 82 165 91 157 88 152 95 144 93 135 100 127
+          96 120 94 112 87 111 91 104 83 97 88 90 93 94 95 87 105 86 101 79
+          94 76 99 70 94 66 97 62 Z" />
+        <ellipse cx="95" cy="217" rx="15" ry="6" transform="rotate(-13 95 217)" />
+      </g>
+      {!miniature && MAP_POINTS.map(({ region, x, y, left }) => (
+        <g key={region}>
+          <path d={`M ${x} ${y} H ${left ? 69 : 212}`} stroke="#9ac6df" fill="none" />
+          <circle cx={x} cy={y} r="3.5" fill="#a1f2dc" stroke="#122c40" />
+          <text x={left ? 63 : 218} y={y + 5} textAnchor={left ? 'end' : 'start'}
+            fill="#e8f4ff" fontSize="14" fontWeight="600">
+            {region === 'seoul_gyeonggi' ? '서울·경기' : REGION_NAMES[region]}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export default function S1Intro({ onNext, onViewRanking, nickname, onNicknameChange }: S1IntroProps) {
+  const sheet = useRef<HTMLDialogElement>(null);
+  const [panel, setPanel] = useState<'questions' | 'guide' | 'regions' | 'grades'>('questions');
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const question = QUESTIONS[questionIndex];
+  function preview(index: number) {
+    setPanel('questions');
+    setQuestionIndex(index);
+    sheet.current?.showModal();
+  }
+
+  function openInfo(kind: 'guide' | 'regions' | 'grades') {
+    setPanel(kind);
+    sheet.current?.showModal();
+  }
+
+  return (
+    <div className="intro-page">
       <header className="intro-masthead">
-        <div className="intro-wordmark">
-          <span className="intro-seal" aria-hidden="true">C/O</span>
-          <div>
-            <p className="intro-brand">원산지증명서</p>
-            <p className="intro-brand-subtitle">사투리 음성 감정</p>
-          </div>
-        </div>
-        <p className="intro-edition">구술 감정 안내 <span>제 1 호</span></p>
+        <BrandInfo />
+        <button onClick={onViewRanking} className="ranking-link">농도 랭킹 <span className="nav-chevron" aria-hidden="true">›</span></button>
       </header>
-
       <div className="intro-layout">
-        <section className="intro-copy">
-          <p className="intro-eyebrow">방언 감정 안내</p>
-          <h1>
-            말소리에서
-            <br />
-            <span>방언 특징을 살펴봅니다</span>
-          </h1>
-          <p className="intro-description">
-            네 가지 일상 질문에 평소 말투로 답해 주세요. 녹음된 말소리에서 방언의 특징을 살펴
-            권역과 농도 결과를 안내합니다.
-          </p>
-
-          <div className="intro-regions">
-            <h2>감정 가능 지역</h2>
-            <ul>
-              {REGIONS.map((region) => <li key={region}>{region}</li>)}
-            </ul>
+        <section data-enter="1" className={styles.hero} aria-labelledby="hero-heading">
+          <div className={styles.pitch}>
+            <p className={styles.meta}>사투리 음성 테스트 · 약 1분</p>
+            <h1 id="hero-heading">내 말투는 어디에 <br />가까울까?</h1>
+            <p className={styles.lead}>네 가지 상황에 평소 말투로 답해 보세요. 어떤 지역의 표현을 쓰는지, 사투리가 얼마나 진한지 알려드려요.</p>
           </div>
-        </section>
-
-        <aside className="intro-record" aria-label="감정 절차와 신청">
-          <div className="intro-record-heading">
-            <div>
-              <p>감정 절차</p>
-              <h2>신청부터 결과까지</h2>
+          <figure className={styles.ticket}>
+            <figcaption>음성 감정서 <span>결과 예시</span></figcaption>
+            <div className={styles.reading}>
+              <div><small>가장 가까운 말투</small><strong>경상 방언</strong></div>
+              <div><small>사투리 농도</small><strong>68<small> / 100</small></strong></div>
             </div>
-            <span aria-hidden="true">C/O</span>
-          </div>
-
-          <ol className="intro-steps">
-            {STEPS.map((step, index) => (
-              <li key={step.title}>
-                <span className="intro-step-number">{index + 1}</span>
-                <div>
-                  <h3>{step.title}</h3>
-                  <p>{step.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="intro-actions">
-            <p className="intro-time">예상 시간 약 1분 <span>설치·가입 불필요</span></p>
-            <button onClick={onNext} className="intro-primary-action">감정 신청</button>
-            <button onClick={onViewRanking} className="intro-secondary-action">농도 랭킹 보기</button>
-            <p className="intro-privacy">녹음 음성은 판정 처리 후 서버에 보관하지 않습니다.</p>
-          </div>
-        </aside>
+            <div className={styles.gauge} aria-hidden="true" />
+            <p>4등급 · 자막 필요</p>
+          </figure>
+        </section>
+        <NicknameInvite nickname={nickname} onStart={value => { onNicknameChange(value); onNext(); }} />
+        <section className={styles.guide} aria-label="감정 이용 안내">
+          <button data-enter="3" className={styles.infoCard} aria-haspopup="dialog" onClick={() => openInfo('guide')}>
+            <span className={styles.bars} aria-hidden="true"><i /><i /><i /><i /></span>
+            <span><strong>이렇게 진행해요</strong><small>4문항 · 문항당 최대 10초</small></span>
+            <span className={`nav-chevron ${styles.cardArrow}`} aria-hidden="true">›</span>
+          </button>
+          <button className={styles.infoCard} aria-haspopup="dialog" data-enter="4" onClick={() => openInfo('regions')}>
+            <RegionDiagram miniature />
+            <span><strong>지원 지역</strong><small>서울·경기부터 제주까지 6개 지역</small></span>
+            <span className={`nav-chevron ${styles.cardArrow}`} aria-hidden="true">›</span>
+          </button>
+        </section>
+        <DesktopIntroDetails onViewRanking={onViewRanking} onPreview={preview} />
       </div>
-
-      <footer className="intro-footer">
-        <span>원산지증명서</span>
-        <span>방언 음성 감정 안내</span>
-        <span>대한민국 6개 권역</span>
-      </footer>
+      <NoticePopup highlighted title="어떤 질문이 나올까요?" action="첫 문항 미리보기" rememberKey="co:intro-preview-dismissed" onAction={() => preview(0)} />
+      <dialog ref={sheet} className="discard-dialog preview-sheet" aria-labelledby="preview-heading"
+        onClick={event => {
+          if (event.target !== event.currentTarget) return;
+          const box = event.currentTarget.getBoundingClientRect();
+          if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) sheet.current?.close();
+        }}>
+        <div className="sheet-title"><h2 id="preview-heading">{{ guide: '이렇게 진행해요', regions: '지원 지역', grades: '농도별 등급 기준', questions: '녹음 문항 미리보기' }[panel]}</h2>
+          <button aria-label="닫기" onClick={() => sheet.current?.close()}>닫기</button>
+        </div>
+        {panel === 'guide' ? (
+          <div className="sheet-guide">
+            <ol className={styles.timeline}>{STEPS.map(([title, detail], index) => <li key={title}><b aria-hidden="true">{index + 1}</b><div><strong>{title}</strong><small>{detail}</small></div></li>)}</ol>
+            <p><strong>녹음과 공개 범위</strong><br />동의하면 녹음이 Google Gemini로 전송돼요. 판정 후 이 서비스 서버에는 음성을 보관하지 않아요. 랭킹은 원할 때만 등록해요.</p>
+            <button className={styles.gradeLink} onClick={() => setPanel('grades')}>농도별 등급 기준 보기</button>
+          </div>
+        ) : panel === 'regions' ? (
+          <div className="sheet-guide">
+            <figure className={styles.regionDiagram}><RegionDiagram /></figure>
+            <p>녹음한 말투를 이 여섯 지역의 표현과 비교해요. 두 지역의 특징이 비슷하면 ‘혼합 방언’으로 표시돼요.</p>
+          </div>
+        ) : panel === 'grades' ? (
+          <ul className="sheet-grades">{GRADE_TABLE.map(({grade, name, min, max}) => (
+            <li key={grade}><strong>{grade}등급</strong><span>{name}</span><small>{min}~{max}점</small></li>
+          ))}</ul>
+        ) : <>
+        <div className="question-picker" aria-label="문항 선택" role="group">
+          {QUESTIONS.map(({ id }, index) => <button key={id} aria-pressed={index === questionIndex} onClick={() => setQuestionIndex(index)}>{id}번</button>)}
+        </div>
+        <div className="preview-prompt" aria-live="polite"><strong>{question.target}에게</strong><p>{question.situation}</p></div>
+        </>}
+        <button className="intro-primary-action" onClick={() => { sheet.current?.close(); onNext(); }}>감정 신청</button>
+      </dialog>
     </div>
   );
 }

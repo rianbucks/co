@@ -13,10 +13,10 @@ interface S4JudgingProps {
 }
 
 const JUDGING_STEPS = [
-  { id: 1, label: '녹음 상태 확인', desc: '음성이 잘 들어왔는지 확인합니다.' },
-  { id: 2, label: '어휘와 발음 살펴보기', desc: '지역에서 자주 쓰는 말과 발음 특징을 확인합니다.' },
-  { id: 3, label: '어미와 억양 살펴보기', desc: '문장 끝 표현과 말의 높낮이를 확인합니다.' },
-  { id: 4, label: '결과 정리', desc: '권역별 결과와 농도 점수를 정리합니다.' },
+  { id: 1, label: '녹음 상태 확인' },
+  { id: 2, label: '어휘와 발음 살펴보기' },
+  { id: 3, label: '어미와 억양 살펴보기' },
+  { id: 4, label: '결과 정리' },
 ];
 
 /** 같은 녹음을 다시 보내도 결과가 같은 오류. 재시도 대신 다시 녹음으로 안내한다. */
@@ -49,7 +49,6 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
   const failed = errorInfo !== null;
 
-  const hasCalledApiRef = useRef(false);
   const requestCompletedRef = useRef(false);
   const timedOutRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -87,8 +86,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
   }, [failed, onFailedChange]);
 
   useEffect(() => {
-    if (hasCalledApiRef.current) return;
-    hasCalledApiRef.current = true;
+    let resultTimer: ReturnType<typeof setTimeout> | undefined;
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -108,7 +106,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
         });
 
         const data = await res.json();
-        if (timedOutRef.current) return;
+        if (controller.signal.aborted) return;
 
         if (!res.ok) {
           const errorCode = data.error;
@@ -147,7 +145,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
           return;
         }
 
-        setTimeout(() => {
+        resultTimer = setTimeout(() => {
           onSuccess(data as JudgeResult);
         }, 700);
       } catch (err) {
@@ -163,7 +161,12 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
       }
     };
 
-    callJudgeApi();
+    const startTimer = setTimeout(callJudgeApi, 0);
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(resultTimer);
+      controller.abort();
+    };
   }, [audioBlob, onSuccess]);
 
   return (
@@ -188,92 +191,20 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-center">
-
-        {/* Plain status and elapsed time */}
-        <div className="flex flex-col justify-center rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-8 shadow-2xl backdrop-blur-xl sm:p-10 lg:col-span-5">
-          <div className="flex items-center gap-4">
-            <div className="judging-indicator" aria-hidden="true">
-              {failed ? <span>!</span> : <span className="judging-spinner" />}
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500">판정 상태</p>
-              <h2 className="mt-1 text-xl font-medium text-white">
-                {failed ? '심사 중단' : '음성 감정 진행 중'}
-              </h2>
-            </div>
-          </div>
-          <p className="mt-5 text-sm leading-7 text-zinc-400">
-            {failed
-              ? '심사가 중단되었습니다. 위의 안내에 따라 다시 진행해 주십시오.'
-              : '녹음에서 확인된 어휘와 발음, 어미와 억양을 살펴보고 있습니다.'}
-          </p>
-
-          {!errorInfo && (
-            <p className="mt-6 border-t border-zinc-800 pt-4 text-sm text-zinc-400">
-              처리 시간 <strong className="ml-2 font-semibold text-white">{secElapsed}초</strong>
-              <span className="ml-2 text-zinc-500">최대 30초</span>
-            </p>
-          )}
-        </div>
-
-        {/* Right Column: Step Timeline & Details */}
-        <div className="flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-xl sm:p-8 lg:col-span-7">
-          <div>
-            <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-              실시간 분석 단계
-            </h3>
-
-            <div className="mt-4 space-y-3">
-              {JUDGING_STEPS.map((step, idx) => {
-                const isDone = currentStepIndex > idx;
-                const isCurrent = currentStepIndex === idx;
-
-                return (
-                  <div
-                    key={step.id}
-                    className={`flex items-start gap-4 rounded-2xl border p-4 transition-all ${
-                      isCurrent
-                        ? 'border-indigo-500/50 bg-indigo-500/10 shadow-lg shadow-indigo-500/5'
-                        : isDone
-                        ? 'border-zinc-800/60 bg-zinc-900/40 text-zinc-400'
-                        : 'border-zinc-900 bg-black/30 text-zinc-600'
-                    }`}
-                  >
-                    <div
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        isDone
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : isCurrent
-                          ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30'
-                          : 'bg-zinc-800 text-zinc-500'
-                      }`}
-                    >
-                      {isDone ? '✓' : step.id}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold ${isCurrent ? 'text-white' : isDone ? 'text-zinc-300' : 'text-zinc-500'}`}>
-                          {step.label}
-                        </span>
-                        {isCurrent && !failed && (
-                          <span className="flex items-center gap-2 text-xs font-medium text-indigo-300">
-                            <span className="judging-live-dot" />
-                            진행 중
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-xs text-zinc-400">{step.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-      </div>
+      {!errorInfo && (
+        <section data-enter="1" className="judging-panel">
+          <div className="judging-title"><span aria-hidden="true" className="judging-spinner" /><h2>말투를 분석하고 있어요</h2></div>
+          <p>경과 시간 {secElapsed}초 · 최대 30초</p>
+          <ol>
+            {JUDGING_STEPS.map((step, index) => (
+              <li key={step.id} aria-current={index === currentStepIndex ? 'step' : undefined}>
+                <span aria-hidden="true">{index < currentStepIndex ? '✓' : step.id}</span>
+                {step.label}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </div>
   );
 }

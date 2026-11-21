@@ -1,0 +1,19 @@
+button.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  color: #e4eaf5;
+  font: 720 clamp(18px, 2vw, 21px)/1.15 system-ui, sans-serif;
+  letter-spacing: -.055em;
+}
+.arrow { font-size: 18px; font-weight: 450; color: #8591a5; }
+.mark { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; gap: 2px; transform: skewX(-14deg); }
+.mark i { width: 6px; border-radius: 6px; height: 12px; background: linear-gradient(155deg, #e5f3ff, #7ea9e8 62%, #476ba2); }
+.mark i:nth-child(2) { height: 24px; }
+.mark i:last-child { height: 17px; }
+dialog.about { background: radial-gradient(ellipse at 100% 0%, #3d609568, transparent 65%), #152032f5; }
+.about dl { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 14px 18px; margin-block: 18px 8px; }
+.about dt { color: #aebed6; font-size: 14px; }
+.about dd { margin: 0; color: #eef4ff; line-height: 1.6; word-break: keep-all; }
+.about > button { margin-top: 14px; width: 100%; }

@@ -43,114 +43,24 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
   };
 
   return (
-    <div className="screen-glass p-5 sm:p-7 lg:p-10">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
-        
-        {/* Left Column: Guidelines & Principles */}
-        <div className="flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-7">
-          <div>
-            <div>
-              <p className="text-xs text-zinc-500">이용 전 확인</p>
-              <h2 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">
-                사투리 감정 절차 및 개인정보 고지
-              </h2>
-              <p className="text-xs text-zinc-400">아래 사항을 확인한 뒤 녹음을 시작해 주세요.</p>
-            </div>
-
-            <div className="mt-6 divide-y divide-zinc-800 border-y border-zinc-800">
-              <div className="flex items-start gap-4 py-4">
-                <span className="pt-0.5 font-mono text-xs text-zinc-500">01</span>
-                <div>
-                  <div className="text-xs font-bold text-zinc-200">상황극 4문항 구술 (총 40초)</div>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    화면에 제시되는 4가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 평소 말투로 답변합니다.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 py-4">
-                <span className="pt-0.5 font-mono text-xs text-zinc-500">02</span>
-                <div>
-                  <div className="text-xs font-bold text-zinc-200">Google Gemini 음성 처리 안내</div>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    녹음 음성은 판정을 위해 Google Gemini 서비스로 전송됩니다. 프로젝트 서버와 데이터베이스에는 판정 처리 후 음성을 저장하지 않습니다.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 py-4">
-                <span className="pt-0.5 font-mono text-xs text-zinc-500">03</span>
-                <div>
-                  <div className="text-xs font-bold text-zinc-200">전국 랭킹 등록은 선택 사항</div>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    판정 완료 후 본인의 농도 결과를 랭킹에 공개하고자 할 때만 별도의 추가 저장 동의를 받습니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 border-t border-zinc-800/60 pt-4 text-[11px] text-zinc-400">
-            * 브라우저 마이크는 판정 녹음 목적으로만 1회성으로 사용됩니다.
-          </div>
-        </div>
-
-        {/* Right Column: Consent & Action */}
-        <div className="flex flex-col justify-between gap-6 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-xl sm:p-8 lg:col-span-5">
-          <div>
-            <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-              마이크 장비 사용 및 안내 동의
-            </h3>
-            <p className="mt-1 text-xs text-zinc-400">
-              아래 항목을 확인하시고 동의 체크박스를 눌러주세요.
-            </p>
-
-            <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/40 p-4">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 rounded-md accent-white"
-                />
-                <span className="text-xs leading-relaxed text-zinc-200">
-                  <span className="font-bold text-white">[필수]</span> 녹음 음성이 판정을 위해 Google Gemini AI 서비스로 전송되며, 프로젝트 서버에 지속 저장되지 않는다는 안내를 확인하고 동의합니다.
-                </span>
-              </label>
-            </div>
-
-            {errorMessage && (
-              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-300">
-                <div className="font-semibold">마이크 권한 확인 필요</div>
-                <p className="mt-1 text-[11px] leading-relaxed text-red-400">{errorMessage}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          <div className="space-y-3">
-            <button
-              onClick={handleRequestMicAndProceed}
-              disabled={!agreed || micState === 'requesting'}
-              className={`flex w-full items-center justify-center gap-2 rounded-full py-4 text-sm font-bold transition active:scale-[0.98] ${
-                agreed && micState !== 'requesting'
-                  ? 'bg-white text-black shadow-xl shadow-white/10 hover:bg-zinc-200'
-                  : 'cursor-not-allowed bg-zinc-800 text-zinc-500'
-              }`}
-            >
-              <span>{micState === 'requesting' ? '마이크 연결 중...' : '마이크 허용하고 녹음실 입장'}</span>
-            </button>
-
-            <button
-              onClick={onPrev}
-              className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-700 active:scale-95"
-            >
-              이전 화면으로
-            </button>
-          </div>
-        </div>
-
+    <section className="consent-screen">
+      <h1 data-enter="1">녹음하기 전에</h1>
+      <dl data-enter="2" className="consent-list">
+        <div><dt>녹음 시간</dt><dd>문항당 최대 10초예요. 답을 마치면 다음으로 넘어갈 수 있어요.</dd></div>
+        <div><dt>음성 처리</dt><dd>녹음 음성은 판정을 위해 Google Gemini로 전송돼요. 판정 후 이 서비스의 서버에는 음성을 저장하지 않아요.</dd></div>
+        <div><dt>랭킹 공개</dt><dd>등록을 선택한 경우에만 닉네임과 감정 결과를 저장하고 공개해요.</dd></div>
+      </dl>
+      <label data-enter="3" className="consent-check">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+        음성 전송과 처리에 동의해요 (필수)
+      </label>
+      {errorMessage && <p role="alert" className="consent-error">{errorMessage}</p>}
+      <div data-enter="4" className="flow-actions">
+        <button onClick={onPrev} className="secondary-action-button">뒤로</button>
+        <button onClick={handleRequestMicAndProceed} disabled={!agreed || micState === 'requesting'} className="intro-primary-action">
+          {micState === 'requesting' ? '연결 중…' : '마이크 허용하고 계속'}
+        </button>
       </div>
-    </div>
+    </section>
   );
 }

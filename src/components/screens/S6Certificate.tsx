@@ -84,7 +84,6 @@ function renderCertificate(result: JudgeResult): Promise<Blob> {
     context.fillText('음성 감정서', width / 2, 245);
     context.fillStyle = muted;
     context.font = '24px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
-    context.fillText('VOICE DIALECT ANALYSIS CERTIFICATE', width / 2, 292);
 
     context.strokeStyle = '#cbd3dc';
     context.lineWidth = 2;
@@ -169,13 +168,7 @@ function renderCertificate(result: JudgeResult): Promise<Blob> {
     context.textAlign = 'center';
     context.fillStyle = '#416785';
     context.font = '700 20px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
-    context.fillText('C/O', 925, 1388);
-    context.font = '600 15px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
-    context.fillText('감정 확인', 925, 1418);
-    context.textAlign = 'left';
-    context.fillStyle = muted;
-    context.font = '20px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
-    context.fillText('본 감정서는 음성 분석 결과를 기록한 문서입니다.', 150, 1430);
+    context.fillText('감정 확인', 925, 1402);
 
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
@@ -238,37 +231,41 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
   return (
     <section className="screen-glass p-5 sm:p-7 lg:p-10" aria-labelledby="certificate-title">
       <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div data-enter="1" className="certificate-tools">
           <button onClick={onBack} className="rounded-full border border-zinc-700 px-4 py-2 text-sm text-zinc-300 transition hover:bg-zinc-800">
-            결과로 돌아가기
+            결과로
           </button>
-          <span className="text-xs font-medium text-zinc-500">S6 · 감정서 발급</span>
+          <button onClick={handleDownload} disabled={busy} className="rounded-full bg-white py-2 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-slate-200 disabled:opacity-50">
+            {busy ? '이미지 생성 중…' : '이미지 저장'}
+          </button>
+          <button onClick={handleShare} disabled={busy} className="rounded-full border border-zinc-700 bg-zinc-800/80 py-2 text-sm font-bold text-zinc-100 transition hover:bg-zinc-700 disabled:opacity-50">
+            {busy ? '이미지 생성 중…' : '공유'}
+          </button>
         </div>
 
-        <article className="relative overflow-hidden rounded-[2rem] border border-slate-300 bg-[#fbfaf6] px-6 py-8 text-[#17243a] shadow-2xl sm:px-12 sm:py-12">
-          <div className="pointer-events-none absolute inset-3 rounded-[1.5rem] border border-slate-300" />
-          <div className="pointer-events-none absolute inset-4 rounded-[1.4rem] border border-slate-200" />
+        <article data-enter="2" className="relative overflow-hidden rounded-[2rem] border border-slate-300 bg-[#fbfaf6] px-5 py-5 text-[#17243a] shadow-2xl sm:px-8 sm:py-6">
+          <div className="pointer-events-none absolute inset-2 rounded-[1.5rem] border border-slate-300" />
+          <div className="pointer-events-none absolute inset-3 rounded-[1.4rem] border border-slate-200" />
           <div className="relative text-center">
             <p className="text-xs font-semibold tracking-wide text-[#315b83] sm:text-sm">원산지증명서 · 사투리 감정 결과</p>
-            <h1 id="certificate-title" className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">음성 감정서</h1>
-            <p className="mt-2 text-[10px] tracking-[0.18em] text-slate-500 sm:text-xs">VOICE DIALECT ANALYSIS CERTIFICATE</p>
+            <h1 id="certificate-title" className="mt-1 text-3xl font-black tracking-tight sm:text-5xl">음성 감정서</h1>
           </div>
 
-          <div className="relative mt-7 grid grid-cols-2 gap-3 border-y border-slate-300 py-4 text-xs sm:mt-9 sm:text-sm">
+          <div className="relative mt-3 grid grid-cols-2 gap-3 border-y border-slate-300 py-2 text-xs sm:text-sm">
             <div><p className="text-slate-500">문서번호</p><p className="mt-1 font-semibold">{result.certificateNo}</p></div>
             <div className="text-right"><p className="text-slate-500">발급일</p><p className="mt-1 font-semibold">{new Date(result.issuedAt).toLocaleDateString('ko-KR')}</p></div>
           </div>
 
-          <div className="relative mt-6 rounded-2xl bg-[#eef2f6] px-4 py-7 text-center sm:mt-8 sm:py-9">
+          <div className="relative mt-3 rounded-2xl bg-[#eef2f6] px-4 py-3 text-center">
             <p className="text-xs font-semibold text-slate-500 sm:text-sm">판정 지역</p>
             <p className="mt-2 text-2xl font-black text-[#315b83] sm:text-4xl">{result.region.mixed ? '혼합 방언' : result.region.label}</p>
             <p className="mt-3 text-sm font-bold sm:text-base">{result.intensity.grade}등급 · {result.intensity.gradeName}</p>
             <p className="mt-2 text-sm font-bold sm:text-lg">사투리 농도 {result.intensity.score} / 100점</p>
           </div>
 
-          <div className="relative mt-7 sm:mt-9">
+          <div className="relative mt-3">
             <h2 className="text-sm font-bold sm:text-base">권역별 판정 확률</h2>
-            <div className="mt-4 space-y-3">
+            <div className="mt-2 space-y-1">
               {REGION_ORDER.map((region) => {
                 const score = result.region.probabilities[region];
                 const top = result.region.top === region;
@@ -283,29 +280,19 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
             </div>
           </div>
 
-          <div className="relative mt-7 border-t border-slate-300 pt-5 sm:mt-9">
-            <h2 className="text-sm font-bold sm:text-base">감정관 종합 소견</h2>
-            <p className="mt-2 text-sm leading-7 text-slate-700">{result.opinion}</p>
-          </div>
-
-          <div className="relative mt-8 flex items-end justify-between gap-4 sm:mt-10">
-            <p className="max-w-[70%] text-[11px] leading-5 text-slate-500 sm:text-xs">본 감정서는 음성 분석 결과를 기록한 문서입니다.</p>
+          <div className="relative mt-3 flex items-end justify-between gap-3 border-t border-slate-300 pt-3">
+            <div>
+              <h2 className="text-sm font-bold sm:text-base">감정관 종합 소견</h2>
+              <p className="mt-1 text-sm text-slate-700">{result.opinion}</p>
+            </div>
             <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-2 border-[#416785] text-[#416785] sm:h-20 sm:w-20">
-              <span className="text-sm font-black">C/O</span><span className="text-[9px] font-semibold">감정 확인</span>
+              <span className="text-xs font-semibold">감정 확인</span>
             </div>
           </div>
         </article>
 
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button onClick={handleDownload} disabled={busy} className="rounded-full bg-white py-4 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-slate-200 disabled:opacity-50">
-            {busy ? '이미지 생성 중…' : '이미지 저장'}
-          </button>
-          <button onClick={handleShare} disabled={busy} className="rounded-full border border-zinc-700 bg-zinc-800/80 py-4 text-sm font-bold text-zinc-100 transition hover:bg-zinc-700 disabled:opacity-50">
-            {busy ? '이미지 생성 중…' : '공유'}
-          </button>
-        </div>
         <button
-          onClick={onGoToRanking}
+          data-enter="3" onClick={onGoToRanking}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
         >
           <span>농도 랭킹 등록</span>

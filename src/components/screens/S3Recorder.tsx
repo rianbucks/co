@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useImperativeHandle, type Ref } from 'react';
 import { QUESTIONS, QuestionItem } from '@/types/screen';
 
 interface S3RecorderProps {
+  ref?: Ref<{ requestExit: () => void }>;
   onComplete: (blob: Blob) => void;
+  onBack: () => void;
   onResetAll: () => void;
 }
 
@@ -35,7 +37,7 @@ const DOUBLE_TAP_GUARD_MS = 500;
  */
 type RecordingPhase = 'ready' | 'recording' | 'paused' | 'processing' | 'error';
 
-export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) {
+export default function S3Recorder({ ref, onComplete, onBack, onResetAll }: S3RecorderProps) {
   const [currentIdx, setCurrentIdx] = useState(0); // 화면에 보이는 문항: 0, 1, 2, 3
   const [phase, setPhase] = useState<RecordingPhase>('ready');
   const [secLeft, setSecLeft] = useState(SECONDS_PER_QUESTION);
@@ -43,6 +45,11 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   const [errorMessage, setErrorMessage] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
 
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [discardAction, setDiscardAction] = useState<'exit' | 'restart' | 'back'>('exit');
+  const deadlineRef = useRef(0);
+  const remainingMsRef = useRef<number | null>(null);
+  const sessionRef = useRef(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -60,6 +67,8 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   const currentQuestion: QuestionItem = QUESTIONS[currentIdx];
 
   const cleanupAudio = useCallback(() => {
+    sessionRef.current += 1;
+    remainingMsRef.current = null;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -195,12 +204,13 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   }, [clearTimer, stopVolumeVisualizer]);
 
   /** questionIdx 문항의 10초 타이머를 시작한다. 종료 처리는 상태 갱신 함수 밖에서 한다. */
-  const startCountdown = useCallback((questionIdx: number) => {
+  const startCountdown = useCallback((questionIdx: number, durationMs = SECONDS_PER_QUESTION * 1000) => {
     clearTimer();
     recordingIdxRef.current = questionIdx;
     phaseChangedAtRef.current = performance.now();
-    const deadline = phaseChangedAtRef.current + SECONDS_PER_QUESTION * 1000;
-    setSecLeft(SECONDS_PER_QUESTION);
+    const deadline = phaseChangedAtRef.current + durationMs;
+    deadlineRef.current = deadline;
+    setSecLeft(Math.ceil(durationMs / 1000));
 
     timerRef.current = setInterval(() => {
       const remaining = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
@@ -212,12 +222,17 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
   const handleStartFirstRecording = async () => {
     if (startingRef.current || recorderRef.current) return;
     startingRef.current = true;
+    const session = sessionRef.current;
     try {
       setErrorMessage('');
       chunksRef.current = [];
       setCurrentIdx(0);
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (session !== sessionRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
 
       const options: MediaRecorderOptions = { audioBitsPerSecond: 48000 };
@@ -285,145 +300,91 @@ export default function S3Recorder({ onComplete, onResetAll }: S3RecorderProps) 
     setErrorMessage('');
   };
 
+  const requestDiscard = (action: 'restart' | 'exit' | 'back') => {
+    if (dialogRef.current?.open) return;
+    if (phase !== 'paused' && phase !== 'recording') {
+      if (action === 'back') onBack();
+      else if (action === 'exit') onResetAll();
+      else handleReset();
+      return;
+    }
+    if (phase === 'recording' && recorderRef.current?.state === 'recording') {
+      remainingMsRef.current = Math.max(0, deadlineRef.current - performance.now());
+      recorderRef.current.pause();
+      clearTimer();
+      stopVolumeVisualizer();
+    }
+    setDiscardAction(action);
+    dialogRef.current?.showModal();
+  };
+
+  useImperativeHandle(ref, () => ({ requestExit: () => requestDiscard('back') }));
+
+  const continueSession = () => {
+    const remaining = remainingMsRef.current;
+    remainingMsRef.current = null;
+    if (remaining === null || recorderRef.current?.state !== 'paused') return;
+    if (remaining === 0) {
+      finishQuestion();
+      return;
+    }
+    recorderRef.current.resume();
+    if (streamRef.current) startVolumeVisualizer(streamRef.current);
+    startCountdown(currentIdx, remaining);
+  };
+
   const isLastQuestion = currentIdx === LAST_QUESTION_IDX;
-  const timerHint =
-    phase === 'recording'
-      ? isLastQuestion
-        ? `${secLeft}초 후 자동으로 제출`
-        : `${secLeft}초 후 자동으로 다음 문항 이동`
-      : phase === 'ready' || phase === 'paused'
-        ? '문항을 읽고 녹음 시작을 눌러 주십시오'
-        : '녹음 종료';
 
   return (
-    <div className="screen-glass p-5 sm:p-7 lg:p-10">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
-
-        {/* Left Column: Situation Prompt & Instructions */}
-        <div className="flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-6">
-          <div>
-            {/* Step Counter Pill & Reset */}
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="record-question-index">
-                  문항 {currentIdx + 1} / {QUESTIONS.length}
-                </span>
-                <span className="text-xs font-medium text-zinc-400">
-                  상황극 녹음
-                </span>
-              </div>
-
-              <button
-                onClick={handleReset}
-                className="rounded-full border border-zinc-700/60 bg-zinc-800/60 px-3 py-1 text-xs font-medium text-zinc-400 transition hover:bg-zinc-700 hover:text-white"
-              >
-                처음부터 다시
-              </button>
-            </div>
-
-            {/* Target & Situation Card */}
-            <div className="mt-6">
-              <p className="record-target">대화 상대 <strong>{currentQuestion.target}</strong></p>
-
-              <h3 className="recording-prompt mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
-                {currentQuestion.situation}
-              </h3>
-            </div>
-          </div>
-
-          <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs font-medium text-amber-300/90">
-            ※ 설명하지 마시고, 실제로 그 사람에게 말하듯이 답변해 주십시오.
-          </div>
-        </div>
-
-        {/* Right Column: Studio Waveform & Controls */}
-        <div className="flex flex-col justify-between gap-6 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-xl sm:p-8 lg:col-span-6">
-          <div>
-            {/* Large Audio Waveform Visualizer */}
-            <div className="mt-6 flex flex-col items-center justify-center rounded-3xl border border-zinc-800/80 bg-black/60 p-8 shadow-inner">
-              <div className="flex h-20 items-center justify-center gap-2">
-                {[...Array(16)].map((_, i) => {
-                  const active = phase === 'recording';
-                  const height = active ? Math.max(15, Math.min(100, audioLevel * (0.8 + (i % 4) * 0.25))) : 12;
-                  return (
-                    <div
-                      key={i}
-                      className={`w-1.5 rounded-full transition-all duration-75 ${
-                        active ? 'bg-gradient-to-t from-indigo-500 via-purple-400 to-pink-400 shadow-sm shadow-indigo-500/40' : 'bg-zinc-800'
-                      }`}
-                      style={{ height: `${height}%` }}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Digital Countdown Timer */}
-              <div className="mt-6 text-center">
-                <div className="font-mono text-3xl font-black tracking-widest text-white sm:text-4xl">
-                  00:{secLeft < 10 ? `0${secLeft}` : secLeft}
-                </div>
-                <div className="mt-1 text-[11px] font-medium text-zinc-500">
-                  {timerHint}
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mt-5 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-800">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${secLeft <= 3 ? 'bg-red-500' : 'bg-white'}`}
-                  style={{ width: `${(secLeft / SECONDS_PER_QUESTION) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {errorMessage && (
-              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
-                <p className="font-semibold">{errorMessage}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            {(phase === 'ready' || phase === 'paused') && (
-              <button
-                onClick={phase === 'ready' ? handleStartFirstRecording : handleStartNextQuestion}
-                className="record-start-button flex w-full items-center justify-center rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
-              >
-                <span>녹음 시작</span>
-              </button>
-            )}
-
-            {phase === 'recording' && (
-              <button
-                onClick={() => {
-                  if (!isDoubleTap()) finishQuestion();
-                }}
-                aria-live="polite"
-                aria-label={isLastQuestion ? '녹음 중. 누르면 녹음을 완료하고 제출합니다.' : '녹음 중. 누르면 다음 문항으로 이동합니다.'}
-                className="recording-live-button flex w-full flex-col items-center justify-center gap-0.5 rounded-xl py-3 text-sm font-semibold text-white"
-              >
-                <span className="recording-live-label">녹음 중</span>
-              </button>
-            )}
-
-            {phase === 'processing' && (
-              <div className="flex items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-4 text-xs font-medium text-zinc-300">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>음성 데이터 처리 중...</span>
-              </div>
-            )}
-
-            <button
-              onClick={onResetAll}
-              className="secondary-action-button w-full text-center text-zinc-300 transition"
-            >
-              첫 화면으로 나가기
-            </button>
-          </div>
-        </div>
-
+    <div className="studio-screen">
+      <div data-enter="1" className="studio-heading">
+        <span>문항 {currentIdx + 1} / {QUESTIONS.length}</span>
+        <button onClick={() => requestDiscard('restart')}>처음부터 다시</button>
       </div>
+      <div className="question-progress" aria-hidden="true">
+        {QUESTIONS.map((_, index) => <i key={index} className={index <= currentIdx ? 'filled' : ''} />)}
+      </div>
+      <div key={currentQuestion.id} data-enter="2">
+        <p className="studio-target">{currentQuestion.target}에게</p>
+        <h1>{currentQuestion.situation}</h1>
+        <p className="studio-hint">상대에게 직접 말하듯 답해 주세요.</p>
+      </div>
+      <div key={`meter-${currentQuestion.id}`} data-enter="3" className="studio-meter">
+        <time aria-label={`남은 시간 ${secLeft}초`}>00:{String(secLeft).padStart(2, '0')}</time>
+        <div className="studio-wave" aria-hidden="true">
+          {Array.from({ length: 20 }, (_, index) => {
+            const level = audioLevel * (0.55 + (index % 5) * 0.2);
+            return <i key={index} style={{ height: Math.max(8, Math.min(100, level)) + '%' }} />;
+          })}
+        </div>
+        <progress max={SECONDS_PER_QUESTION} value={secLeft} aria-label="남은 녹음 시간" />
+      </div>
+      {errorMessage && <p role="alert" className="consent-error">{errorMessage}</p>}
+      <div key={`actions-${currentQuestion.id}`} data-enter="4" className="studio-actions">
+        {(phase === 'ready' || phase === 'paused') && (
+          <button className="intro-primary-action" onClick={phase === 'ready' ? handleStartFirstRecording : handleStartNextQuestion}>녹음 시작</button>
+        )}
+        {phase === 'recording' && (
+          <button className="recording-live-button" onClick={() => { if (!isDoubleTap()) finishQuestion(); }}
+            aria-label={isLastQuestion ? '녹음 중. 누르면 제출합니다.' : '녹음 중. 누르면 다음 문항으로 이동합니다.'}>녹음 중</button>
+        )}
+        {phase === 'processing' && <p role="status">녹음을 제출하고 있어요…</p>}
+        <button onClick={() => requestDiscard('exit')} className="secondary-action-button">첫 화면으로 나가기</button>
+      </div>
+      <dialog ref={dialogRef} className="discard-dialog" aria-labelledby="discard-heading" aria-describedby="discard-help" onClose={continueSession}>
+        <h2 id="discard-heading">{discardAction !== 'restart' ? '녹음을 끝내고 나갈까요?' : '처음부터 다시 녹음할까요?'}</h2>
+        <p id="discard-help">지금까지 녹음한 답변이 지워집니다.</p>
+        <div className="discard-actions">
+          <button autoFocus className="bg-white" onClick={() => dialogRef.current?.close()}>계속하기</button>
+          <button className="secondary-action-button" onClick={() => {
+            remainingMsRef.current = null;
+            dialogRef.current?.close();
+            if (discardAction === 'back') onBack();
+            else if (discardAction === 'exit') onResetAll();
+            else handleReset();
+          }}>{discardAction !== 'restart' ? '나가기' : '다시 녹음'}</button>
+        </div>
+      </dialog>
     </div>
   );
 }

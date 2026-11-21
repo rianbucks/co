@@ -1,0 +1,31 @@
+.card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr minmax(290px, .95fr);
+  align-items: center;
+  gap: 12px 24px;
+  padding: 18px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 16px;
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+}
+.controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 22px; align-items: center; }
+.controls label, .controls > small { grid-column: 1 / -1; font-size: 14px; }
+.controls label small { color: var(--muted); }
+.controls input { min-width: 0; height: 44px; padding-inline: 10px; border-radius: 10px; background: #102238; color: var(--ink); border: 1px solid #557291; font-size: 16px; }
+.controls button { padding-inline: 14px; background: #b7d3ff; color: #102644; }
+.card .controls button:hover { background: #c8dfff; }
+.controls > small { color: #ffc1b8; }
+@media (prefers-reduced-motion: no-preference) {
+  .controls input:placeholder-shown:not(:focus) { animation: invite 1.5s ease-in-out 1; }
+  @keyframes invite { 50% { box-shadow: 0 0 0 3px #91bfff44; border-color: #a5cbff; } }
+}
+@media (min-width: 1024px) {
+  .card { grid-column: 1; grid-template-columns: 1fr; align-self: stretch; align-content: center; gap: 8px; padding: 16px 22px; }
+}
+@media (max-width: 680px) {
+  .controls { grid-template-columns: 1fr; }
+  .controls button { margin-top: 13px; }
+  .card { grid-template-columns: 1fr; padding: 14px 16px; }
+}

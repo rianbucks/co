@@ -1,0 +1,39 @@
+.space { height: calc(88px + env(safe-area-inset-bottom)); }
+.popup { position: fixed; z-index: 31; bottom: calc(14px + env(safe-area-inset-bottom)); right: max(18px, calc((100vw - 1280px) / 2)); width: min(365px, calc(100% - 28px)); display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 15px; border-radius: 19px; background: linear-gradient(115deg,#2c4666ef,#192d47f5); border: 1px solid #acbbd44a; box-shadow: inset 0 1px 0 #ffffff21, 0 8px 30px #0005; color: #f2f6ff; backdrop-filter: blur(18px); }
+.open { flex: 1; text-align: left; padding: 4px; }
+.open strong, .open > span { display: block; }
+.open > span { color: #b2cbf5; margin-top: 2px; }
+.close { align-self: start; width: 44px; color: #c0ccdc; }
+.wave { display: flex; gap: 2px; align-items: center; height: 26px; }
+.wave i { width: 3px; height: 9px; border-radius: 3px; background: #a9cfff; }
+.wave i:nth-child(even) { height: 17px; }
+.wave i:nth-child(3) { height: 25px; }
+@media (max-width: 680px) { .popup { left: 14px; right: 14px; width: auto; } }
+@media (prefers-reduced-motion: no-preference) { .popup { animation: appear .22s ease-out; } @keyframes appear { from { opacity: 0; transform: translateY(9px); } } }
+
+.event {
+  gap: 10px;
+  padding-inline: 18px 6px;
+  border-color: #84dece80;
+  background: linear-gradient(115deg, #1c454bfa, #142b37fa 75%);
+  box-shadow: inset 0 1px 0 #c9fff129, 0 5px 24px #020b18aa;
+}
+.beacon {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #97efda;
+  box-shadow: 0 0 0 4px #97efda19;
+}
+.event .open > span { color: #a5e3d7; }
+.event .close { align-self: center; color: #c0d9d7; }
+@media (prefers-reduced-motion: no-preference) {
+  .event { animation: appear .22s ease-out, rim 1.25s ease-in-out infinite; }
+  .beacon { animation: signal 1.25s ease-in-out infinite; }
+  @keyframes signal {
+    0%, 100% { opacity: .52; }
+    50% { opacity: 1; background: #edfff9; box-shadow: 0 0 0 6px #97efda40, 0 0 17px #97efdacf; }
+  }
+  @keyframes rim { 50% { border-color: #bdffef; box-shadow: inset 0 1px 0 #c9fff142, 0 0 15px #65eac63d, 0 5px 24px #020b18aa; } }
+}

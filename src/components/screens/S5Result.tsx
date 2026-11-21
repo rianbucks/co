@@ -1,5 +1,7 @@
 'use client';
 
+import NoticePopup from '@/components/common/NoticePopup';
+
 import { Evidence, JudgeResult } from '@/lib/judge/contract';
 import { splitHighlights } from '@/lib/judge/highlight';
 import { REGION_KOREAN_NAMES, PART_KOREAN_NAMES } from '@/types/screen';
@@ -62,7 +64,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-start">
 
         {/* Left Column: Official Verdict & Certificate Card */}
-        <div className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-5">
+        <div data-enter="1" className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-gradient-to-b from-zinc-900/90 to-zinc-950/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-5">
           <div>
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3 text-[11px] text-zinc-400">
               <span className="font-mono">{certificateNo}</span>
@@ -70,24 +72,24 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
             </div>
 
             {/* Verdict Hero */}
-            <div className="mt-6 text-center">
+            <div className="mt-3 text-center">
               <p className="result-eyebrow">
-                최종 판정 결과
+                내 말투와 가까운 지역
               </p>
 
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+              <h2 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
                 {region.mixed ? '혼합 방언' : region.label}
               </h2>
 
-              <p className="mt-4 text-sm font-medium text-zinc-300">
+              <p className="mt-1 text-sm font-medium text-zinc-300">
                 {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
               </p>
             </div>
 
             {/* Dialect Intensity Gauge Bar */}
-            <div className="mt-8 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
+            <div className="mt-3 border-y border-zinc-800/80 py-2">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs font-semibold text-zinc-400">사투리 농도 총점</span>
+                <span className="text-xs font-semibold text-zinc-400">사투리 농도</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-black text-white">{intensity.score}</span>
                   <span className="text-xs text-zinc-500">/ 100점</span>
@@ -102,7 +104,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
             </div>
 
             {/* Opinion Note */}
-            <div className="mt-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 text-xs leading-relaxed">
+            <div className="mt-3 text-xs leading-relaxed">
               <div className="font-bold text-indigo-300">감정관 종합 소견</div>
               <p className="mt-1 text-zinc-300">
                 &quot;{opinion}&quot;
@@ -111,52 +113,49 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
           </div>
 
           {/* Action Button inside Left Column for Desktop */}
-          <div className="mt-8 space-y-3">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               onClick={onGoToCertificate}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+              className="col-span-2 flex w-full items-center justify-center gap-2 rounded-full bg-white py-2 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
             >
-              <span>원산지증명서 발급 및 확인 (S6)</span>
+              <span>감정서 보기</span>
             </button>
 
             <button
               onClick={onGoToRanking}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-2 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
             >
-              <span>농도 랭킹 등록 (S7)</span>
+              <span>랭킹 등록</span>
             </button>
 
             <button
               onClick={onResetAll}
               className="w-full rounded-full border border-zinc-700/60 bg-zinc-800/60 py-3 text-xs font-semibold text-zinc-300 backdrop-blur-md transition hover:bg-zinc-700 active:scale-95"
             >
-              새로운 감정 다시 시작
+              다시 감정하기
             </button>
           </div>
         </div>
 
         {/* Right Column: In-Depth Analytics & Linguistic Evidence */}
-        <div className="space-y-6 lg:col-span-7">
+        <div data-enter="2" className="space-y-3 lg:col-span-7">
 
           {/* 6 Region Probability Breakdown */}
           <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
             <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-              6대 권역별 추정 확률 분석
+              지역별 확률
             </h3>
-            <div className="mt-4 space-y-2.5 rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
+            <div className="mt-2">
               {probEntries.map(([regKey, prob]) => {
                 const label = REGION_KOREAN_NAMES[regKey] || regKey;
                 const isTop = regKey === region.top;
 
                 return (
-                  <div key={regKey} className="text-xs">
-                    <div className="flex justify-between font-medium">
-                      <span className={isTop ? 'font-bold text-indigo-300' : 'text-zinc-400'}>
-                        {label} {isTop && '· 1순위'}
-                      </span>
-                      <span className="font-mono text-zinc-300">{prob}%</span>
-                    </div>
-                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                  <div key={regKey} className="probability-row text-xs">
+                    <span className={isTop ? 'font-bold text-indigo-300' : 'text-zinc-400'}>
+                      {label} {isTop && '· 1순위'}
+                    </span>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
                           isTop ? 'bg-gradient-to-r from-indigo-500 to-purple-400' : 'bg-zinc-700'
@@ -164,6 +163,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                         style={{ width: `${prob}%` }}
                       />
                     </div>
+                    <span>{prob}%</span>
                   </div>
                 );
               })}
@@ -173,11 +173,11 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
           {/* 4 Detail Metrics Grid */}
           <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
             <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-              4대 세부 영역별 점수
+              항목별 점수
             </h3>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-2 grid grid-cols-4 gap-1">
               {Object.entries(intensity.parts).map(([key, val]) => (
-                <div key={key} className="rounded-2xl border border-zinc-800/60 bg-black/40 p-3.5 text-center">
+                <div key={key} className="border-l border-zinc-800/60 py-1 text-center first:border-0">
                   <div className="text-xs font-medium text-zinc-400">{PART_KOREAN_NAMES[key] || key}</div>
                   <div className="mt-1 font-mono text-xl font-bold text-white">{val}점</div>
                 </div>
@@ -189,22 +189,22 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
           {segments.length > 0 ? (
             <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
               <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-                문항별 구술 채록 및 근거 인용
+                답변별 판정 근거
               </h3>
-              <div className="mt-4 space-y-4">
+              <div className="mt-1">
                 {segments.map((segment) => {
                   const items = evidence.filter((item) => item.question === segment.question);
                   return (
-                    <div key={segment.question} className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
-                      <div className="flex items-start gap-2.5">
+                    <details key={segment.question} className="answer-detail">
+                      <summary>
                         <span className="shrink-0 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
                           문항 {segment.question}
                         </span>
-                        <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
-                      </div>
+                        <span>{segment.prompt}</span>
+                      </summary>
 
                       <div className="mt-3 rounded-xl border border-zinc-800/60 bg-black/50 p-3">
-                        <div className="text-[11px] font-semibold text-zinc-400">구술 채록문</div>
+                        <div className="text-[11px] font-semibold text-zinc-400">받아쓰기</div>
                         {segment.transcript ? (
                           <p className="mt-1.5 text-xs italic leading-relaxed text-zinc-200 font-serif">
                             &quot;
@@ -225,7 +225,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                       ) : (
                         <p className="mt-3 pl-1 text-[11px] text-zinc-500">이 문항에서 확인된 근거가 없습니다.</p>
                       )}
-                    </div>
+                    </details>
                   );
                 })}
               </div>
@@ -233,12 +233,12 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
           ) : (
             <div className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 backdrop-blur-xl sm:p-7">
               <h3 className="text-sm font-bold tracking-tight text-zinc-200">
-                구술 음성 채록 및 근거 인용
+                판정 근거
               </h3>
 
               {transcript && (
                 <div className="mt-4 rounded-2xl border border-zinc-800/60 bg-black/50 p-4">
-                  <div className="text-[11px] font-semibold text-zinc-400">구술 채록문 (Transcript)</div>
+                  <div className="text-[11px] font-semibold text-zinc-400">받아쓰기</div>
                   <p className="mt-1.5 text-xs italic leading-relaxed text-zinc-200 font-serif">
                     &quot;{transcript}&quot;
                   </p>
@@ -247,7 +247,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
 
               {evidence && evidence.length > 0 && (
                 <div className="mt-4 space-y-2.5">
-                  <div className="text-xs font-semibold text-zinc-400">식별된 방언 언어학적 근거</div>
+                  <div className="text-xs font-semibold text-zinc-400">말투의 특징</div>
                   {evidence.map((item, idx) => (
                     <EvidenceRow key={idx} item={item} />
                   ))}
@@ -259,6 +259,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
         </div>
 
       </div>
+      <NoticePopup title="내 음성 감정서가 준비됐어요" action="감정서 보기" rememberKey={`co:certificate:${result.id}`} onAction={onGoToCertificate} />
     </div>
   );
 }

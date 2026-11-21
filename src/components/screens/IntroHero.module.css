@@ -1,0 +1,76 @@
+.hero {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(245px, .85fr);
+  align-items: center;
+  gap: clamp(18px, 5vw, 72px);
+  padding: clamp(22px, 4vw, 52px);
+  overflow: hidden;
+  border: 1px solid #899bb05c;
+  border-radius: 18px;
+  background: var(--glass-fill);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+.meta { font-size: 14px; color: #bbd3f6; font-weight: 600; }
+.pitch h1 { margin: 8px 0; font-size: clamp(34px, 4vw, 58px) !important; line-height: 1.05 !important; letter-spacing: -.06em; font-weight: 750 !important; }
+.lead { max-width: 30em; color: #d4e4eb; font-size: 15px; line-height: 1.55; word-break: keep-all; }
+.ticket { position: relative; max-width: 360px; width: 100%; justify-self: center; padding: 21px; color: #eff5ff; background: linear-gradient(133deg,#adc7f044, #657ca533 45%, #253751ab 76%), #17294099; border: 1px solid #d2e3ff55; border-radius: 16px;  box-shadow: inset 0 1px 0 #ffffff45, 0 12px 28px #0c152933; backdrop-filter: blur(18px) saturate(120%); }
+.ticket figcaption, .reading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ticket figcaption { font-size: 15px; font-weight: 650; border-bottom: 1px solid #c6d9ff38; padding-bottom: 10px; }
+.ticket figcaption span, .ticket p, .reading small { font-size: 13px; }
+.reading { margin: 15px 0 10px; }
+.reading > div { display: grid; }
+.reading strong { font-size: clamp(24px, 2.5vw, 36px); line-height: 1.25; letter-spacing: -.055em; }
+.gauge { height: 6px; border-radius: 4px; background: linear-gradient(to right,#a6c9ff 68%,#cbdcff30 68%); }
+.ticket p { margin-top: 6px; }
+.guide {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.guide .infoCard {
+  --button-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  text-align: left;
+  color: #edf2fa;
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-edge);
+}
+.infoCard strong, .infoCard small { display: block; }
+.infoCard strong { font-size: 17px; }
+.infoCard small { margin-top: 4px; font-size: 14px; color: #b7c2d1; }
+.infoCard .cardArrow { flex: none; font-size: 21px; color: #aabcd1; }
+.guide button.infoCard { display: grid; grid-template-columns: 32px minmax(0, 1fr) 14px; gap: 12px; padding: 14px 16px; }
+.bars { display: flex; align-items: end; gap: 3px; height: 30px; }
+.bars i { width: 5px; height: 45%; border-radius: 4px; background: #90beff; }
+.bars i:nth-child(2) { height: 82%; }
+.bars i:nth-child(3) { height: 100%; }
+.bars i:nth-child(4) { height: 64%; }
+.miniMap { width: 28px; height: 34px; }
+.regionDiagram { display: grid; place-items: center; padding: 8px; border-radius: 12px; background: radial-gradient(ellipse at center, #19344c, #0c1c30); }
+.map { display: block; width: min(100%, 300px); height: auto; max-height: 42dvh; }
+.timeline { padding: 0; margin: 16px 0; list-style: none; }
+.timeline li { position: relative; display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 6px 0; }
+.timeline li:not(:last-child)::before { content: ""; position: absolute; top: 30px; bottom: -8px; left: 15px; border-left: 1px solid #577493; }
+.timeline b { position: relative; display: grid; place-items: center; align-self: start; height: 32px; border-radius: 50%; background: #294569; color: #d7eaff; }
+.timeline small { display: block; color: #bdcadb; font-size: 14px; }
+.gradeLink { color: #bdd8ff; padding-inline: 10px; }
+@media (min-width: 1024px) {
+  .guide { grid-column: 2; grid-template-columns: 1fr; gap: 8px; }
+}
+@media (max-width: 680px) {
+  .hero { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
+  .pitch h1 br { display: none; }
+  .pitch h1 { font-size: clamp(29px, 7.5vw, 36px) !important; }
+  .lead { font-size: 14px; }
+  .ticket { max-width: none; transform: none; padding: 11px 14px;  }
+  .ticket figcaption { padding-bottom: 5px; }
+  .reading { margin: 6px 0; }
+  .guide { grid-template-columns: 1fr; gap: 8px; }
+}
