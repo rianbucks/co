@@ -12,10 +12,13 @@ import {
   type PartScores,
   type RegionKey,
   type RegionProbabilities,
+  type JudgeSegment,
   type Segment,
 } from "./contract";
+import type { QuestionItem } from "@/types/screen";
 import type { AcceptedModelOutput } from "./model-output";
-import { CONCEALMENT_NOTE, OPINIONS } from "./opinions";
+import { questionKind, questionText } from "./questions";
+import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
 import {
   CONCEALMENT_SCORE_LIMIT,
   GRADE_TABLE,
@@ -23,6 +26,7 @@ import {
   MIXED_LABEL,
   MIXED_THRESHOLD,
   REGION_NAMES,
+  UNCERTAIN_MIN_TOP_EVIDENCE,
 } from "./rules";
 
 /**
@@ -161,6 +165,22 @@ export function decideRegion(probabilities: RegionProbabilities): {
   return { top, label: mixed ? MIXED_LABEL : `${REGION_NAMES[top]} 방언`, mixed };
 }
 
+/**
+ * 판정 유보 확인(명세 4장): 근거로 1순위 권역을 뒷받침하지 못하면 true.
+ * 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나,
+ * 다른 권역을 가리키는 것이 1순위 권역을 가리키는 것보다 많으면 유보한다.
+ * 여러 권역에 공통인 근거(common)와 권역을 알 수 없는 근거(null)는 어느 쪽에도 세지 않는다.
+ */
+export function isRegionUncertain(top: RegionKey, evidence: readonly Evidence[]): boolean {
+  let topCount = 0;
+  let otherCount = 0;
+  for (const item of evidence) {
+    if (item.region === top) topCount += 1;
+    else if (item.region !== null && item.region !== "common") otherCount += 1;
+  }
+  return topCount < UNCERTAIN_MIN_TOP_EVIDENCE || otherCount > topCount;
+}
+
 /** 네 항목 중 점수가 가장 높은 항목. 같으면 어휘, 어미, 음운, 억양 순으로 앞선 항목. */
 export function dominantPart(parts: PartScores): PartKey {
   let best: PartKey = PART_KEYS[0];
@@ -179,10 +199,18 @@ export function selectOpinion(input: {
   top: RegionKey;
   score: number;
   parts: PartScores;
+  /** 모사 의심이면 소견 맨 끝에 '타 지역 방언 모사 의심.'을 붙인다. */
+  imitationSuspected?: boolean;
 }): string {
-  const base = OPINIONS[input.grade][dominantPart(input.parts)];
-  const concealed = input.top === "seoul_gyeonggi" && input.score < CONCEALMENT_SCORE_LIMIT;
-  return concealed ? `${base} ${CONCEALMENT_NOTE}` : base;
+  const notes = [OPINIONS[input.grade][dominantPart(input.parts)]];
+  if (input.top === "seoul_gyeonggi" && input.score < CONCEALMENT_SCORE_LIMIT) notes.push(CONCEALMENT_NOTE);
+  if (input.imitationSuspected) notes.push(IMITATION_NOTE);
+  return notes.join(" ");
+}
+
+/** 모사 의심일 때의 농도: 계산값의 절반. 0.5는 올린다(명세 4장). 예: 57 → 29 */
+export function halveIntensity(score: number): number {
+  return Math.floor((score + 1) / 2);
 }
 
 /** 감정서 발급 정보. 후처리와 분리해서 받는다(시간과 난수는 순수 함수 밖에서 만든다). */
@@ -196,11 +224,12 @@ export interface IssueInfo {
  * 품질이 ok인 모델 출력으로 감정 결과 JSON을 만든다. questions는 녹음한 문항 세트(문항 순서)다.
  * 문항별 받아쓰기가 문항 수만큼 있으면 근거를 문항별로 검증하고 segments를 채운다.
  * 없으면 기존처럼 전체 받아쓰기로 검증하고 segments는 빈 배열이다.
+ * 검증을 통과한 근거가 1순위 권역을 뒷받침하지 못하면 region.uncertain을 true로 둔다.
  */
 export function buildJudgeResult(
   output: AcceptedModelOutput,
   issue: IssueInfo,
-  questions: readonly string[],
+  questions: readonly QuestionItem[],
 ): JudgeResult {
   const probabilities = normalizeProbabilities(output.regions);
   if (!probabilities) {
@@ -208,20 +237,43 @@ export function buildJudgeResult(
   }
 
   const region = decideRegion(probabilities);
-  const score = computeIntensity(output.scores);
+  // 모사 의심이면 계산한 농도를 절반으로 낮추고, 등급과 소견도 낮춘 점수로 정한다.
+  const imitationSuspected = output.imitation_suspected;
+  const computed = computeIntensity(output.scores);
+  const score = imitationSuspected ? halveIntensity(computed) : computed;
   const { grade, gradeName } = gradeFor(score);
   const questionTranscripts =
     output.question_transcripts?.length === questions.length ? output.question_transcripts : null;
+  // 판정 유보는 받아쓰기로 검증을 통과한 근거로만 센다.
+  const evidence = verifyEvidence(output.evidence, output.transcript, questionTranscripts);
 
   return {
     id: issue.id,
     certificateNo: issue.certificateNo,
     issuedAt: issue.issuedAt,
-    region: { ...region, probabilities },
+    region: { ...region, uncertain: isRegionUncertain(region.top, evidence), probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
-    evidence: verifyEvidence(output.evidence, output.transcript, questionTranscripts),
-    opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores }),
+    imitationSuspected,
+    evidence,
+    opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores, imitationSuspected }),
     transcript: output.transcript,
-    segments: buildSegments(questions, questionTranscripts),
+    segments: buildJudgeSegments(questions, questionTranscripts),
   };
+}
+
+/**
+ * 문항별 받아쓰기: 문항 번호, 문항 종류, 문항 문구, 받아쓰기. 없으면 빈 배열이다.
+ * 일반 감정과 경상 정밀 감정이 같이 쓴다. 문항 문구는 인용과 요청 문구까지 이은 전체 문구다(questionText).
+ */
+export function buildJudgeSegments(
+  questions: readonly QuestionItem[],
+  questionTranscripts: readonly string[] | null,
+): JudgeSegment[] {
+  const segments = buildSegments(questions.map(questionText), questionTranscripts);
+  return segments.map((segment, index) => ({
+    question: segment.question,
+    kind: questionKind(questions[index]),
+    prompt: segment.prompt,
+    transcript: segment.transcript,
+  }));
 }

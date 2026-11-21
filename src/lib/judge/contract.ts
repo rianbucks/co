@@ -22,19 +22,44 @@ export type PartScores = Record<PartKey, number>;
 
 export type Grade = 1 | 2 | 3 | 4 | 5;
 
+/** 근거가 가리키는 권역: 여섯 권역 중 하나, 여러 권역에 공통인 특징이면 common. */
+export const EVIDENCE_REGIONS = [...REGION_KEYS, "common"] as const;
+export type EvidenceRegion = (typeof EVIDENCE_REGIONS)[number];
+
 export interface Evidence {
   /** 근거가 나온 문항 번호(1부터). 문항별 받아쓰기가 없어 문항으로 확인하지 못했으면 null */
   question: number | null;
-  type: PartKey;
+  /** 받아쓰기에 그대로 있는 구절 */
   quote: string;
+  type: PartKey;
+  /** 그 특징이 가리키는 권역. 여러 권역에 공통이면 common. 모델이 정해 둔 값으로 주지 않았으면 null */
+  region: EvidenceRegion | null;
   note: string;
 }
+
+/**
+ * 문항 종류(명세 8장).
+ * question: 상황을 보고 자유롭게 답한다. convert: 주어진 표준어 문장을 평소 말투로 바꿔 말한다.
+ */
+export const QUESTION_KINDS = ["question", "convert"] as const;
+export type QuestionKind = (typeof QUESTION_KINDS)[number];
 
 /** 문항별 받아쓰기(명세 7장). 문항 문구는 서버의 문항 세트에서 가져온다. */
 export interface Segment {
   /** 문항 번호(1부터) */
   question: number;
   /** 문항 문구 */
+  prompt: string;
+  /** 그 문항의 받아쓰기(공백 정리). 답하지 않은 문항은 빈 문자열 */
+  transcript: string;
+}
+
+/** 일반 감정의 문항별 받아쓰기. 문항 종류를 함께 싣는다. convert면 prompt는 바꿔 말할 표준어 문장이다. */
+export interface JudgeSegment {
+  /** 문항 번호(1부터) */
+  question: number;
+  kind: QuestionKind;
+  /** 문항 문구(상황 문구 또는 바꿔 말할 문장) */
   prompt: string;
   /** 그 문항의 받아쓰기(공백 정리). 답하지 않은 문항은 빈 문자열 */
   transcript: string;
@@ -48,6 +73,11 @@ export interface JudgeResult {
     top: RegionKey;
     label: string;
     mixed: boolean;
+    /**
+     * 판정 유보. 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나,
+     * 다른 권역을 가리키는 것이 더 많으면 true다. 화면은 '판정 유보 (추정: ○○ 방언)'으로 보여 준다.
+     */
+    uncertain: boolean;
     probabilities: RegionProbabilities;
   };
   intensity: {
@@ -56,6 +86,11 @@ export interface JudgeResult {
     gradeName: string;
     parts: PartScores;
   };
+  /**
+   * 타 지역 방언 모사 의심(모델 판단). true면 intensity.score는 계산값의 절반이고
+   * 소견 끝에 '타 지역 방언 모사 의심.'이 붙는다.
+   */
+  imitationSuspected: boolean;
   evidence: Evidence[];
   opinion: string;
   /** 전체 받아쓰기 */
@@ -64,7 +99,7 @@ export interface JudgeResult {
    * 문항별 받아쓰기(문항 순서). 모델이 문항 수만큼 주지 않았으면 빈 배열이고,
    * 이때 근거는 전체 받아쓰기로 검증하며 question은 null이다.
    */
-  segments: Segment[];
+  segments: JudgeSegment[];
 }
 
 /** 422 rejected의 reason. 모델 출력의 audio_quality 값(ok 제외)을 그대로 쓴다. */

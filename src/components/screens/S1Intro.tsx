@@ -7,12 +7,13 @@ import NoticePopup from '@/components/common/NoticePopup';
 import NicknameInvite from '@/components/common/NicknameInvite';
 import styles from './IntroHero.module.css';
 import { GRADE_TABLE, REGION_NAMES } from '@/lib/judge/rules';
-import { QUESTIONS } from '@/types/screen';
+import { GENERAL_QUESTIONS as QUESTIONS } from '@/lib/judge/questions';
 import DesktopIntroDetails from '@/components/common/DesktopIntroDetails';
 
 interface S1IntroProps {
   nickname: string;
   onNicknameChange: (value: string) => void;
+  onStartGyeongsang: () => void;
   onNext: () => void;
   onViewRanking: () => void;
 }
@@ -63,7 +64,7 @@ function RegionDiagram({ miniature = false }: { miniature?: boolean }) {
   );
 }
 
-export default function S1Intro({ onNext, onViewRanking, nickname, onNicknameChange }: S1IntroProps) {
+export default function S1Intro({ onStartGyeongsang, onNext, onViewRanking, nickname, onNicknameChange }: S1IntroProps) {
   const sheet = useRef<HTMLDialogElement>(null);
   const [panel, setPanel] = useState<'questions' | 'guide' | 'regions' | 'grades'>('questions');
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -90,7 +91,7 @@ export default function S1Intro({ onNext, onViewRanking, nickname, onNicknameCha
           <div className={styles.pitch}>
             <p className={styles.meta}>사투리 음성 테스트 · 약 1분</p>
             <h1 id="hero-heading">내 말투는 어디에 <br />가까울까?</h1>
-            <p className={styles.lead}>네 가지 상황에 평소 말투로 답해 보세요. 어떤 지역의 표현을 쓰는지, 사투리가 얼마나 진한지 알려드려요.</p>
+            <p className={styles.lead}>{QUESTIONS.length}개 문항에 평소 말투로 답해 보세요. 어떤 지역의 표현을 쓰는지, 사투리가 얼마나 진한지 알려드려요.</p>
           </div>
           <figure className={styles.ticket}>
             <figcaption>음성 감정서 <span>결과 예시</span></figcaption>
@@ -106,7 +107,7 @@ export default function S1Intro({ onNext, onViewRanking, nickname, onNicknameCha
         <section className={styles.guide} aria-label="감정 이용 안내">
           <button data-enter="3" className={styles.infoCard} aria-haspopup="dialog" onClick={() => openInfo('guide')}>
             <span className={styles.bars} aria-hidden="true"><i /><i /><i /><i /></span>
-            <span><strong>이렇게 진행해요</strong><small>4문항 · 문항당 최대 10초</small></span>
+            <span><strong>이렇게 진행해요</strong><small>{QUESTIONS.length}문항 · 문항당 최대 10초</small></span>
             <span className={`nav-chevron ${styles.cardArrow}`} aria-hidden="true">›</span>
           </button>
           <button className={styles.infoCard} aria-haspopup="dialog" data-enter="4" onClick={() => openInfo('regions')}>
@@ -115,6 +116,7 @@ export default function S1Intro({ onNext, onViewRanking, nickname, onNicknameCha
             <span className={`nav-chevron ${styles.cardArrow}`} aria-hidden="true">›</span>
           </button>
         </section>
+        <button className="secondary-action-button" onClick={onStartGyeongsang}>경상 정밀 감정 받기</button>
         <DesktopIntroDetails onViewRanking={onViewRanking} onPreview={preview} />
       </div>
       <NoticePopup highlighted title="어떤 질문이 나올까요?" action="첫 문항 미리보기" rememberKey="co:intro-preview-dismissed" onAction={() => preview(0)} />
@@ -146,7 +148,7 @@ export default function S1Intro({ onNext, onViewRanking, nickname, onNicknameCha
         <div className="question-picker" aria-label="문항 선택" role="group">
           {QUESTIONS.map(({ id }, index) => <button key={id} aria-pressed={index === questionIndex} onClick={() => setQuestionIndex(index)}>{id}번</button>)}
         </div>
-        <div className="preview-prompt" aria-live="polite"><strong>{question.target}에게</strong><p>{question.situation}</p></div>
+        <div className="preview-prompt" aria-live="polite"><strong>{question.target}에게 · {question.kind === 'convert' ? '평소 말투로 바꿔 말하기' : '상황에 답하기'}</strong><p>{question.situation}</p></div>
         </>}
         <button className="intro-primary-action" onClick={() => { sheet.current?.close(); onNext(); }}>감정 신청</button>
       </dialog>

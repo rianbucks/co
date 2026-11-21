@@ -16,7 +16,8 @@ export interface RandomSource {
   int(max: number): number;
 }
 
-const cryptoRandom: RandomSource = {
+/** 암호학적 난수(node:crypto). 경상 정밀 감정의 발급 정보(../gyeongsang/issue.ts)도 이것을 쓴다. */
+export const cryptoRandom: RandomSource = {
   hex: (bytes) => randomBytes(bytes).toString("hex"),
   int: (max) => randomInt(max),
 };

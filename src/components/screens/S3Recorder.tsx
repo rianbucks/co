@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useImperativeHandle, type Ref } from 'react';
-import { QUESTIONS, QuestionItem } from '@/types/screen';
+import type { QuestionItem } from '@/types/screen';
+import { GENERAL_QUESTIONS, SECONDS_PER_QUESTION } from '@/lib/judge/questions';
 
 interface S3RecorderProps {
   ref?: Ref<{ requestExit: () => void }>;
   onComplete: (blob: Blob) => void;
-  onBack: () => void;
+  questions?: readonly QuestionItem[];
+  onBack?: () => void;
   onResetAll: () => void;
 }
 
@@ -19,10 +21,10 @@ const MIME_CANDIDATES = [
 ];
 
 /** 문항당 녹음 시간(초) */
-const SECONDS_PER_QUESTION = 10;
+
 /** 남은 시간을 다시 계산하는 간격. 1초보다 짧게 두어 표시가 밀리지 않게 한다. */
 const TIMER_TICK_MS = 200;
-const LAST_QUESTION_IDX = QUESTIONS.length - 1;
+
 /**
  * 녹음 시작 버튼과 다음 문항 버튼이 같은 자리에 있어서 두 번 누르면 다음 동작까지 눌린다.
  * 상태가 바뀐 직후의 누름은 무시한다(타이머로 넘어가는 것은 막지 않는다).
@@ -37,7 +39,7 @@ const DOUBLE_TAP_GUARD_MS = 500;
  */
 type RecordingPhase = 'ready' | 'recording' | 'paused' | 'processing' | 'error';
 
-export default function S3Recorder({ ref, onComplete, onBack, onResetAll }: S3RecorderProps) {
+export default function S3Recorder({ ref, onComplete, onResetAll, onBack = onResetAll, questions = GENERAL_QUESTIONS }: S3RecorderProps) {
   const [currentIdx, setCurrentIdx] = useState(0); // 화면에 보이는 문항: 0, 1, 2, 3
   const [phase, setPhase] = useState<RecordingPhase>('ready');
   const [secLeft, setSecLeft] = useState(SECONDS_PER_QUESTION);
@@ -64,7 +66,7 @@ export default function S3Recorder({ ref, onComplete, onBack, onResetAll }: S3Re
   /** 문항 녹음을 시작하거나 끝낸 시각(performance.now) */
   const phaseChangedAtRef = useRef(0);
 
-  const currentQuestion: QuestionItem = QUESTIONS[currentIdx];
+  const currentQuestion: QuestionItem = questions[currentIdx];
 
   const cleanupAudio = useCallback(() => {
     sessionRef.current += 1;
@@ -186,7 +188,7 @@ export default function S3Recorder({ ref, onComplete, onBack, onResetAll }: S3Re
     stopVolumeVisualizer();
 
     const recorder = recorderRef.current;
-    if (finishedIdx < LAST_QUESTION_IDX) {
+    if (finishedIdx < questions.length - 1) {
       if (recorder && recorder.state === 'recording') {
         recorder.pause();
       }
@@ -201,7 +203,7 @@ export default function S3Recorder({ ref, onComplete, onBack, onResetAll }: S3Re
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
     }
-  }, [clearTimer, stopVolumeVisualizer]);
+  }, [clearTimer, stopVolumeVisualizer, questions.length]);
 
   /** questionIdx 문항의 10초 타이머를 시작한다. 종료 처리는 상태 갱신 함수 밖에서 한다. */
   const startCountdown = useCallback((questionIdx: number, durationMs = SECONDS_PER_QUESTION * 1000) => {
@@ -333,21 +335,22 @@ export default function S3Recorder({ ref, onComplete, onBack, onResetAll }: S3Re
     startCountdown(currentIdx, remaining);
   };
 
-  const isLastQuestion = currentIdx === LAST_QUESTION_IDX;
+  const isLastQuestion = currentIdx === questions.length - 1;
 
   return (
-    <div className="studio-screen">
+    <div className="studio-screen hide-header-tabs">
       <div data-enter="1" className="studio-heading">
-        <span>문항 {currentIdx + 1} / {QUESTIONS.length}</span>
+        <span>문항 {currentIdx + 1} / {questions.length}</span>
         <button onClick={() => requestDiscard('restart')}>처음부터 다시</button>
       </div>
       <div className="question-progress" aria-hidden="true">
-        {QUESTIONS.map((_, index) => <i key={index} className={index <= currentIdx ? 'filled' : ''} />)}
+        {questions.map((_, index) => <i key={index} className={index <= currentIdx ? 'filled' : ''} />)}
       </div>
       <div key={currentQuestion.id} data-enter="2">
-        <p className="studio-target">{currentQuestion.target}에게</p>
+        <p className="studio-target">{currentQuestion.target}에게 · {currentQuestion.kind === 'convert' ? '평소 말투로 바꿔 말하기' : '상황에 답하기'}</p>
         <h1>{currentQuestion.situation}</h1>
-        <p className="studio-hint">상대에게 직접 말하듯 답해 주세요.</p>
+        {currentQuestion.quote && <blockquote><small>{currentQuestion.quote.label}</small><p>“{currentQuestion.quote.text}”</p></blockquote>}
+        <p className="studio-hint">{currentQuestion.followUp ?? (currentQuestion.kind === 'convert' ? '이 문장을 평소에 쓰는 말로 바꿔 말해 주세요.' : '상대에게 직접 말하듯 답해 주세요.')}</p>
       </div>
       <div key={`meter-${currentQuestion.id}`} data-enter="3" className="studio-meter">
         <time aria-label={`남은 시간 ${secLeft}초`}>00:{String(secLeft).padStart(2, '0')}</time>

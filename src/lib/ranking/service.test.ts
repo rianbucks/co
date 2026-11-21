@@ -27,7 +27,7 @@ const RECORD: JudgmentRecord = {
   region: "gyeongsang",
   grade: 4,
   mock: false,
-  flagged: false,
+  uncertain: false,
 };
 
 let clock: number;
@@ -162,12 +162,22 @@ describe("registerRanking", () => {
     expect(limiter.check).not.toHaveBeenCalled();
   });
 
-  it("flags가 붙은 감정 결과는 403 not_eligible(flagged)", async () => {
-    await store.saveJudgment("j_00000000000c", { ...RECORD, flagged: true });
-    await expect(register({ judgmentId: "j_00000000000c", nickname: "닉네임" })).resolves.toEqual({
-      status: 403,
-      body: { error: "not_eligible", reason: "flagged" },
+  it("녹음 내용으로는 막지 않는다: 이전에 flags가 붙어 저장된 기록도 등록된다", async () => {
+    await store.saveJudgment("j_00000000000c", { ...RECORD, flagged: true } as JudgmentRecord);
+    await expect(register({ judgmentId: "j_00000000000c", nickname: "닉네임" })).resolves.toMatchObject({
+      status: 201,
+      body: { entry: { nickname: "닉네임", intensity: 68, region: "gyeongsang" } },
     });
+    expect(state.entries.size).toBe(1);
+  });
+
+  it("판정 유보 결과는 403 not_eligible(uncertain)이고 한도를 쓰지 않는다", async () => {
+    await store.saveJudgment("j_00000000000d", { ...RECORD, uncertain: true });
+    await expect(register({ judgmentId: "j_00000000000d", nickname: "닉네임" })).resolves.toEqual({
+      status: 403,
+      body: { error: "not_eligible", reason: "uncertain" },
+    });
+    expect(limiter.check).not.toHaveBeenCalled();
     expect(state.entries.size).toBe(0);
   });
 

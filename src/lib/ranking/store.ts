@@ -2,7 +2,8 @@
  * 랭킹 저장소(음성 없는 랭킹). Production은 Upstash Redis, Upstash가 없는 로컬은 메모리를 쓴다.
  *
  * Redis 키
- * - co:judgment:{감정 id}         감정할 때 서버가 남기는 등록 자격: 농도, 지역, 등급, 가짜 응답 여부, flags 여부. 1시간 뒤 만료
+ * - co:judgment:{감정 id}         감정할 때 서버가 남기는 등록 자격: 농도, 지역, 등급, 가짜 응답 여부,
+ *                                  판정 유보 여부. 1시간 뒤 만료
  * - co:judgment:{감정 id}:ranked  감정 1건당 1회만 등록하도록 SET NX로 잡는 표시(값은 항목 id). 1시간 뒤 만료
  * - co:ranking:entries            해시. 항목 id → 항목 JSON(닉네임, 농도, 지역, 등급, 등록 시각)
  * - co:ranking                    정렬 집합. 항목 id를 농도 순(같으면 먼저 등록한 순)으로 정렬
@@ -24,8 +25,8 @@ export interface JudgmentRecord {
   grade: Grade;
   /** 가짜 응답 모드(MOCK_AI)의 결과. 랭킹에 올릴 수 없다. */
   mock: boolean;
-  /** 모델이 flags(욕설, 개인정보)를 붙인 결과. 랭킹에 올릴 수 없다(명세 4장). */
-  flagged: boolean;
+  /** 판정 유보 결과(근거가 1순위 권역을 뒷받침하지 못함). 지역을 확정하지 못했으므로 랭킹에 올릴 수 없다(명세 4장). */
+  uncertain: boolean;
 }
 
 export interface RankedEntry {
@@ -76,7 +77,8 @@ const judgmentRecordSchema = z.object({
   region: z.enum(REGION_KEYS),
   grade: gradeSchema,
   mock: z.boolean(),
-  flagged: z.boolean(),
+  // 이 필드가 생기기 전에 남긴 기록(배포 뒤 최대 1시간)은 유보가 아닌 것으로 읽는다.
+  uncertain: z.boolean().default(false),
 });
 
 const rankingEntrySchema = z.object({
@@ -90,8 +92,8 @@ const rankingEntrySchema = z.object({
 
 /** 정해 둔 필드만 남긴다. 호출부가 다른 값을 실어 보내도 저장되지 않는다. */
 function pickJudgment(record: JudgmentRecord): JudgmentRecord {
-  const { intensity, region, grade, mock, flagged } = record;
-  return { intensity, region, grade, mock, flagged };
+  const { intensity, region, grade, mock, uncertain } = record;
+  return { intensity, region, grade, mock, uncertain };
 }
 
 function pickEntry(entry: RankingEntry): RankingEntry {

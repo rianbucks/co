@@ -17,6 +17,7 @@ const usage = { inputTokens: 1_000, outputTokens: 200, thoughtTokens: 800 };
 const RECORDS: RunRecord[] = [
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "gemini-3.8-flash",
     run: 1,
@@ -35,6 +36,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "gemini-3.8-flash",
     run: 2,
@@ -49,6 +51,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "gemini-3.8-flash",
     run: 3,
@@ -63,6 +66,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "b.m4a",
+    questionSetId: "set-b",
     expected: "jeju",
     model: "gemini-3.8-flash",
     run: 1,
@@ -76,6 +80,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "b.m4a",
+    questionSetId: "set-b",
     expected: "jeju",
     model: "gemini-3.8-flash",
     run: 2,
@@ -85,6 +90,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "b.m4a",
+    questionSetId: "set-b",
     expected: "jeju",
     model: "gemini-3.8-flash",
     run: 3,
@@ -94,6 +100,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "unknown-model",
     run: 1,
@@ -184,7 +191,8 @@ describe("summarize", () => {
     );
     expect([flash.evidenceDropped, flash.evidenceTotal]).toEqual([1, 3]);
     expect(flash.latency).toEqual({ avg: 16_500, p50: 5_000, p95: 60_000, max: 60_000 });
-    expect(flash.overFirstAttemptLimit).toBe(2);
+    // 운영 첫 시도 제한(25초)을 넘긴 호출: 60초 1건(21초 호출은 제한 안이다)
+    expect(flash.overFirstAttemptLimit).toBe(1);
     expect(flash.avgUsage).toEqual(usage);
     expect(flash.avgCostUsd).toBeCloseTo(0.0045, 10);
     expect(unknown.avgCostUsd).toBeNull();
@@ -195,7 +203,9 @@ describe("summarize", () => {
 describe("출력 파일", () => {
   it("runs.csv는 BOM과 머리글로 시작하고 쉼표나 따옴표가 든 칸을 감싼다", () => {
     const csv = toRunsCsv(RECORDS);
-    expect(csv.startsWith("﻿file,expected,model,run,status")).toBe(true);
+    expect(csv.startsWith("﻿file,question_set,expected,model,run,status")).toBe(true);
+    expect(csv.split("\n")[1].startsWith("a.webm,set-b,gyeongsang,")).toBe(true);
+    expect(csv.split("\n")[0]).toContain(",mixed,uncertain,score,");
     expect(csv).toContain(',"timeout, ""60s"""\n');
     expect(csv.trim().split("\n")).toHaveLength(RECORDS.length + 1);
   });
@@ -219,6 +229,7 @@ describe("출력 파일", () => {
 
   it("details.md에 받아쓰기, 통과·걸러진 근거, 반려와 오류가 있다", () => {
     const details = toDetailsMarkdown(RECORDS);
+    expect(details).toContain("- 문항 세트: set-b");
     expect(details).toContain('  - ✓ [endings] "했다 아이가" — 확인 표현');
     expect(details).toContain('  - ✗ [phonology] "뭇나" — 축약');
     expect(details).toContain("- 품질 반려: noisy");
@@ -227,10 +238,58 @@ describe("출력 파일", () => {
     expect(details).toContain("- 문항별 받아쓰기: 없음 (문항 수만큼 오지 않아 전체 받아쓰기로 근거를 확인)");
   });
 
+  it("모사 의심이면 판정 줄에 적는다", () => {
+    const details = toDetailsMarkdown([
+      {
+        file: "d.webm",
+        questionSetId: "set-b",
+        expected: "jeolla",
+        model: "gemini-3.8-flash",
+        run: 1,
+        status: "ok",
+        latencyMs: 5_000,
+        top: "gyeongsang",
+        mixed: false,
+        score: 24,
+        grade: 2,
+        imitationSuspected: true,
+        transcript: "억수로",
+        questionTranscripts: null,
+        evidence: [],
+      },
+    ]);
+    expect(details).toContain("- 판정: 경상, 농도 24점, 2등급, 모사 의심(농도 절반)");
+  });
+
+  it("판정 유보면 판정 줄에 적고, 근거에 그 특징이 가리키는 권역을 붙인다", () => {
+    const details = toDetailsMarkdown([
+      {
+        file: "e.webm",
+        questionSetId: "set-b",
+        expected: "jeolla",
+        model: "gemini-3.8-flash",
+        run: 1,
+        status: "ok",
+        latencyMs: 5_000,
+        top: "gyeongsang",
+        mixed: false,
+        uncertain: true,
+        score: 68,
+        grade: 4,
+        transcript: "뭐 하요",
+        questionTranscripts: null,
+        evidence: [{ question: null, type: "endings", region: "jeolla", quote: "하요", note: "전라", kept: true }],
+      },
+    ]);
+    expect(details).toContain("- 판정: 경상 (판정 유보), 농도 68점, 4등급");
+    expect(details).toContain('  - ✓ [endings · jeolla] "하요" — 전라');
+  });
+
   it("문항별 받아쓰기가 있으면 문항마다 적고, 근거에 문항 번호를 붙인다", () => {
     const details = toDetailsMarkdown([
       {
         file: "c.webm",
+        questionSetId: "set-b",
         expected: "gyeongsang",
         model: "gemini-3.8-flash",
         run: 1,
@@ -252,6 +311,7 @@ describe("출력 파일", () => {
       ["- 문항별 받아쓰기:", "  - 문항 1: 억수로 오랜만이네", "  - 문항 2: 뭐 했노", "  - 문항 3: (답 없음)", "  - 문항 4: (답 없음)"].join("\n"),
     );
     expect(details).toContain('  - ✓ 문항 1 [vocabulary] "억수로" — 아주');
+    expect(details).toContain("- 판정: 경상, 농도 68점, 4등급\n");
     expect(details).toContain('  - ✗ 문항 1 [endings] "뭐 했노" — 다른 문항');
   });
 });

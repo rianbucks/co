@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { RateLimiter } from "../rate-limit";
 import type { AiClient, AiRequest } from "./ai-client";
 import { MAX_AUDIO_BYTES } from "./audio";
-import { SPEC_MODEL_OUTPUT_EXAMPLE, mockAiClient } from "./mock";
+import type { JudgeResult } from "./contract";
+import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE, mockAiClientFor } from "./mock";
 import { buildModelOutputSchema } from "./model-output";
 import { judge, type JudgeDeps, type JudgeInput } from "./pipeline";
 import { buildSystemInstruction, findQuestionSet, USER_TEXT } from "./prompt";
@@ -27,11 +28,12 @@ const fixedIssue = () => ({
 });
 
 function makeDeps(overrides: Partial<JudgeDeps> = {}): JudgeDeps {
-  return { ai: mockAiClient, rateLimiter: allowAll, issue: fixedIssue, log: () => {}, ...overrides };
+  return { ai: mockAiClientFor("set-b"), rateLimiter: allowAll, issue: fixedIssue, log: () => {}, ...overrides };
 }
 
 function makeInput(overrides: Partial<JudgeInput> = {}): JudgeInput {
-  return { audio: wavFile(), questionSetId: "set-a", clientIp: "203.0.113.7", ...overrides };
+  // 기본 세트 set-b(문항 6개)로 녹음한 요청
+  return { audio: wavFile(), questionSetId: "set-b", clientIp: "203.0.113.7", ...overrides };
 }
 
 /** 정해 둔 순서대로 응답하거나 예외를 던지는 가짜 AI. 받은 요청을 기록한다. */
@@ -50,7 +52,7 @@ function scriptedAi(...steps: Array<string | Error>) {
 }
 
 describe("judge: 성공", () => {
-  it("MOCK 클라이언트(4장 출력 예시)로 실제 후처리를 거친 200 결과를 낸다", async () => {
+  it("MOCK 클라이언트(4장 출력 예시, set-b)로 실제 후처리를 거친 200 결과를 낸다", async () => {
     const response = await judge(makeInput(), makeDeps());
 
     expect(response.status).toBe(200);
@@ -60,6 +62,7 @@ describe("judge: 성공", () => {
         top: "gyeongsang",
         label: "경상 방언",
         mixed: false,
+        uncertain: false,
         probabilities: {
           seoul_gyeonggi: 4,
           gangwon: 3,
@@ -75,18 +78,40 @@ describe("judge: 성공", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
+      imitationSuspected: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
-      segments: findQuestionSet("set-a")!.map((prompt, index) => ({
+      segments: findQuestionSet("set-b")!.map((item, index) => ({
         question: index + 1,
-        prompt,
+        kind: item.kind,
+        prompt: item.situation,
         transcript: SPEC_MODEL_OUTPUT_EXAMPLE.question_transcripts[index],
       })),
     });
   });
 
-  it("AI에 오디오, 지시문, 문항, 스키마를 넘기고 첫 시도 제한 시간은 20초다", async () => {
+  it("set-a로 녹음하면 set-a 문항 4개로 감정한다(NEXT_PUBLIC_QUESTION_SET=set-a로 되돌린 경우)", async () => {
+    const { ai, requests } = scriptedAi(JSON.stringify(SET_A_MODEL_OUTPUT_EXAMPLE));
+
+    const response = await judge(makeInput({ questionSetId: "set-a" }), makeDeps({ ai }));
+
+    expect(requests[0]).toMatchObject({
+      systemInstruction: buildSystemInstruction(findQuestionSet("set-a")!),
+      responseSchema: buildModelOutputSchema(4),
+    });
+    expect(response.status).toBe(200);
+    const body = response.body as JudgeResult;
+    expect(body.segments.map((segment) => [segment.question, segment.kind])).toEqual([
+      [1, "question"],
+      [2, "question"],
+      [3, "question"],
+      [4, "question"],
+    ]);
+    expect(body.evidence).toEqual(SET_A_MODEL_OUTPUT_EXAMPLE.evidence);
+  });
+
+  it("AI에 오디오, 지시문, 문항, 스키마를 넘기고 첫 시도 제한 시간은 25초다", async () => {
     const { ai, requests } = scriptedAi(SPEC_OUTPUT_TEXT);
     const audio = wavFile(128);
 
@@ -94,12 +119,12 @@ describe("judge: 성공", () => {
 
     expect(requests).toHaveLength(1);
     expect(requests[0]).toEqual({
-      systemInstruction: buildSystemInstruction(findQuestionSet("set-a")!),
+      systemInstruction: buildSystemInstruction(findQuestionSet("set-b")!),
       userText: USER_TEXT,
       audio: new Uint8Array(await audio.arrayBuffer()),
       mimeType: "audio/wav",
-      responseSchema: buildModelOutputSchema(4),
-      timeoutMs: 20_000,
+      responseSchema: buildModelOutputSchema(6),
+      timeoutMs: 25_000,
       useFallbackModel: false,
     });
   });
@@ -136,7 +161,8 @@ describe("judge: 서버 검사", () => {
 
   it.each([
     ["없음", null],
-    ["등록되지 않은 ID", "set-b"],
+    ["등록되지 않은 ID", "set-c"],
+    ["경상 정밀 감정 ID(라우트에서 따로 처리)", "set-gs"],
     ["파일", new File(["set-a"], "id.txt")],
   ])("questionSetId가 %s → 400 invalid_request", async (_name, questionSetId) => {
     const { ai, requests } = scriptedAi();
@@ -179,7 +205,6 @@ describe("judge: 품질 불량", () => {
     async (quality) => {
       const output = JSON.stringify({
         audio_quality: quality,
-        flags: [],
         transcript: null,
         regions: null,
         scores: null,
@@ -218,20 +243,20 @@ describe("judge: AI 실패와 재시도", () => {
     expect(requests).toHaveLength(2);
   });
 
-  it("재시도는 전체 25초 중 남은 시간만 쓴다", async () => {
+  it("재시도는 전체 40초 중 남은 시간만 쓴다", async () => {
     let clock = 0;
     const timeouts: number[] = [];
     const ai: AiClient = {
       async generate(request) {
         timeouts.push(request.timeoutMs);
-        clock += 20_000;
+        clock += 25_000;
         throw new Error("timeout");
       },
     };
 
     await judge(makeInput(), makeDeps({ ai, now: () => clock }));
 
-    expect(timeouts).toEqual([20_000, 5_000]);
+    expect(timeouts).toEqual([25_000, 15_000]);
   });
 
   it("남은 시간이 1초보다 적으면 재시도하지 않는다", async () => {
@@ -239,7 +264,8 @@ describe("judge: AI 실패와 재시도", () => {
     const events: string[] = [];
     const ai: AiClient = {
       async generate() {
-        clock += 24_500;
+        // 첫 시도가 제한(25초)을 넘겨 끝나 전체 40초 중 0.5초만 남은 경우
+        clock += 39_500;
         throw new Error("timeout");
       },
     };
@@ -275,7 +301,7 @@ describe("judge: AI 실패와 재시도", () => {
 });
 
 describe("judge: 랭킹 등록 자격 기록", () => {
-  it("성공하면 id, 농도, 1순위 권역, 등급, flags 여부만 기록한다", async () => {
+  it("성공하면 id, 농도, 1순위 권역, 등급, 판정 유보 여부만 기록한다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
 
     const response = await judge(makeInput(), makeDeps({ recordJudgment }));
@@ -287,24 +313,63 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       intensity: 68,
       region: "gyeongsang",
       grade: 4,
-      flagged: false,
+      uncertain: false,
     });
   });
 
-  it("모델이 flags를 붙이면 flagged로 기록한다", async () => {
+  it("모사 의심이면 낮춘 농도와 등급을 기록한다(랭킹에 흉내 점수가 그대로 오르지 않는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const { ai } = scriptedAi(
+      JSON.stringify({
+        ...SPEC_MODEL_OUTPUT_EXAMPLE,
+        scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+        imitation_suspected: true,
+      }),
+    );
+
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 24, grade: 2 } });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 24, grade: 2 }));
+  });
+
+  it("근거가 1순위 권역을 뒷받침하지 못하면 판정 유보로 기록한다(랭킹 등록을 막는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const { ai } = scriptedAi(
+      JSON.stringify({
+        ...SPEC_MODEL_OUTPUT_EXAMPLE,
+        evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence.map((item) => ({ ...item, region: "jeolla" })),
+      }),
+    );
+
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.body).toMatchObject({ region: { top: "gyeongsang", uncertain: true } });
+    expect(recordJudgment).toHaveBeenCalledWith(
+      expect.objectContaining({ region: "gyeongsang", uncertain: true }),
+    );
+  });
+
+  it("녹음 내용으로는 등록을 막지 않는다: 모델이 이전 형식으로 flags를 붙여도 기록에 남기지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
     const { ai } = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, flags: ["profanity"] }));
 
-    await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
 
-    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ flagged: true }));
+    expect(response.status).toBe(200);
+    expect(recordJudgment).toHaveBeenCalledWith({
+      id: "j_000000000001",
+      intensity: 68,
+      region: "gyeongsang",
+      grade: 4,
+      uncertain: false,
+    });
   });
 
   it("품질 불량, AI 실패, 호출 제한이면 기록하지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
     const rejected = JSON.stringify({
       audio_quality: "too_short",
-      flags: [],
       transcript: null,
       regions: null,
       scores: null,

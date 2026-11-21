@@ -15,9 +15,11 @@ import {
   type RegionKey,
 } from "./contract";
 import { createIssueInfo } from "./issue";
-import { buildModelOutputSchema, parseModelOutput, type ModelOutput } from "./model-output";
+import { buildModelOutputSchema, parseModelOutput } from "./model-output";
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
-import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "./prompt";
+import { USER_TEXT, buildSystemInstruction } from "./prompt";
+import { findQuestionSet } from "./questions";
+import { AI_FIRST_ATTEMPT_MS, AI_TOTAL_MS } from "./timing";
 
 /** 처음 1번은 주 모델, 재시도 1번은 대체 모델(명세 7장 502 ai_error, 11장). */
 export const MAX_AI_ATTEMPTS = 2;
@@ -25,16 +27,16 @@ export const MAX_AI_ATTEMPTS = 2;
 export interface AiTiming {
   /** 첫 시도의 제한 시간 */
   firstAttemptMs: number;
-  /** 첫 시도와 재시도를 합친 제한 시간. S4 화면이 30초에 재시도 안내를 띄우므로 그 전에 끝낸다. */
+  /** 첫 시도와 재시도를 합친 제한 시간. S4 화면이 45초에 재시도 안내를 띄우므로 그 전에 끝낸다. */
   totalMs: number;
   /** 남은 시간이 이보다 짧으면 재시도하지 않는다. */
   minRetryMs: number;
 }
 
-/** 검증 단계에서 실제 응답 시간을 재고 조정한다. */
+/** 첫 시도 25초, 전체 40초(./timing.ts). 검증 단계에서 실제 응답 시간을 재고 조정한다. */
 export const DEFAULT_AI_TIMING: AiTiming = {
-  firstAttemptMs: 20_000,
-  totalMs: 25_000,
+  firstAttemptMs: AI_FIRST_ATTEMPT_MS,
+  totalMs: AI_TOTAL_MS,
   minRetryMs: 1_000,
 };
 
@@ -55,8 +57,8 @@ export interface JudgmentSummary {
   /** 1순위 권역 */
   region: RegionKey;
   grade: Grade;
-  /** 모델이 flags(욕설, 개인정보)를 붙였는지 */
-  flagged: boolean;
+  /** 판정 유보 결과인지(region.uncertain). 랭킹에 올릴 수 없다. */
+  uncertain: boolean;
 }
 
 export interface JudgeDeps {
@@ -75,11 +77,13 @@ export interface JudgeDeps {
   recordJudgment?: (summary: JudgmentSummary) => Promise<void>;
 }
 
-const defaultLog: JudgeLog = (event, detail) => {
+/** 기본 로그. 경상 정밀 감정 파이프라인(../gyeongsang/pipeline.ts)도 쓴다. */
+export const defaultLog: JudgeLog = (event, detail) => {
   console.warn(`[judge] ${event}`, detail);
 };
 
-function describeError(error: unknown): Record<string, unknown> {
+/** 예외를 로그에 남길 수 있는 값으로 줄인다(이름, HTTP 상태, 메시지 앞 200자). */
+export function describeError(error: unknown): Record<string, unknown> {
   if (!(error instanceof Error)) return { name: typeof error };
   const status = (error as { status?: unknown }).status;
   return {
@@ -89,11 +93,21 @@ function describeError(error: unknown): Record<string, unknown> {
   };
 }
 
-async function callAiWithRetry(
+/** 모델 출력 검증 결과. 실패면 problem(형식 오류의 종류)을 로그에만 남긴다. */
+export type AiParseResult<T> = { ok: true; value: T } | { ok: false; problem: string };
+
+/** AI 호출과 재시도에 쓰는 값. 일반 감정과 경상 정밀 감정(../gyeongsang/pipeline.ts)이 함께 쓴다. */
+export type AiRetryDeps = Pick<JudgeDeps, "ai" | "timing" | "now" | "log">;
+
+/**
+ * AI를 부르고 parse로 출력을 검증한다. 호출이 실패하거나 형식 오류면 대체 모델로 1회 재시도하고,
+ * 그래도 안 되면 null이다. 첫 시도와 재시도를 합쳐 timing.totalMs 안에 끝낸다.
+ */
+export async function callAiWithRetry<T>(
   request: Omit<AiRequest, "timeoutMs">,
-  questionCount: number,
-  deps: JudgeDeps,
-): Promise<ModelOutput | null> {
+  parse: (text: string) => AiParseResult<T>,
+  deps: AiRetryDeps,
+): Promise<T | null> {
   const timing = deps.timing ?? DEFAULT_AI_TIMING;
   const now = deps.now ?? Date.now;
   const log = deps.log ?? defaultLog;
@@ -110,10 +124,7 @@ async function callAiWithRetry(
     const useFallbackModel = attempt > 1;
     const model = useFallbackModel ? "fallback" : "primary";
     try {
-      const parsed = parseModelOutput(
-        await deps.ai.generate({ ...request, timeoutMs, useFallbackModel }),
-        questionCount,
-      );
+      const parsed = parse(await deps.ai.generate({ ...request, timeoutMs, useFallbackModel }));
       if (parsed.ok) return parsed.value;
       log("ai_invalid_output", { attempt, model, problem: parsed.problem });
     } catch (error) {
@@ -126,7 +137,7 @@ async function callAiWithRetry(
 export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeResponse> {
   const { audio, questionSetId } = input;
 
-  // 서버 검사: 파일, 크기(2MB), 형식. 녹음 길이(합계 40초)는 화면에서 지키므로 검사하지 않는다.
+  // 서버 검사: 파일, 크기(2MB), 형식. 녹음 길이(문항당 10초, set-b 합계 60초)는 화면에서 지키므로 검사하지 않는다.
   if (audio === null || typeof audio === "string") return errorResponse("invalid_audio");
   if (audio.size > MAX_AUDIO_BYTES) return errorResponse("too_large");
 
@@ -150,7 +161,7 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
       mimeType: format.mimeType,
       responseSchema: buildModelOutputSchema(questions.length),
     },
-    questions.length,
+    (text) => parseModelOutput(text, questions.length),
     deps,
   );
   if (!output) return errorResponse("ai_error");
@@ -168,7 +179,7 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
         intensity: result.intensity.score,
         region: result.region.top,
         grade: result.intensity.grade,
-        flagged: output.flags.length > 0,
+        uncertain: result.region.uncertain,
       });
     } catch (error) {
       (deps.log ?? defaultLog)("judgment_record_failed", describeError(error));

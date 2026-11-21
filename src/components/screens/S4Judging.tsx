@@ -2,21 +2,38 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
+import { GENERAL_QUESTION_SET_ID } from '@/lib/judge/questions';
+import { JUDGING_WAIT_LIMIT_SEC, judgingStepIndex } from '@/lib/judge/timing';
 
-interface S4JudgingProps {
+/** 심사 단계 표시. 경과 시간(3초, 9초, 18초)에 따라 4단계를 차례로 보여 준다(src/lib/judge/timing.ts). */
+export interface JudgingStep {
+  id: number;
+  label: string;
+  desc: string;
+}
+
+/** T는 성공 응답의 형식이다. 기본은 일반 감정 결과(JudgeResult). */
+interface S4JudgingProps<T> {
   audioBlob: Blob;
-  onSuccess: (result: JudgeResult) => void;
+  onSuccess: (result: T) => void;
   onRetry: () => void;
   onReset: () => void;
   /** 오류로 멈췄는지 알린다(머리글에 '분석 중단'을 보여 주는 데 쓴다). */
   onFailedChange?: (failed: boolean) => void;
+  /**
+   * 요청의 questionSetId. 없으면 일반 감정 세트(기본 set-b, NEXT_PUBLIC_QUESTION_SET=set-a면 set-a).
+   * 경상 정밀 감정은 set-gs를 넘긴다.
+   */
+  questionSetId?: string;
+  /** 심사 단계 문구(4개). 없으면 일반 감정의 단계 */
+  steps?: readonly JudgingStep[];
 }
 
-const JUDGING_STEPS = [
-  { id: 1, label: '녹음 상태 확인' },
-  { id: 2, label: '어휘와 발음 살펴보기' },
-  { id: 3, label: '어미와 억양 살펴보기' },
-  { id: 4, label: '결과 정리' },
+const JUDGING_STEPS: readonly JudgingStep[] = [
+  { id: 1, label: '녹음 상태 확인', desc: '음성이 잘 들어왔는지 확인합니다.' },
+  { id: 2, label: '어휘와 발음 살펴보기', desc: '지역에서 자주 쓰는 말과 발음 특징을 확인합니다.' },
+  { id: 3, label: '어미와 억양 살펴보기', desc: '문장 끝 표현과 말의 높낮이를 확인합니다.' },
+  { id: 4, label: '결과 정리', desc: '권역별 결과와 농도 점수를 정리합니다.' },
 ];
 
 /** 같은 녹음을 다시 보내도 결과가 같은 오류. 재시도 대신 다시 녹음으로 안내한다. */
@@ -44,7 +61,15 @@ const RERECORD_ERRORS = new Map<string, { title: string; message: string }>([
   ],
 ]);
 
-export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFailedChange }: S4JudgingProps) {
+export default function S4Judging<T = JudgeResult>({
+  audioBlob,
+  onSuccess,
+  onRetry,
+  onReset,
+  onFailedChange,
+  questionSetId = GENERAL_QUESTION_SET_ID,
+  steps = JUDGING_STEPS,
+}: S4JudgingProps<T>) {
   const [secElapsed, setSecElapsed] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
   const failed = errorInfo !== null;
@@ -53,7 +78,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
   const timedOutRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const errorPanelRef = useRef<HTMLDivElement | null>(null);
-  const currentStepIndex = secElapsed >= 12 ? 3 : secElapsed >= 6 ? 2 : secElapsed >= 2 ? 1 : 0;
+  const currentStepIndex = judgingStepIndex(secElapsed);
 
   // 경과 시간 타이머. 오류가 나면 정리되어 경과 시간과 단계 진행이 그 자리에서 멈춘다.
   useEffect(() => {
@@ -62,12 +87,12 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
     const timer = setInterval(() => {
       elapsed += 1;
       setSecElapsed(elapsed);
-      if (elapsed >= 30 && !requestCompletedRef.current && !timedOutRef.current) {
+      if (elapsed >= JUDGING_WAIT_LIMIT_SEC && !requestCompletedRef.current && !timedOutRef.current) {
         timedOutRef.current = true;
         abortControllerRef.current?.abort();
         setErrorInfo({
           title: '심사 소요 시간 초과',
-          message: '대기 시간이 30초를 경과했습니다. 네트워크를 확인 후 다시 시도해 주십시오.',
+          message: '대기 시간이 45초를 경과했습니다. 네트워크를 확인 후 다시 시도해 주십시오.',
           canRetry: true,
         });
       }
@@ -97,7 +122,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
 
         const formData = new FormData();
         formData.append('audio', file);
-        formData.append('questionSetId', 'set-a');
+        formData.append('questionSetId', questionSetId);
 
         const res = await fetch('/api/judge', {
           method: 'POST',
@@ -114,7 +139,14 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
           const rerecordError = RERECORD_ERRORS.get(errorCode);
 
           if (errorCode === 'rejected') {
-            if (reason === 'noisy') {
+            if (reason === 'not_gyeongsang') {
+              // 경상 정밀 감정(set-gs)에서만 온다.
+              setErrorInfo({
+                title: '정밀 감정 불가 (경상 방언 미확인)',
+                message: '경상 방언이 확인되지 않아 정밀 감정이 불가합니다. 평소 말투로 다시 녹음하시거나 일반 감정을 이용해 주십시오.',
+                canRetry: false,
+              });
+            } else if (reason === 'noisy') {
               setErrorInfo({
                 title: '감정 반려 (소음 과다)',
                 message: '주변 소음으로 인해 감정이 불가합니다. 조용한 환경에서 다시 녹음해 주십시오.',
@@ -146,7 +178,7 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
         }
 
         resultTimer = setTimeout(() => {
-          onSuccess(data as JudgeResult);
+          onSuccess(data as T);
         }, 700);
       } catch (err) {
         if (timedOutRef.current || (err instanceof DOMException && err.name === 'AbortError')) return;
@@ -167,10 +199,10 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
       clearTimeout(resultTimer);
       controller.abort();
     };
-  }, [audioBlob, onSuccess]);
+  }, [audioBlob, onSuccess, questionSetId]);
 
   return (
-    <div className="screen-glass p-5 sm:p-7 lg:p-10">
+    <div className="hide-header-tabs screen-glass p-5 sm:p-7 lg:p-10">
       {/* Error Notice: 오류가 나면 화면 맨 위에 안내와 버튼을 둔다 */}
       {errorInfo && (
         <div
@@ -194,9 +226,9 @@ export default function S4Judging({ audioBlob, onSuccess, onRetry, onReset, onFa
       {!errorInfo && (
         <section data-enter="1" className="judging-panel">
           <div className="judging-title"><span aria-hidden="true" className="judging-spinner" /><h2>말투를 분석하고 있어요</h2></div>
-          <p>경과 시간 {secElapsed}초 · 최대 30초</p>
+          <p>경과 시간 {secElapsed}초 · 최대 45초</p>
           <ol>
-            {JUDGING_STEPS.map((step, index) => (
+            {steps.map((step, index) => (
               <li key={step.id} aria-current={index === currentStepIndex ? 'step' : undefined}>
                 <span aria-hidden="true">{index < currentStepIndex ? '✓' : step.id}</span>
                 {step.label}

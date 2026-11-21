@@ -4,6 +4,7 @@ import NoticePopup from '@/components/common/NoticePopup';
 
 import { Evidence, JudgeResult } from '@/lib/judge/contract';
 import { splitHighlights } from '@/lib/judge/highlight';
+import { UNCERTAIN_PREFIX, regionVerdictLabel, uncertainDetail } from '@/lib/judge/rules';
 import { REGION_KOREAN_NAMES, PART_KOREAN_NAMES } from '@/types/screen';
 
 interface S5ResultProps {
@@ -11,6 +12,8 @@ interface S5ResultProps {
   onGoToCertificate: () => void;
   onGoToRanking: () => void;
   onResetAll: () => void;
+  /** 있으면 1순위가 경상일 때 경상 정밀 감정을 권한다. */
+  onStartGyeongsang?: () => void;
 }
 
 function EvidenceRow({ item }: { item: Evidence }) {
@@ -44,10 +47,18 @@ function HighlightedTranscript({ text, quotes }: { text: string; quotes: string[
   );
 }
 
-export default function S5Result({ result, onGoToCertificate, onGoToRanking, onResetAll }: S5ResultProps) {
+export default function S5Result({
+  result,
+  onGoToCertificate,
+  onGoToRanking,
+  onResetAll,
+  onStartGyeongsang,
+}: S5ResultProps) {
   const { region, intensity, evidence, opinion, transcript, certificateNo, issuedAt } = result;
   // 이전 형식의 응답(segments 없음)도 전체 받아쓰기로 보여 준다.
   const segments = result.segments ?? [];
+  /** 바꿔 말하기 문항이 섞인 결과(set-b)면 문항마다 종류를 적는다. */
+  const mixedKinds = segments.some((segment) => segment.kind === 'convert');
 
   const formattedDate = new Date(issuedAt).toLocaleString('ko-KR', {
     year: 'numeric',
@@ -77,9 +88,21 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                 내 말투와 가까운 지역
               </p>
 
-              <h2 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-                {region.mixed ? '혼합 방언' : region.label}
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+                {region.uncertain ? (
+                  <>
+                    {UNCERTAIN_PREFIX} <span className="whitespace-nowrap">{uncertainDetail(region.top)}</span>
+                  </>
+                ) : (
+                  regionVerdictLabel(region)
+                )}
               </h2>
+              {region.uncertain && (
+                <p className="mt-2 text-sm text-zinc-400">
+                  확인된 근거가 1순위 권역을 충분히 뒷받침하지 않아 판정을 유보합니다. 유보된 결과는 랭킹에 등록할 수
+                  없습니다.
+                </p>
+              )}
 
               <p className="mt-1 text-sm font-medium text-zinc-300">
                 {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
@@ -97,7 +120,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
               </div>
               <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-700"
+                  className="h-full rounded-full bg-[#9bbbd5] transition-all duration-700"
                   style={{ width: `${intensity.score}%` }}
                 />
               </div>
@@ -110,6 +133,21 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                 &quot;{opinion}&quot;
               </p>
             </div>
+
+            {/* 1순위가 경상이면 경상 정밀 감정을 권한다 */}
+            {onStartGyeongsang && region.top === 'gyeongsang' && (
+              <div className="mt-6 rounded-2xl border border-zinc-800 p-4">
+                <p className="result-eyebrow">
+                  {region.uncertain ? '경상 방언이 1순위로 추정되었습니다' : '경상 방언이 1순위로 판정되었습니다'}
+                </p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽 성분이 강한지 정밀 감정으로 가려 드립니다.
+                </p>
+                <button onClick={onStartGyeongsang} className="secondary-action-button mt-3 w-full text-center transition">
+                  경상 정밀 감정 받기
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Action Button inside Left Column for Desktop */}
@@ -125,7 +163,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
               onClick={onGoToRanking}
               className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-2 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
             >
-              <span>랭킹 등록</span>
+              <span>{region.uncertain ? '농도 랭킹 보기' : '농도 랭킹 등록'}</span>
             </button>
 
             <button
@@ -158,7 +196,7 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
-                          isTop ? 'bg-gradient-to-r from-indigo-500 to-purple-400' : 'bg-zinc-700'
+                          isTop ? 'bg-[#9bbbd5]' : 'bg-zinc-700'
                         }`}
                         style={{ width: `${prob}%` }}
                       />
@@ -200,7 +238,14 @@ export default function S5Result({ result, onGoToCertificate, onGoToRanking, onR
                         <span className="shrink-0 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
                           문항 {segment.question}
                         </span>
-                        <span>{segment.prompt}</span>
+                        <div className="min-w-0">
+                          {mixedKinds && (
+                            <p className="text-[11px] font-medium text-zinc-500">
+                              {segment.kind === 'convert' ? '바꿔 말하기 · 제시 문장' : '상황 답하기'}
+                            </p>
+                          )}
+                          <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
+                        </div>
                       </summary>
 
                       <div className="mt-3 rounded-xl border border-zinc-800/60 bg-black/50 p-3">

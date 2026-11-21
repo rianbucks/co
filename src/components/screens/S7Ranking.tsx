@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
 import type { RankingEntryView, RankingList, RankingRegistered } from '@/lib/ranking/contract';
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
+import { regionVerdictLabel } from '@/lib/judge/rules';
 import RankingRow from '@/components/common/RankingRow';
 
 import NoticePopup from '@/components/common/NoticePopup';
@@ -36,9 +37,10 @@ function registerErrorMessage(error: unknown, reason: unknown): string {
     case 'not_found':
       return '등록 가능 시간(감정 후 1시간)이 지났거나 감정 기록을 찾을 수 없습니다. 새로 감정해 주십시오.';
     case 'not_eligible':
+      if (reason === 'uncertain') return '판정 유보 결과는 랭킹에 등록할 수 없습니다.';
       return reason === 'mock'
         ? '가짜 응답 모드(MOCK)로 받은 결과는 랭킹에 등록할 수 없습니다.'
-        : '욕설이나 개인정보가 감지된 녹음의 결과는 랭킹에 등록할 수 없습니다.';
+        : '이 감정 결과는 랭킹에 등록할 수 없습니다.';
     case 'already_registered':
       return '이미 랭킹에 등록된 감정 결과입니다. 감정 1건당 한 번만 등록할 수 있습니다.';
     case 'rate_limited':
@@ -91,7 +93,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting || entryId || formError?.final) return;
+    if (result?.region.uncertain || submitting || entryId || formError?.final) return;
 
     if (!result && !nickname.trim()) {
       onApply();
@@ -158,7 +160,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
               <div className="mt-3 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-zinc-400">내 감정 결과</span>
-                  <span className="font-medium text-zinc-200">{result.region.mixed ? '혼합 방언' : result.region.label}</span>
+                  <span className="font-medium text-zinc-200">{regionVerdictLabel(result.region)}</span>
                 </div>
                 <div className="mt-2 flex items-end justify-between gap-3">
                   <div className="text-xs">
@@ -173,7 +175,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
               </div>
             )}
 
-            {mine ? (
+            {result?.region.uncertain ? <p>판정 유보 결과는 랭킹에 등록할 수 없습니다.</p> : mine ? (
               <div ref={myRankPanel} tabIndex={-1} className="mt-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-center">
                 <div className="text-xs font-semibold text-indigo-300">내 순위</div>
                 <div className="mt-1 text-5xl font-black tracking-tight text-white">

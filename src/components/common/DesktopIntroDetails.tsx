@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { QUESTIONS } from '@/types/screen';
+import { GENERAL_QUESTIONS as QUESTIONS } from '@/lib/judge/questions';
 import { GRADE_TABLE } from '@/lib/judge/rules';
 import type { RankingEntryView, RankingList } from '@/lib/ranking/contract';
 import RankingRow from './RankingRow';
