@@ -826,6 +826,9 @@
   .bg-\[\#9bbbd5\] {
     background-color: #9bbbd5;
   }
+  .bg-\[\#202f3b\] {
+    background-color: #202f3b;
+  }
   .bg-\[\#315b83\] {
     background-color: #315b83;
   }
@@ -1291,6 +1294,9 @@
   }
   .text-\[\#8a6d4f\] {
     color: #8a6d4f;
+  }
+  .text-\[\#9bbbd5\] {
+    color: #9bbbd5;
   }
   .text-\[\#315b83\] {
     color: #315b83;

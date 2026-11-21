@@ -12,7 +12,7 @@ import { judgeGyeongsang } from "@/lib/gyeongsang/pipeline";
 import { GS_QUESTION_SET_ID } from "@/lib/gyeongsang/questions";
 import { gsRankingStoreFromEnv } from "@/lib/gyeongsang/ranking/store";
 import { errorResponse } from "@/lib/judge/contract";
-import { mockAiClient } from "@/lib/judge/mock";
+import { mockAiClientFor } from "@/lib/judge/mock";
 import { judge } from "@/lib/judge/pipeline";
 import { clientIpFrom } from "@/lib/judge/request";
 import { rankingStoreFromEnv } from "@/lib/ranking/store";
@@ -80,7 +80,10 @@ export async function POST(request: Request): Promise<Response> {
         clientIp: clientIpFrom(request.headers),
       },
       {
-        ai: config.config.mock ? mockAiClient : createGeminiClient(config.config.gemini),
+        // 가짜 응답은 녹음한 세트(set-a 4문항, set-b 6문항)의 문항 수에 맞춰 고른다.
+        ai: config.config.mock
+          ? mockAiClientFor(form.get("questionSetId"))
+          : createGeminiClient(config.config.gemini),
         rateLimiter,
         recordJudgment: ({ id, ...summary }) =>
           rankingStore.saveJudgment(id, { ...summary, mock }),

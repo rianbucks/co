@@ -1,12 +1,21 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { QUESTIONS, QuestionItem } from '@/types/screen';
+import {
+  GENERAL_QUESTIONS,
+  SECONDS_PER_QUESTION,
+  hasConvertQuestions,
+  questionKind,
+} from '@/lib/judge/questions';
+import type { QuestionItem } from '@/types/screen';
 
 interface S3RecorderProps {
   onComplete: (blob: Blob) => void;
   onResetAll: () => void;
-  /** 녹음할 문항. 없으면 일반 감정 문항(set-a). 경상 정밀 감정은 set-gs 문항을 넘긴다. */
+  /**
+   * 녹음할 문항. 없으면 일반 감정 문항(기본 set-b, NEXT_PUBLIC_QUESTION_SET=set-a면 set-a).
+   * 경상 정밀 감정은 set-gs 문항을 넘긴다. 문항 수만큼 문항당 10초씩 녹음한다.
+   */
   questions?: readonly QuestionItem[];
 }
 
@@ -18,8 +27,6 @@ const MIME_CANDIDATES = [
   'audio/aac',
 ];
 
-/** 문항당 녹음 시간(초) */
-const SECONDS_PER_QUESTION = 10;
 /** 남은 시간을 다시 계산하는 간격. 1초보다 짧게 두어 표시가 밀리지 않게 한다. */
 const TIMER_TICK_MS = 200;
 /**
@@ -36,8 +43,8 @@ const DOUBLE_TAP_GUARD_MS = 500;
  */
 type RecordingPhase = 'ready' | 'recording' | 'paused' | 'processing' | 'error';
 
-export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIONS }: S3RecorderProps) {
-  const [currentIdx, setCurrentIdx] = useState(0); // 화면에 보이는 문항: 0, 1, 2, 3
+export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL_QUESTIONS }: S3RecorderProps) {
+  const [currentIdx, setCurrentIdx] = useState(0); // 화면에 보이는 문항: 0부터 문항 수 - 1
   const [phase, setPhase] = useState<RecordingPhase>('ready');
   const [secLeft, setSecLeft] = useState(SECONDS_PER_QUESTION);
   const [supportedMime, setSupportedMime] = useState('');
@@ -57,9 +64,27 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
   const startingRef = useRef(false);
   /** 문항 녹음을 시작하거나 끝낸 시각(performance.now) */
   const phaseChangedAtRef = useRef(0);
+  /** 문항 카드(왼쪽 열). 새 문항이 나오면 화면에 보이게 올린다. */
+  const questionCardRef = useRef<HTMLDivElement | null>(null);
 
   const lastQuestionIdx = questions.length - 1;
   const currentQuestion: QuestionItem = questions[currentIdx];
+  const kind = questionKind(currentQuestion);
+  /** 바꿔 말하기 문항이 섞인 세트(set-b)면 문항 종류에 맞는 안내를 보여 준다. 상황극만 있는 세트는 지금 그대로다. */
+  const mixedKinds = hasConvertQuestions(questions);
+  /** 바꿔 말하기 문항 바로 다음의 상황극 문항(set-b의 5번). 형식이 바뀐다는 점을 눈에 띄게 알린다. */
+  const formatChanged =
+    mixedKinds && kind === 'question' && currentIdx > 0 && questionKind(questions[currentIdx - 1]) === 'convert';
+
+  /**
+   * 바꿔 말하기 문항이 섞인 세트는 문항마다 안내와 바꿔 말할 문장을 읽어야 한다. 휴대폰에서는 앞 화면이나 버튼을 누른
+   * 자리의 스크롤이 남아 문항 카드 윗부분(형식 전환 안내 포함)이 머리글 밑에 가리므로, 새 문항이 나오면 카드를 올린다.
+   * 상황극만 있는 세트(set-a, 경상 정밀 감정)는 지금 동작 그대로 둔다.
+   */
+  useEffect(() => {
+    if (!mixedKinds) return;
+    questionCardRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [currentIdx, mixedKinds]);
 
   const cleanupAudio = useCallback(() => {
     if (timerRef.current) {
@@ -301,8 +326,11 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
     <div className="screen-glass p-5 sm:p-7 lg:p-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
 
-        {/* Left Column: Situation Prompt & Instructions */}
-        <div className="flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-6">
+        {/* Left Column: Situation Prompt & Instructions (scroll-mt: 고정 머리글 높이만큼 띄운다) */}
+        <div
+          ref={questionCardRef}
+          className="flex scroll-mt-36 flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-6"
+        >
           <div>
             {/* Step Counter Pill & Reset */}
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
@@ -311,7 +339,7 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
                   문항 {currentIdx + 1} / {questions.length}
                 </span>
                 <span className="text-xs font-medium text-zinc-400">
-                  상황극 녹음
+                  {kind === 'convert' ? '바꿔 말하기' : '상황극 녹음'}
                 </span>
               </div>
 
@@ -323,13 +351,41 @@ export default function S3Recorder({ onComplete, onResetAll, questions = QUESTIO
               </button>
             </div>
 
+            {/* 형식 전환: 바꿔 말하기가 끝나고 상황극이 시작될 때 */}
+            {formatChanged && (
+              <div role="status" className="mt-6 break-keep rounded-2xl border border-[#416785] bg-[#202f3b] p-4">
+                <p className="text-xs font-semibold text-[#9bbbd5]">형식이 바뀝니다</p>
+                <p className="mt-1 text-base font-semibold text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                  문장을 바꿔 말하는 문항은 끝났습니다. 아래 상황에서 {currentQuestion.target}에게 직접 말하듯 답해 주십시오.
+                </p>
+              </div>
+            )}
+
             {/* Target & Situation Card */}
-            <div className="mt-6">
+            <div className="mt-6 break-keep">
               <p className="record-target">대화 상대 <strong>{currentQuestion.target}</strong></p>
 
-              <h3 className="recording-prompt mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
-                {currentQuestion.situation}
-              </h3>
+              {kind === 'convert' ? (
+                <>
+                  <p className="mt-4 text-sm leading-relaxed text-zinc-300">
+                    다음 문장을 {currentQuestion.target}에게 말하듯 평소 말투로 바꿔 말해 주십시오. 글자 그대로 읽지 않으셔도
+                    됩니다.
+                  </p>
+                  <h3 className="recording-prompt mt-3 text-3xl font-bold leading-snug tracking-tight text-white">
+                    {currentQuestion.situation}
+                  </h3>
+                </>
+              ) : (
+                <>
+                  {mixedKinds && !formatChanged && (
+                    <p className="mt-4 text-sm leading-relaxed text-zinc-300">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
+                  )}
+                  <h3 className="recording-prompt mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
+                    {currentQuestion.situation}
+                  </h3>
+                </>
+              )}
             </div>
           </div>
 

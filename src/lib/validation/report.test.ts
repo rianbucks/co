@@ -17,6 +17,7 @@ const usage = { inputTokens: 1_000, outputTokens: 200, thoughtTokens: 800 };
 const RECORDS: RunRecord[] = [
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "gemini-3.8-flash",
     run: 1,
@@ -35,6 +36,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "gemini-3.8-flash",
     run: 2,
@@ -49,6 +51,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "gemini-3.8-flash",
     run: 3,
@@ -63,6 +66,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "b.m4a",
+    questionSetId: "set-b",
     expected: "jeju",
     model: "gemini-3.8-flash",
     run: 1,
@@ -76,6 +80,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "b.m4a",
+    questionSetId: "set-b",
     expected: "jeju",
     model: "gemini-3.8-flash",
     run: 2,
@@ -85,6 +90,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "b.m4a",
+    questionSetId: "set-b",
     expected: "jeju",
     model: "gemini-3.8-flash",
     run: 3,
@@ -94,6 +100,7 @@ const RECORDS: RunRecord[] = [
   },
   {
     file: "a.webm",
+    questionSetId: "set-b",
     expected: "gyeongsang",
     model: "unknown-model",
     run: 1,
@@ -195,7 +202,8 @@ describe("summarize", () => {
 describe("출력 파일", () => {
   it("runs.csv는 BOM과 머리글로 시작하고 쉼표나 따옴표가 든 칸을 감싼다", () => {
     const csv = toRunsCsv(RECORDS);
-    expect(csv.startsWith("﻿file,expected,model,run,status")).toBe(true);
+    expect(csv.startsWith("﻿file,question_set,expected,model,run,status")).toBe(true);
+    expect(csv.split("\n")[1].startsWith("a.webm,set-b,gyeongsang,")).toBe(true);
     expect(csv.split("\n")[0]).toContain(",mixed,uncertain,score,");
     expect(csv).toContain(',"timeout, ""60s"""\n');
     expect(csv.trim().split("\n")).toHaveLength(RECORDS.length + 1);
@@ -220,6 +228,7 @@ describe("출력 파일", () => {
 
   it("details.md에 받아쓰기, 통과·걸러진 근거, 반려와 오류가 있다", () => {
     const details = toDetailsMarkdown(RECORDS);
+    expect(details).toContain("- 문항 세트: set-b");
     expect(details).toContain('  - ✓ [endings] "했다 아이가" — 확인 표현');
     expect(details).toContain('  - ✗ [phonology] "뭇나" — 축약');
     expect(details).toContain("- 품질 반려: noisy");
@@ -232,6 +241,7 @@ describe("출력 파일", () => {
     const details = toDetailsMarkdown([
       {
         file: "d.webm",
+        questionSetId: "set-b",
         expected: "jeolla",
         model: "gemini-3.8-flash",
         run: 1,
@@ -254,6 +264,7 @@ describe("출력 파일", () => {
     const details = toDetailsMarkdown([
       {
         file: "e.webm",
+        questionSetId: "set-b",
         expected: "jeolla",
         model: "gemini-3.8-flash",
         run: 1,
@@ -277,6 +288,7 @@ describe("출력 파일", () => {
     const details = toDetailsMarkdown([
       {
         file: "c.webm",
+        questionSetId: "set-b",
         expected: "gyeongsang",
         model: "gemini-3.8-flash",
         run: 1,

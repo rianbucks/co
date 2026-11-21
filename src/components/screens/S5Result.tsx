@@ -55,6 +55,8 @@ export default function S5Result({
   const { region, intensity, evidence, opinion, transcript, certificateNo, issuedAt } = result;
   // 이전 형식의 응답(segments 없음)도 전체 받아쓰기로 보여 준다.
   const segments = result.segments ?? [];
+  /** 바꿔 말하기 문항이 섞인 결과(set-b)면 문항마다 종류를 적는다. */
+  const mixedKinds = segments.some((segment) => segment.kind === 'convert');
 
   const formattedDate = new Date(issuedAt).toLocaleString('ko-KR', {
     year: 'numeric',
@@ -236,7 +238,14 @@ export default function S5Result({
                         <span className="shrink-0 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
                           문항 {segment.question}
                         </span>
-                        <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
+                        <div className="min-w-0">
+                          {mixedKinds && (
+                            <p className="text-[11px] font-medium text-zinc-500">
+                              {segment.kind === 'convert' ? '바꿔 말하기 · 제시 문장' : '상황 답하기'}
+                            </p>
+                          )}
+                          <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
+                        </div>
                       </div>
 
                       <div className="mt-3 rounded-xl border border-zinc-800/60 bg-black/50 p-3">

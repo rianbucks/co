@@ -1,6 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  GENERAL_QUESTIONS,
+  convertTarget,
+  countQuestionKinds,
+  hasConvertQuestions,
+  recordingSeconds,
+} from '@/lib/judge/questions';
+
+const KIND_COUNTS = countQuestionKinds(GENERAL_QUESTIONS);
+const TOTAL_SECONDS = recordingSeconds(GENERAL_QUESTIONS);
+
+/** 절차 안내 01. 바꿔 말하기 문항이 섞인 세트(set-b)와 상황극만 있는 세트(set-a)의 문구가 다르다. */
+const RECORDING_GUIDE = hasConvertQuestions(GENERAL_QUESTIONS)
+  ? {
+      title: `바꿔 말하기 ${KIND_COUNTS.convert}문항, 상황극 ${KIND_COUNTS.question}문항 구술 (총 ${TOTAL_SECONDS}초)`,
+      detail: `먼저 화면에 나오는 문장 ${KIND_COUNTS.convert}개를 ${convertTarget(GENERAL_QUESTIONS)}에게 말하듯 평소 말투로 바꿔 말합니다. 글자 그대로 읽지 않으셔도 됩니다. 이어지는 상황극 ${KIND_COUNTS.question}개에는 상황에 맞게 자유롭게 답변합니다.`,
+    }
+  : {
+      title: `상황극 ${GENERAL_QUESTIONS.length}문항 구술 (총 ${TOTAL_SECONDS}초)`,
+      detail: `화면에 제시되는 ${GENERAL_QUESTIONS.length}가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 평소 말투로 답변합니다.`,
+    };
 
 interface S2ConsentProps {
   onNext: () => void;
@@ -61,10 +82,8 @@ export default function S2Consent({ onNext, onPrev }: S2ConsentProps) {
               <div className="flex items-start gap-4 py-4">
                 <span className="pt-0.5 font-mono text-xs text-zinc-500">01</span>
                 <div>
-                  <div className="text-xs font-bold text-zinc-200">상황극 4문항 구술 (총 40초)</div>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                    화면에 제시되는 4가지 상황극에 맞춰, 평소 친한 친구나 가족에게 말하듯 편안한 평소 말투로 답변합니다.
-                  </p>
+                  <div className="text-xs font-bold text-zinc-200">{RECORDING_GUIDE.title}</div>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">{RECORDING_GUIDE.detail}</p>
                 </div>
               </div>
 
