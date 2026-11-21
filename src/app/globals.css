@@ -403,14 +403,14 @@
   .h-5 {
     height: calc(var(--spacing) * 5);
   }
+  .h-6 {
+    height: calc(var(--spacing) * 6);
+  }
   .h-7 {
     height: calc(var(--spacing) * 7);
   }
   .h-16 {
     height: calc(var(--spacing) * 16);
-  }
-  .h-20 {
-    height: calc(var(--spacing) * 20);
   }
   .h-full {
     height: 100%;
@@ -423,9 +423,6 @@
   }
   .w-1 {
     width: var(--spacing);
-  }
-  .w-1\.5 {
-    width: calc(var(--spacing) * 1.5);
   }
   .w-2 {
     width: calc(var(--spacing) * 2);
@@ -463,9 +460,6 @@
   .max-w-\[1120px\] {
     max-width: 1120px;
   }
-  .max-w-xs {
-    max-width: var(--container-xs);
-  }
   .min-w-0 {
     min-width: 0px;
   }
@@ -492,6 +486,9 @@
   }
   .scroll-mt-36 {
     scroll-margin-top: calc(var(--spacing) * 36);
+  }
+  .scroll-mt-\[136px\] {
+    scroll-margin-top: 136px;
   }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -1107,6 +1104,9 @@
   .py-2 {
     padding-block: calc(var(--spacing) * 2);
   }
+  .py-2\.5 {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
   .py-3 {
     padding-block: calc(var(--spacing) * 3);
   }
@@ -1213,6 +1213,9 @@
   }
   .text-\[11px\] {
     font-size: 11px;
+  }
+  .text-\[26px\] {
+    font-size: 26px;
   }
   .leading-4 {
     --tw-leading: calc(var(--spacing) * 4);
@@ -1655,6 +1658,9 @@
     }
   }
   @media (width >= 40rem) {
+    .sm\:mt-4 {
+      margin-top: calc(var(--spacing) * 4);
+    }
     .sm\:mt-8 {
       margin-top: calc(var(--spacing) * 8);
     }
@@ -1715,6 +1721,12 @@
     .sm\:px-12 {
       padding-inline: calc(var(--spacing) * 12);
     }
+    .sm\:py-3 {
+      padding-block: calc(var(--spacing) * 3);
+    }
+    .sm\:py-4 {
+      padding-block: calc(var(--spacing) * 4);
+    }
     .sm\:py-8 {
       padding-block: calc(var(--spacing) * 8);
     }
@@ -1774,17 +1786,68 @@
     .lg\:col-span-7 {
       grid-column: span 7 / span 7;
     }
+    .lg\:col-start-1 {
+      grid-column-start: 1;
+    }
+    .lg\:col-start-7 {
+      grid-column-start: 7;
+    }
+    .lg\:row-span-2 {
+      grid-row: span 2 / span 2;
+    }
+    .lg\:row-start-1 {
+      grid-row-start: 1;
+    }
+    .lg\:row-start-2 {
+      grid-row-start: 2;
+    }
+    .lg\:mx-auto {
+      margin-inline: auto;
+    }
     .lg\:mt-0 {
       margin-top: 0px;
+    }
+    .lg\:mt-5 {
+      margin-top: calc(var(--spacing) * 5);
+    }
+    .lg\:mt-6 {
+      margin-top: calc(var(--spacing) * 6);
+    }
+    .lg\:block {
+      display: block;
     }
     .lg\:flex {
       display: flex;
     }
+    .lg\:grid {
+      display: grid;
+    }
+    .lg\:hidden {
+      display: none;
+    }
+    .lg\:h-20 {
+      height: calc(var(--spacing) * 20);
+    }
+    .lg\:w-1 {
+      width: var(--spacing);
+    }
+    .lg\:w-1\.5 {
+      width: calc(var(--spacing) * 1.5);
+    }
     .lg\:w-auto {
       width: auto;
     }
+    .lg\:max-w-xs {
+      max-width: var(--container-xs);
+    }
     .lg\:grid-cols-12 {
       grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+    .lg\:grid-rows-\[auto_1fr\] {
+      grid-template-rows: auto 1fr;
+    }
+    .lg\:flex-col {
+      flex-direction: column;
     }
     .lg\:items-center {
       align-items: center;
@@ -1792,11 +1855,32 @@
     .lg\:justify-between {
       justify-content: space-between;
     }
+    .lg\:justify-center {
+      justify-content: center;
+    }
+    .lg\:gap-0 {
+      gap: 0px;
+    }
+    .lg\:gap-2 {
+      gap: calc(var(--spacing) * 2);
+    }
+    .lg\:gap-6 {
+      gap: calc(var(--spacing) * 6);
+    }
     .lg\:gap-8 {
       gap: calc(var(--spacing) * 8);
     }
+    .lg\:self-start {
+      align-self: flex-start;
+    }
+    .lg\:rounded-3xl {
+      border-radius: var(--radius-3xl);
+    }
     .lg\:p-7 {
       padding: calc(var(--spacing) * 7);
+    }
+    .lg\:p-8 {
+      padding: calc(var(--spacing) * 8);
     }
     .lg\:p-10 {
       padding: calc(var(--spacing) * 10);
@@ -1810,13 +1894,15 @@
     .lg\:py-10 {
       padding-block: calc(var(--spacing) * 10);
     }
-    .lg\:text-3xl {
-      font-size: var(--text-3xl);
-      line-height: var(--tw-leading, var(--text-3xl--line-height));
+    .lg\:text-center {
+      text-align: center;
     }
     .lg\:text-5xl {
       font-size: var(--text-5xl);
       line-height: var(--tw-leading, var(--text-5xl--line-height));
+    }
+    .lg\:text-\[36px\] {
+      font-size: 36px;
     }
   }
 }
