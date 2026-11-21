@@ -80,7 +80,7 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-gs" http://localhost:3000/
 - 모델은 근거를 먼저 적고 권역 확률을 나중에 정합니다. 근거마다 그 특징이 가리키는 권역(`evidence[].region`, 여러 권역에 공통이면 `common`)이 붙습니다. 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나 다른 권역을 가리키는 것이 더 많으면 `region.uncertain`이 true이고, 화면과 감정서는 "판정 유보 (추정: ○○ 방언)"으로 표시합니다(명세 4장). 유보 결과는 랭킹에 등록할 수 없습니다(403 `not_eligible`, `reason: "uncertain"`).
 - 감정에 성공하면 랭킹 등록 자격(농도, 1순위 권역, 등급, 가짜 응답 여부, 판정 유보 여부)을 감정 `id`로 1시간 저장합니다.
 - 음성과 받아쓰기는 저장하거나 공개하지 않으므로 녹음 내용(욕설, 개인정보)으로는 랭킹 등록을 막지 않습니다. 등록을 거절하는 결과는 가짜 응답 결과와 판정 유보 결과뿐입니다(일반 랭킹, 정밀 감정 랭킹 모두).
-- `set-gs`의 성공 응답은 정밀 감정 결과(`subregions`, `intensity`, `evidence`, `transcript`, `segments`, `g_`로 시작하는 `id`)입니다. 경상 방언으로 보기 어려우면 422 `rejected`, `reason: "not_gyeongsang"`입니다. 호출 제한은 일반 감정과 합쳐 세고, 정밀 감정 랭킹 등록 자격(경상 농도, 경북권 비율, 가짜 응답 여부)을 정밀 감정 `id`로 1시간 저장합니다.
+- `set-gs`는 6문항(바꿔 말하기 4, 상황 질문 2, 합계 60초)이고, 성공 응답은 정밀 감정 결과(`subregions`, `intensity`, `evidence`, `transcript`, 문항 종류가 붙은 `segments`, `g_`로 시작하는 `id`)입니다. 정밀 감정 지시문에는 경북권과 경남권을 가르는 말꼴 몇 가지가 참고 기준으로 들어갑니다(명세 12장). 경상 방언으로 보기 어려우면 422 `rejected`, `reason: "not_gyeongsang"`입니다. 호출 제한은 일반 감정과 합쳐 세고, 정밀 감정 랭킹 등록 자격(경상 농도, 경북권 비율, 가짜 응답 여부)을 정밀 감정 `id`로 1시간 저장합니다.
 
 랭킹 API의 형식과 오류는 명세 7장에 있습니다.
 
@@ -144,7 +144,7 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | `src/lib/judge/prompt.ts` | 지시문(바꿔 말하기 문항이 섞인 세트는 문항 종류와 바꿔 말하기 규칙을 넣는다) |
 | `src/lib/judge/questions.ts` | 일반 감정 문항 세트(`set-b` 기본, `set-a` 이전 구성)와 `NEXT_PUBLIC_QUESTION_SET`. 녹음 화면과 지시문이 함께 쓴다 |
 | `src/lib/judge/audio.ts` | 파일 크기와 형식 검사 |
-| `src/lib/gyeongsang/questions.ts` | 경상 정밀 감정 문항(`set-gs`). 지금은 임시 문구이고, 확정 문구는 이 파일만 고친다 |
+| `src/lib/gyeongsang/questions.ts` | 경상 정밀 감정 문항(`set-gs`, 확정 문구). 바꿔 말하기 4문항과 상황 질문 2문항, 60초. 5번의 흉내 문장(인용 상자)도 이 파일에 있다 |
 | `src/lib/gyeongsang/pipeline.ts` | 경상 정밀 감정 파이프라인: 서버 검사 → 호출 제한(일반 감정과 합산) → AI 호출과 재시도 → 후처리 |
 | `src/lib/gyeongsang/prompt.ts`, `model-output.ts`, `postprocess.ts` | 경상 전용 지시문, 출력 스키마와 검증, 성분 비율과 근거 검증, 농도 |
 | `src/lib/gyeongsang/origin.ts` | 신고 원산지와 원산지 일치 판정(화면에서 쓴다) |

@@ -17,7 +17,7 @@ import {
 } from "./contract";
 import type { QuestionItem } from "@/types/screen";
 import type { AcceptedModelOutput } from "./model-output";
-import { questionKind } from "./questions";
+import { questionKind, questionText } from "./questions";
 import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
 import {
   CONCEALMENT_SCORE_LIMIT,
@@ -261,15 +261,15 @@ export function buildJudgeResult(
   };
 }
 
-/** 일반 감정의 문항별 받아쓰기: 문항 번호, 문항 종류, 문항 문구, 받아쓰기. 없으면 빈 배열이다. */
+/**
+ * 문항별 받아쓰기: 문항 번호, 문항 종류, 문항 문구, 받아쓰기. 없으면 빈 배열이다.
+ * 일반 감정과 경상 정밀 감정이 같이 쓴다. 문항 문구는 인용과 요청 문구까지 이은 전체 문구다(questionText).
+ */
 export function buildJudgeSegments(
   questions: readonly QuestionItem[],
   questionTranscripts: readonly string[] | null,
 ): JudgeSegment[] {
-  const segments = buildSegments(
-    questions.map((question) => question.situation),
-    questionTranscripts,
-  );
+  const segments = buildSegments(questions.map(questionText), questionTranscripts);
   return segments.map((segment, index) => ({
     question: segment.question,
     kind: questionKind(questions[index]),

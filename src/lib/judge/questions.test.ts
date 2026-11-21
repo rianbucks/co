@@ -12,6 +12,7 @@ import {
   hasConvertQuestions,
   isGeneralQuestionSetId,
   questionKind,
+  questionText,
   recordingSeconds,
   resolveGeneralQuestionSetId,
 } from "./questions";
@@ -62,6 +63,20 @@ describe("일반 감정 문항 세트", () => {
       expect(isGeneralQuestionSetId(value)).toBe(false);
     },
   );
+});
+
+describe("questionText: 지시문과 문항별 받아쓰기에 쓰는 문항 문구", () => {
+  it("일반 감정 문항(set-a, set-b)은 상황 문구 그대로다", () => {
+    for (const setId of GENERAL_QUESTION_SET_IDS) {
+      for (const question of GENERAL_QUESTION_SETS[setId]) expect(questionText(question)).toBe(question.situation);
+    }
+  });
+
+  it("인용과 요청 문구가 있으면 상황 문구, 따옴표로 감싼 인용, 요청 문구 순서로 잇는다", () => {
+    expect(
+      questionText({ situation: "친구가 이렇게 말합니다.", quote: { label: "흉내", text: "뭐 하노?" }, followUp: "고쳐 말해 주십시오." }),
+    ).toBe('친구가 이렇게 말합니다. "뭐 하노?" 고쳐 말해 주십시오.');
+  });
 });
 
 describe("NEXT_PUBLIC_QUESTION_SET", () => {

@@ -4,8 +4,8 @@ import { SUBREGION_KEYS } from "./contract";
 import { GS_MOCK_MODEL_OUTPUT } from "./mock";
 import { buildGsModelOutputSchema, parseGsModelOutput } from "./model-output";
 
-/** set-gs는 문항 4개 */
-const QUESTION_COUNT = 4;
+/** set-gs는 문항 6개(바꿔 말하기 4, 상황 질문 2) */
+const QUESTION_COUNT = 6;
 const parse = (value: unknown) => parseGsModelOutput(JSON.stringify(value), QUESTION_COUNT);
 const example = () => JSON.parse(JSON.stringify(GS_MOCK_MODEL_OUTPUT));
 const SCHEMA = buildGsModelOutputSchema(QUESTION_COUNT);
@@ -102,7 +102,7 @@ describe("parseGsModelOutput", () => {
   it("근거의 문항 번호가 1~문항 수의 정수가 아니면 null로 둔다. 근거에 항목(type)이 있어도 버린다", () => {
     const evidence = [
       { question: 0, quote: "갈 끼라", note: "a" },
-      { question: 5, quote: "갈 끼라", note: "b" },
+      { question: 7, quote: "갈 끼라", note: "b" },
       { question: 1.5, quote: "갈 끼라", note: "c" },
       { question: "1", quote: "갈 끼라", note: "d" },
       { quote: "갈 끼라", note: "e" },
@@ -202,9 +202,12 @@ describe("buildGsModelOutputSchema", () => {
     expect((item.properties as Record<string, SchemaNode>).question).toMatchObject({
       type: "integer",
       minimum: 1,
-      maximum: 4,
+      maximum: 6,
     });
-    expect(properties.question_transcripts).toMatchObject({ items: { type: "string" }, minItems: 4, maxItems: 4 });
+    expect(properties.question_transcripts).toMatchObject({ items: { type: "string" }, minItems: 6, maxItems: 6 });
+    // 문항 수에 따라 바뀐다
+    const four = buildGsModelOutputSchema(4).properties as Record<string, SchemaNode>;
+    expect(four.question_transcripts).toMatchObject({ minItems: 4, maxItems: 4 });
   });
 
   it("품질 불량이나 경상 방언 미확인일 때 비우는 필드는 null을 허용한다", () => {

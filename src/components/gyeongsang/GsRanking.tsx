@@ -11,6 +11,7 @@ import {
   type GsRankingList,
   type GsRankingRegistered,
 } from '@/lib/gyeongsang/ranking/contract';
+import { GS_QUESTIONS } from '@/lib/gyeongsang/questions';
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
 
 interface GsRankingProps {
@@ -229,7 +230,8 @@ export default function GsRanking({ result, origin, entryId, onRegistered, onBac
               <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5 text-center">
                 <p className="text-sm font-medium text-zinc-200">정밀 감정을 받으면 랭킹에 등록할 수 있습니다</p>
                 <p className="mt-1.5 text-xs text-zinc-400">
-                  원산지를 신고하고 4개 문항에 평소 말투로 답하면 경상 농도와 경북권·경남권 성분이 나옵니다.
+                  원산지를 신고하고 {GS_QUESTIONS.length}개 문항에 평소 말투로 답하면 경상 농도와 경북권·경남권 성분이
+                  나옵니다.
                 </p>
                 <button
                   onClick={onApply}

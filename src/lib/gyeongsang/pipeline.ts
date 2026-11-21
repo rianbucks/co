@@ -15,7 +15,7 @@ import { createGsIssueInfo } from "./issue";
 import { buildGsModelOutputSchema, parseGsModelOutput } from "./model-output";
 import { buildGyeongsangResult } from "./postprocess";
 import { buildGsSystemInstruction } from "./prompt";
-import { GS_QUESTION_TEXTS } from "./questions";
+import { GS_QUESTIONS } from "./questions";
 
 export interface GsJudgeInput {
   /** multipart의 audio 값 */
@@ -60,7 +60,7 @@ export async function judgeGyeongsang(input: GsJudgeInput, deps: GsJudgeDeps): P
   if (!limit.allowed) return gsErrorResponse("rate_limited");
 
   // AI 호출
-  const questions = GS_QUESTION_TEXTS;
+  const questions = GS_QUESTIONS;
   const output = await callAiWithRetry(
     {
       systemInstruction: buildGsSystemInstruction(questions),

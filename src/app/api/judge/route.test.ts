@@ -199,8 +199,16 @@ describe("POST /api/judge: 경상 정밀 감정(questionSetId=set-gs)", () => {
       transcript: GS_MOCK_MODEL_OUTPUT.transcript,
     });
     expect(body.evidence).toHaveLength(GS_MOCK_MODEL_OUTPUT.evidence.length);
-    expect(body.evidence[0]).toEqual({ question: 1, quote: "갈 끼라", note: GS_MOCK_MODEL_OUTPUT.evidence[0].note });
+    expect(body.evidence[0]).toEqual({ question: 1, quote: "그카는데", note: GS_MOCK_MODEL_OUTPUT.evidence[0].note });
     expect(body.segments.map((segment: { prompt: string }) => segment.prompt)).toEqual(GS_QUESTION_TEXTS);
+    expect(body.segments.map((segment: { kind: string }) => segment.kind)).toEqual([
+      "convert",
+      "convert",
+      "convert",
+      "convert",
+      "question",
+      "question",
+    ]);
     expect(body.id).toMatch(/^g_[0-9a-f]{12}$/);
     expect(body.certificateNo).toMatch(/^제\d{4}-경상-\d{6}호$/);
     // 일반 감정의 필드는 없다.
