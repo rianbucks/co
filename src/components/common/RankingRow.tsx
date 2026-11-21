@@ -11,9 +11,7 @@ function rankColor(rank: number): string {
 export default function RankingRow({ item, isMine = false }: { item: RankingEntryView; isMine?: boolean }) {
   return (
     <li
-      className={`flex items-center gap-3 rounded-2xl border p-3.5 ${
-        isMine ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-zinc-800/60 bg-black/30'
-      }`}
+      className="ranking-entry flex items-center gap-3" data-mine={isMine || undefined}
     >
       <span className={`w-9 shrink-0 text-center font-mono text-sm font-black ${rankColor(item.rank)}`}>
         {item.rank}

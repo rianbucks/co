@@ -68,9 +68,7 @@ function rankColor(rank: number): string {
 function RankingRow({ item, isMine }: { item: GsRankingEntryView; isMine: boolean }) {
   return (
     <li
-      className={`flex items-center gap-3 rounded-2xl border p-3.5 ${
-        isMine ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-zinc-800/60 bg-black/30'
-      }`}
+      className="ranking-entry flex items-center gap-3" data-mine={isMine || undefined}
     >
       <span className={`w-9 shrink-0 text-center font-mono text-sm font-black ${rankColor(item.rank)}`}>{item.rank}</span>
       <div className="min-w-0 flex-1">
@@ -208,7 +206,7 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
             </h2>
 
             {result && origin && myMatch && (
-              <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
+              <div className="ranking-glow mt-3 p-4">
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-zinc-400">신고 원산지</span>
                   <span className="font-medium text-zinc-200">
@@ -231,7 +229,7 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
             )}
 
             {mine ? (
-              <div className="mt-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-left">
+              <div className="ranking-glow mt-3 p-4 text-left" data-mine>
                 <div className="text-sm font-medium text-indigo-300">
                   내 순위 · {GS_RANKING_AREA_NAMES[area]}
                 </div>
@@ -331,7 +329,7 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
             )}
 
             {listData && listData.entries.length > 0 && (
-              <ol className="ranking-rows mt-4 space-y-2" aria-label={`정밀 감정 랭킹 ${GS_RANKING_AREA_NAMES[area]} 상위 50명`}>
+              <ol className="ranking-list mt-4" aria-label={`정밀 감정 랭킹 ${GS_RANKING_AREA_NAMES[area]} 상위 50명`}>
                 {listData.entries.map((item) => (
                   <RankingRow key={item.id} item={item} isMine={item.id === mine?.id} />
                 ))}

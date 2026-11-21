@@ -387,6 +387,17 @@ body {
   .nickname-input:placeholder-shown:not(:focus):enabled { animation: nickname-invite 1.5s ease-in-out 1; }
   @keyframes nickname-invite { 50% { box-shadow: 0 0 0 3px #91bfff44; } }
 }
+.ranking-list { display: grid; gap: 8px; }
+.ranking-list > .ranking-entry { padding: 10px 12px; }
+.ranking-list > .ranking-entry, .ranking-glow {
+  border: 1px solid var(--rank-edge, #466588);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #80baff19, transparent 60%), #142941cc;
+  box-shadow: inset 0 1px 0 #d8eaff17, 0 2px 12px var(--rank-halo, #4299ff12);
+}
+.ranking-list > [data-mine], .ranking-glow[data-mine] {
+  --rank-edge: #86b5f0; --rank-halo: #67aaff35;
+}
 .ranking-rows { margin-top: 8px; }
 .ranking-rows li { border: 0; border-bottom: 1px solid var(--rule); border-radius: 0 !important; background: transparent !important; padding: 8px 2px; }
 @media (max-width: 1023px) { .ranking-first { order: -1; } }

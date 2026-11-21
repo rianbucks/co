@@ -153,7 +153,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
 
             {/* My Judgment Summary */}
             {result && (
-              <div className="mt-3 rounded-2xl border border-zinc-800/80 bg-black/50 p-5">
+              <div className="ranking-glow mt-3 p-4">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-zinc-400">내 감정 결과</span>
                   <span className="font-medium text-zinc-200">{regionVerdictLabel(result.region)}</span>
@@ -172,7 +172,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
             )}
 
             {result?.region.uncertain ? <p>판정 유보 결과는 랭킹에 등록할 수 없습니다.</p> : mine ? (
-              <div ref={myRankPanel} tabIndex={-1} className="mt-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 text-left">
+              <div ref={myRankPanel} tabIndex={-1} className="ranking-glow mt-3 p-4 text-left" data-mine>
                 <div className="text-xs font-semibold text-indigo-300">내 순위</div>
                 <div className="mt-1 text-5xl font-black tracking-tight text-white">
                   {mine.rank}
@@ -266,7 +266,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
             )}
 
             {listData && listData.entries.length > 0 && (
-              <ol className="ranking-rows mt-4 space-y-2" aria-label="농도 랭킹 상위 50명">
+              <ol className="ranking-list mt-4" aria-label="농도 랭킹 상위 50명">
                 {listData.entries.map((item) => (
                   <RankingRow key={item.id} item={item} isMine={item.id === mine?.id} />
                 ))}
