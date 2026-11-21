@@ -120,7 +120,10 @@ export default function GyeongsangFlow({ onExit, onStatusChange }: GyeongsangFlo
   }, [step, judgingFailed, onStatusChange, openRanking]);
 
   // 단계가 바뀌면 화면 맨 위부터 보여 준다(아래쪽 버튼을 누르고 넘어오는 경우가 많다).
+  // 녹음 단계는 S3가 문항 카드를 머리글 바로 아래로 올린다. 이 효과는 S3의 효과보다 나중에 실행되므로
+  // 여기서 맨 위로 올리면 그 스크롤을 덮어써 첫 문항의 녹음 시작 버튼이 휴대폰 한 화면 밖으로 밀린다.
   useEffect(() => {
+    if (step === 'record') return;
     window.scrollTo({ top: 0 });
   }, [step]);
 
