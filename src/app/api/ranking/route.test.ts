@@ -6,7 +6,7 @@ import { GET, POST } from "./route";
 const RECORD: JudgmentRecord = {
   intensity: 68,
   region: "gyeongsang",
-  grade: 4,
+  grade: 2,
   mock: false,
   uncertain: false,
 };
@@ -69,7 +69,7 @@ describe("GET /api/ranking", () => {
 
 describe("POST /api/ranking", () => {
   it("등록하면 201과 순위를 돌려주고, 조회하면 내 순위가 보인다", async () => {
-    await localStore().saveJudgment("j_aaaaaaaaaaa1", { ...RECORD, intensity: 99, grade: 5 });
+    await localStore().saveJudgment("j_aaaaaaaaaaa1", { ...RECORD, intensity: 99, grade: 1 });
 
     const response = await POST(
       postJson(
@@ -84,7 +84,7 @@ describe("POST /api/ranking", () => {
       nickname: "라우트시험",
       intensity: 99,
       region: "gyeongsang",
-      grade: 5,
+      grade: 1,
       gradeName: "말하는 내내 지역 말투가 짙게 드러나요",
     });
     expect(entry.id).toMatch(/^r_[0-9a-f]{12}$/);
@@ -164,7 +164,7 @@ describe("감정과 랭킹 연결", () => {
     await expect(localStore().getJudgment(result.id)).resolves.toEqual({
       intensity: 68,
       region: "gyeongsang",
-      grade: 4,
+      grade: 2,
       mock: true,
       uncertain: false,
     });

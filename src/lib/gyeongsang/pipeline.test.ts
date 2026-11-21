@@ -62,7 +62,7 @@ describe("judgeGyeongsang: 성공", () => {
         subregions: { gyeongbuk: 64, gyeongnam: 36 },
         intensity: {
           score: 69,
-          grade: 4,
+          grade: 2,
           gradeName: "지역 말투가 뚜렷하게 들려요",
           parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
         },

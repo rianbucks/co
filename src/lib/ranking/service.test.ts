@@ -25,7 +25,7 @@ const T0 = Date.parse("2026-11-20T14:00:00+09:00");
 const RECORD: JudgmentRecord = {
   intensity: 68,
   region: "gyeongsang",
-  grade: 4,
+  grade: 2,
   mock: false,
   uncertain: false,
 };
@@ -71,7 +71,7 @@ describe("registerRanking", () => {
           nickname: "경상도사람",
           intensity: 68,
           region: "gyeongsang",
-          grade: 4,
+          grade: 2,
           gradeName: "지역 말투가 뚜렷하게 들려요",
           registeredAt: "2026-11-20T14:03:00+09:00",
         },
@@ -86,12 +86,12 @@ describe("registerRanking", () => {
       nickname: "만점주장",
       intensity: 100,
       score: 100,
-      grade: 5,
+      grade: 1,
       region: "jeju",
     });
 
     expect(outcome.status).toBe(201);
-    expect(outcome.body).toMatchObject({ entry: { intensity: 68, grade: 4, region: "gyeongsang" } });
+    expect(outcome.body).toMatchObject({ entry: { intensity: 68, grade: 2, region: "gyeongsang" } });
   });
 
   it("저장소에는 닉네임, 농도, 지역, 등급, 등록 시각(와 id)만 남고 IP는 남지 않는다", async () => {
@@ -104,7 +104,7 @@ describe("registerRanking", () => {
         nickname: "경상도사람",
         intensity: 68,
         region: "gyeongsang",
-        grade: 4,
+        grade: 2,
         registeredAt: "2026-11-20T14:03:00+09:00",
       },
     ]);
@@ -252,11 +252,20 @@ describe("listRanking", () => {
       nickname: "경상도사람",
       intensity: 68,
       region: "gyeongsang",
-      grade: 4,
+      grade: 2,
       gradeName: "지역 말투가 뚜렷하게 들려요",
       registeredAt: "2026-11-20T14:03:00+09:00",
     };
     expect(outcome).toEqual({ status: 200, body: { entries: [view], total: 1, me: view } });
+  });
+
+  it("예전 등급으로 저장된 항목도 농도에 맞춰 표시한다", async () => {
+    await store.register(JUDGMENT_ID, {
+      id: ENTRY_ID, nickname: "경상도사람", intensity: 68, region: "gyeongsang",
+      grade: 4, registeredAt: "2026-11-20T14:03:00+09:00",
+    });
+    const outcome = await listRanking({ limit: 50, meId: ENTRY_ID }, store);
+    expect(outcome.body).toMatchObject({ entries: [{ grade: 2 }], me: { grade: 2 } });
   });
 
   it("id가 없으면 me는 null", async () => {

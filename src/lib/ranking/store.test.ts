@@ -19,7 +19,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const RECORD: JudgmentRecord = {
   intensity: 68,
   region: "gyeongsang",
-  grade: 4,
+  grade: 2,
   mock: false,
   uncertain: false,
 };
@@ -29,7 +29,7 @@ function entry(overrides: Partial<RankingEntry> & Pick<RankingEntry, "id">): Ran
     nickname: "경상도",
     intensity: 68,
     region: "gyeongsang",
-    grade: 4,
+    grade: 2,
     registeredAt: "2026-11-20T10:00:00+09:00",
     ...overrides,
   };
@@ -254,7 +254,7 @@ describe("Upstash 랭킹 저장소의 요청", () => {
   });
 
   it("판정 유보 여부가 생기기 전에 남긴 기록은 유보가 아닌 것으로 읽는다", async () => {
-    const legacy = { intensity: 68, region: "gyeongsang", grade: 4, mock: false };
+    const legacy = { intensity: 68, region: "gyeongsang", grade: 2, mock: false };
     const store = createUpstashRankingStore({
       url: "https://fake.upstash.io",
       token: "test-token",

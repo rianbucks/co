@@ -101,7 +101,7 @@ describe("buildGyeongsangResult", () => {
       // 55×0.15 + 80×0.2 + 65×0.25 + 70×0.4 = 68.5 → 69
       intensity: {
         score: 69,
-        grade: 4,
+        grade: 2,
         gradeName: "지역 말투가 뚜렷하게 들려요",
         parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
       },
@@ -151,14 +151,14 @@ describe("buildGyeongsangResult", () => {
     expect(result.evidence.every((item) => item.question === null)).toBe(true);
   });
 
-  it("표준어와 차이가 없으면 농도 0, 1등급이다", () => {
+  it("표준어와 차이가 없으면 농도 0, 5등급이다", () => {
     const output: GsAcceptedOutput = {
       ...acceptedMock(),
       scores: { vocabulary: 0, endings: 0, phonology: 0, intonation: 0 },
     };
     expect(buildGyeongsangResult(output, ISSUE, GS_QUESTIONS).intensity).toMatchObject({
       score: 0,
-      grade: 1,
+      grade: 5,
       gradeName: "지역 말투가 거의 드러나지 않아요",
     });
   });

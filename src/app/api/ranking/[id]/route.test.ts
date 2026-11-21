@@ -31,7 +31,7 @@ beforeEach(async () => {
     nickname: "지울닉네임",
     intensity: 77,
     region: "jeolla",
-    grade: 4,
+    grade: 2,
     registeredAt: "2026-11-20T15:00:00+09:00",
   });
 });

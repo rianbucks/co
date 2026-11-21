@@ -35,11 +35,11 @@ export const GRADE_TABLE: ReadonlyArray<{
   max: number;
   name: string;
 }> = [
-  { grade: 1, min: 0, max: 19, name: "지역 말투가 거의 드러나지 않아요" },
-  { grade: 2, min: 20, max: 39, name: "지역 말투가 가끔 들려요" },
+  { grade: 1, min: 80, max: 100, name: "말하는 내내 지역 말투가 짙게 드러나요" },
+  { grade: 2, min: 60, max: 79, name: "지역 말투가 뚜렷하게 들려요" },
   { grade: 3, min: 40, max: 59, name: "지역 말투가 여러 번 들려요" },
-  { grade: 4, min: 60, max: 79, name: "지역 말투가 뚜렷하게 들려요" },
-  { grade: 5, min: 80, max: 100, name: "말하는 내내 지역 말투가 짙게 드러나요" },
+  { grade: 4, min: 20, max: 39, name: "지역 말투가 가끔 들려요" },
+  { grade: 5, min: 0, max: 19, name: "지역 말투가 거의 드러나지 않아요" },
 ];
 
 /** 1순위 권역을 가리키는 근거가 이 개수보다 적으면 판정 유보(명세 4장). */

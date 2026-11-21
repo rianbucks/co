@@ -120,21 +120,21 @@ describe("halveIntensity: 모사 의심 농도", () => {
 });
 
 describe("gradeFor: 등급 매핑", () => {
-  it("68점은 4등급 '지역 말투가 뚜렷하게 들려요'다", () => {
-    expect(gradeFor(68)).toEqual({ grade: 4, gradeName: "지역 말투가 뚜렷하게 들려요" });
+  it("68점은 2등급 '지역 말투가 뚜렷하게 들려요'다", () => {
+    expect(gradeFor(68)).toEqual({ grade: 2, gradeName: "지역 말투가 뚜렷하게 들려요" });
   });
 
   it.each([
-    [0, 1, "지역 말투가 거의 드러나지 않아요"],
-    [19, 1, "지역 말투가 거의 드러나지 않아요"],
-    [20, 2, "지역 말투가 가끔 들려요"],
-    [39, 2, "지역 말투가 가끔 들려요"],
+    [0, 5, "지역 말투가 거의 드러나지 않아요"],
+    [19, 5, "지역 말투가 거의 드러나지 않아요"],
+    [20, 4, "지역 말투가 가끔 들려요"],
+    [39, 4, "지역 말투가 가끔 들려요"],
     [40, 3, "지역 말투가 여러 번 들려요"],
     [59, 3, "지역 말투가 여러 번 들려요"],
-    [60, 4, "지역 말투가 뚜렷하게 들려요"],
-    [79, 4, "지역 말투가 뚜렷하게 들려요"],
-    [80, 5, "말하는 내내 지역 말투가 짙게 드러나요"],
-    [100, 5, "말하는 내내 지역 말투가 짙게 드러나요"],
+    [60, 2, "지역 말투가 뚜렷하게 들려요"],
+    [79, 2, "지역 말투가 뚜렷하게 들려요"],
+    [80, 1, "말하는 내내 지역 말투가 짙게 드러나요"],
+    [100, 1, "말하는 내내 지역 말투가 짙게 드러나요"],
   ])("%i점은 %i등급 '%s'", (score, grade, gradeName) => {
     expect(gradeFor(score)).toEqual({ grade, gradeName });
   });
@@ -403,39 +403,39 @@ describe("selectOpinion: 소견", () => {
 
   it("서울경기가 1순위이고 농도가 20 미만이면 '출신지 은폐 의심'을 붙인다", () => {
     const parts = partsLedBy("intonation");
-    expect(selectOpinion({ grade: 1, top: "seoul_gyeonggi", score: 19, parts })).toBe(
-      `${OPINIONS[1].intonation} ${CONCEALMENT_NOTE}`,
+    expect(selectOpinion({ grade: 5, top: "seoul_gyeonggi", score: 19, parts })).toBe(
+      `${OPINIONS[5].intonation} ${CONCEALMENT_NOTE}`,
     );
   });
 
   it("농도가 20이면 붙이지 않는다", () => {
     const parts = partsLedBy("vocabulary");
-    expect(selectOpinion({ grade: 2, top: "seoul_gyeonggi", score: 20, parts })).toBe(
-      OPINIONS[2].vocabulary,
+    expect(selectOpinion({ grade: 4, top: "seoul_gyeonggi", score: 20, parts })).toBe(
+      OPINIONS[4].vocabulary,
     );
   });
 
   it("서울경기가 1순위가 아니면 농도가 낮아도 붙이지 않는다", () => {
     const parts = partsLedBy("endings");
-    expect(selectOpinion({ grade: 1, top: "jeju", score: 5, parts })).toBe(OPINIONS[1].endings);
+    expect(selectOpinion({ grade: 5, top: "jeju", score: 5, parts })).toBe(OPINIONS[5].endings);
   });
 
   it("모사 의심이면 소견 끝에 '타 지역 방언 모사 의심.'을 붙인다", () => {
     const parts = partsLedBy("endings");
-    expect(selectOpinion({ grade: 2, top: "gyeongsang", score: 29, parts, imitationSuspected: true })).toBe(
-      `${OPINIONS[2].endings} ${IMITATION_NOTE}`,
+    expect(selectOpinion({ grade: 4, top: "gyeongsang", score: 29, parts, imitationSuspected: true })).toBe(
+      `${OPINIONS[4].endings} ${IMITATION_NOTE}`,
     );
     expect(IMITATION_NOTE).toBe("타 지역 방언 모사 의심.");
-    expect(selectOpinion({ grade: 2, top: "gyeongsang", score: 29, parts, imitationSuspected: false })).toBe(
-      OPINIONS[2].endings,
+    expect(selectOpinion({ grade: 4, top: "gyeongsang", score: 29, parts, imitationSuspected: false })).toBe(
+      OPINIONS[4].endings,
     );
   });
 
   it("출신지 은폐 의심과 함께면 모사 의심이 맨 끝에 온다", () => {
     const parts = partsLedBy("vocabulary");
     expect(
-      selectOpinion({ grade: 1, top: "seoul_gyeonggi", score: 12, parts, imitationSuspected: true }),
-    ).toBe(`${OPINIONS[1].vocabulary} ${CONCEALMENT_NOTE} ${IMITATION_NOTE}`);
+      selectOpinion({ grade: 5, top: "seoul_gyeonggi", score: 12, parts, imitationSuspected: true }),
+    ).toBe(`${OPINIONS[5].vocabulary} ${CONCEALMENT_NOTE} ${IMITATION_NOTE}`);
   });
 });
 
@@ -466,7 +466,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       },
       intensity: {
         score: 68,
-        grade: 4,
+        grade: 2,
         gradeName: "지역 말투가 뚜렷하게 들려요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
@@ -519,10 +519,10 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       imitation_suspected: true,
     };
     const result = buildJudgeResult(output, issue, SET_B);
-    // 계산값 47 → 절반 23.5 → 24, 2등급
-    expect(result.intensity).toMatchObject({ score: 24, grade: 2, gradeName: "지역 말투가 가끔 들려요" });
+    // 계산값 47 → 절반 23.5 → 24, 4등급
+    expect(result.intensity).toMatchObject({ score: 24, grade: 4, gradeName: "지역 말투가 가끔 들려요" });
     expect(result.imitationSuspected).toBe(true);
-    expect(result.opinion).toBe(`${OPINIONS[2].vocabulary} ${IMITATION_NOTE}`);
+    expect(result.opinion).toBe(`${OPINIONS[4].vocabulary} ${IMITATION_NOTE}`);
     expect(result.intensity.parts).toEqual(output.scores);
   });
 

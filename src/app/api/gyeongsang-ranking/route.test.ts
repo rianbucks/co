@@ -82,7 +82,7 @@ describe("POST /api/gyeongsang-ranking", () => {
       origin: "gyeongbuk",
       intensity: 69,
       gyeongbuk: 64,
-      grade: 4,
+      grade: 2,
       gradeName: "지역 말투가 뚜렷하게 들려요",
       matched: true,
     });

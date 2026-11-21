@@ -65,7 +65,7 @@ describe("registerGsRanking", () => {
           origin: "daegu",
           intensity: 69,
           gyeongbuk: 64,
-          grade: 4,
+          grade: 2,
           gradeName: "지역 말투가 뚜렷하게 들려요",
           matched: true,
           registeredAt: "2026-11-20T14:03:00+09:00",
@@ -76,8 +76,8 @@ describe("registerGsRanking", () => {
   });
 
   it("클라이언트가 보낸 점수와 비율은 무시한다(점수 위조 방지)", async () => {
-    const outcome = await register({ ...BODY, intensity: 100, gyeongbuk: 0, grade: 5, matched: true });
-    expect(outcome.body).toMatchObject({ entry: { intensity: 69, gyeongbuk: 64, grade: 4 } });
+    const outcome = await register({ ...BODY, intensity: 100, gyeongbuk: 0, grade: 1, matched: true });
+    expect(outcome.body).toMatchObject({ entry: { intensity: 69, gyeongbuk: 64, grade: 2 } });
   });
 
   it("원산지 일치 여부는 신고 원산지와 경북권 비율로 계산한다", async () => {
@@ -200,8 +200,8 @@ describe("listGsRanking", () => {
       area: "all",
       total: 2,
       entries: [
-        { rank: 1, nickname: "부산갈매기", origin: "busan", intensity: 90, gyeongbuk: 30, grade: 5, matched: true },
-        { rank: 2, nickname: "대구토박이", origin: "daegu", intensity: 69, gyeongbuk: 64, grade: 4, matched: true },
+        { rank: 1, nickname: "부산갈매기", origin: "busan", intensity: 90, gyeongbuk: 30, grade: 1, matched: true },
+        { rank: 2, nickname: "대구토박이", origin: "daegu", intensity: 69, gyeongbuk: 64, grade: 2, matched: true },
       ],
       me: { rank: 2, id: ENTRY_ID },
     });
@@ -219,7 +219,7 @@ describe("toGsView", () => {
     const base = { id: ENTRY_ID, nickname: "반반", intensity: 0, gyeongbuk: 50, registeredAt: "2026-11-20T14:03:00+09:00" };
     expect(toGsView({ rank: 1, entry: { ...base, origin: "ulsan" } })).toMatchObject({
       matched: true,
-      grade: 1,
+      grade: 5,
       gradeName: "지역 말투가 거의 드러나지 않아요",
     });
     expect(toGsView({ rank: 1, entry: { ...base, origin: "gyeongbuk" } }).matched).toBe(true);

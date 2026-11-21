@@ -74,7 +74,7 @@ describe("judge: 성공", () => {
       },
       intensity: {
         score: 68,
-        grade: 4,
+        grade: 2,
         gradeName: "지역 말투가 뚜렷하게 들려요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
@@ -312,7 +312,7 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       id: "j_000000000001",
       intensity: 68,
       region: "gyeongsang",
-      grade: 4,
+      grade: 2,
       uncertain: false,
     });
   });
@@ -329,8 +329,8 @@ describe("judge: 랭킹 등록 자격 기록", () => {
 
     const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
 
-    expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 24, grade: 2 } });
-    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 24, grade: 2 }));
+    expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 24, grade: 4 } });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 24, grade: 4 }));
   });
 
   it("근거가 1순위 권역을 뒷받침하지 못하면 판정 유보로 기록한다(랭킹 등록을 막는다)", async () => {
@@ -361,7 +361,7 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       id: "j_000000000001",
       intensity: 68,
       region: "gyeongsang",
-      grade: 4,
+      grade: 2,
       uncertain: false,
     });
   });

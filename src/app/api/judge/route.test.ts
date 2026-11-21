@@ -57,7 +57,7 @@ describe("POST /api/judge", () => {
     const body = await response.json();
     expect(body).toMatchObject({
       region: { top: "gyeongsang", label: "경상 방언", mixed: false },
-      intensity: { score: 68, grade: 4, gradeName: "지역 말투가 뚜렷하게 들려요" },
+      intensity: { score: 68, grade: 2, gradeName: "지역 말투가 뚜렷하게 들려요" },
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
     });
     expect(body.imitationSuspected).toBe(false);
@@ -181,7 +181,7 @@ describe("POST /api/judge", () => {
     const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ intensity: { score: 68, grade: 4 } });
+    expect(await response.json()).toMatchObject({ intensity: { score: 68, grade: 2 } });
   });
 });
 
@@ -195,7 +195,7 @@ describe("POST /api/judge: 경상 정밀 감정(questionSetId=set-gs)", () => {
     const body = await response.json();
     expect(body).toMatchObject({
       subregions: { gyeongbuk: 64, gyeongnam: 36 },
-      intensity: { score: 69, grade: 4, gradeName: "지역 말투가 뚜렷하게 들려요" },
+      intensity: { score: 69, grade: 2, gradeName: "지역 말투가 뚜렷하게 들려요" },
       transcript: GS_MOCK_MODEL_OUTPUT.transcript,
     });
     expect(body.evidence).toHaveLength(GS_MOCK_MODEL_OUTPUT.evidence.length);

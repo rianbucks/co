@@ -2,12 +2,12 @@ import type { Grade, PartKey } from "./contract";
 
 /**
  * 소견 문구(초안). 등급과, 네 항목(어휘, 어미, 음운, 억양) 중 점수가 가장 높은 항목으로 하나를 고른다.
- * (4등급, 어미)는 명세 7장 예시 문구다.
+ * (2등급, 어미)는 명세 7장 예시 문구다.
  * 명세 11장: 모든 지역에 같은 문구를 쓰고, 특정 지역을 낮춰 보는 표현을 쓰지 않는다.
  * 지역 이름은 넣지 않는다(opinions.test.ts가 검사한다).
  */
 export const OPINIONS: Record<Grade, Record<PartKey, string>> = {
-  1: {
+  5: {
     vocabulary:
       "어휘 선택에서 방언의 흔적이 희미하게 남아 있으나 표준어 구사에 지장이 없는 것으로 사료됨.",
     endings:
@@ -17,7 +17,7 @@ export const OPINIONS: Record<Grade, Record<PartKey, string>> = {
     intonation:
       "억양의 높낮이에서 방언의 흔적이 희미하게 감지되나 표준어 구사에 지장이 없는 것으로 사료됨.",
   },
-  2: {
+  4: {
     vocabulary:
       "긴장이 풀리면 방언 어휘가 섞여 나오는 경향이 있으나 일상적인 표준어 구사에는 지장이 없는 것으로 사료됨.",
     endings:
@@ -37,13 +37,13 @@ export const OPINIONS: Record<Grade, Record<PartKey, string>> = {
     intonation:
       "방언 억양이 뚜렷하게 관찰되어, 본인의 인식과 달리 표준어와 상당한 거리가 있는 것으로 사료됨.",
   },
-  4: {
+  2: {
     vocabulary: "어휘 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
     endings: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
     phonology: "음운 변화가 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
     intonation: "억양 특징이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
   },
-  5: {
+  1: {
     vocabulary:
       "어휘 전반이 방언으로 이루어져 표준어 전환이 사실상 불가능하며, 언어 자료로서 보존 가치가 높은 것으로 사료됨.",
     endings:

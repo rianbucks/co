@@ -4,7 +4,7 @@
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { formatKstIso } from "../judge/issue";
-import { GRADE_TABLE } from "../judge/rules";
+import { gradeFor } from "../judge/postprocess";
 import type { RateLimiter } from "../rate-limit";
 import {
   ENTRY_ID_PATTERN,
@@ -38,10 +38,6 @@ export function toHttpResponse(outcome: RankingOutcome<unknown>): Response {
   });
 }
 
-function gradeName(grade: RankingEntry["grade"]): string {
-  return GRADE_TABLE.find((row) => row.grade === grade)?.name ?? "";
-}
-
 export function toView({ rank, entry }: RankedEntry): RankingEntryView {
   return {
     rank,
@@ -49,8 +45,7 @@ export function toView({ rank, entry }: RankedEntry): RankingEntryView {
     nickname: entry.nickname,
     intensity: entry.intensity,
     region: entry.region,
-    grade: entry.grade,
-    gradeName: gradeName(entry.grade),
+    ...gradeFor(entry.intensity),
     registeredAt: entry.registeredAt,
   };
 }
@@ -106,7 +101,7 @@ export async function registerRanking(
     nickname: nickname.value,
     intensity: record.intensity,
     region: record.region,
-    grade: record.grade,
+    grade: gradeFor(record.intensity).grade,
     registeredAt: formatKstIso(deps.now ? deps.now() : new Date()),
   };
   const rank = await deps.store.register(request.judgmentId, entry);

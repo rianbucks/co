@@ -42,8 +42,8 @@ describe("OPINIONS: 소견 문구", () => {
     for (const text of ALL) expect(text.endsWith("것으로 사료됨.")).toBe(true);
   });
 
-  it("(4등급, 어미)는 명세 7장 예시 문구다", () => {
-    expect(OPINIONS[4].endings).toBe("어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.");
+  it("(2등급, 어미)는 명세 7장 예시 문구다", () => {
+    expect(OPINIONS[2].endings).toBe("어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.");
   });
 
   it("지역 이름이나 지역을 낮춰 보는 말을 쓰지 않는다(명세 11장)", () => {

@@ -27,7 +27,7 @@ const RECORDS: RunRecord[] = [
     top: "gyeongsang",
     mixed: false,
     score: 68,
-    grade: 4,
+    grade: 2,
     transcript: "했다 아이가",
     evidence: [
       { type: "endings", quote: "했다 아이가", note: "확인 표현", kept: true },
@@ -46,7 +46,7 @@ const RECORDS: RunRecord[] = [
     top: "gyeongsang",
     mixed: false,
     score: 70,
-    grade: 4,
+    grade: 2,
     evidence: [{ type: "endings", quote: "했다 아이가", note: "확인 표현", kept: true }],
   },
   {
@@ -61,7 +61,7 @@ const RECORDS: RunRecord[] = [
     top: "jeolla",
     mixed: true,
     score: 60,
-    grade: 4,
+    grade: 2,
     evidence: [],
   },
   {
@@ -251,14 +251,14 @@ describe("출력 파일", () => {
         top: "gyeongsang",
         mixed: false,
         score: 24,
-        grade: 2,
+        grade: 4,
         imitationSuspected: true,
         transcript: "억수로",
         questionTranscripts: null,
         evidence: [],
       },
     ]);
-    expect(details).toContain("- 판정: 경상, 농도 24점, 2등급, 모사 의심(농도 절반)");
+    expect(details).toContain("- 판정: 경상, 농도 24점, 4등급, 모사 의심(농도 절반)");
   });
 
   it("판정 유보면 판정 줄에 적고, 근거에 그 특징이 가리키는 권역을 붙인다", () => {
@@ -275,13 +275,13 @@ describe("출력 파일", () => {
         mixed: false,
         uncertain: true,
         score: 68,
-        grade: 4,
+        grade: 2,
         transcript: "뭐 하요",
         questionTranscripts: null,
         evidence: [{ question: null, type: "endings", region: "jeolla", quote: "하요", note: "전라", kept: true }],
       },
     ]);
-    expect(details).toContain("- 판정: 경상 (판정 유보), 농도 68점, 4등급");
+    expect(details).toContain("- 판정: 경상 (판정 유보), 농도 68점, 2등급");
     expect(details).toContain('  - ✓ [endings · jeolla] "하요" — 전라');
   });
 
@@ -298,7 +298,7 @@ describe("출력 파일", () => {
         top: "gyeongsang",
         mixed: false,
         score: 68,
-        grade: 4,
+        grade: 2,
         transcript: "억수로 오랜만이네 뭐 했노",
         questionTranscripts: ["억수로 오랜만이네", "뭐 했노", "", ""],
         evidence: [
@@ -311,7 +311,7 @@ describe("출력 파일", () => {
       ["- 문항별 받아쓰기:", "  - 문항 1: 억수로 오랜만이네", "  - 문항 2: 뭐 했노", "  - 문항 3: (답 없음)", "  - 문항 4: (답 없음)"].join("\n"),
     );
     expect(details).toContain('  - ✓ 문항 1 [vocabulary] "억수로" — 아주');
-    expect(details).toContain("- 판정: 경상, 농도 68점, 4등급\n");
+    expect(details).toContain("- 판정: 경상, 농도 68점, 2등급\n");
     expect(details).toContain('  - ✗ 문항 1 [endings] "뭐 했노" — 다른 문항');
   });
 });
