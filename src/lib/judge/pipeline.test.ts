@@ -60,6 +60,7 @@ describe("judge: 성공", () => {
         top: "gyeongsang",
         label: "경상 방언",
         mixed: false,
+        uncertain: false,
         probabilities: {
           seoul_gyeonggi: 4,
           gangwon: 3,

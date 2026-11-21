@@ -23,7 +23,8 @@ export function findQuestionSet(questionSetId: string): readonly string[] | null
 
 /**
  * 명세 4장 지시문 초안에 문항 목록과 문항 수를 넣는다.
- * 규칙 7에는 "나머지 필드는 null"을 덧붙였다. 출력 스키마가 모든 필드를 요구하기 때문이다.
+ * 근거 먼저, 판정 나중: 규칙도 출력 순서(받아쓰기 → 근거 → 권역 확률 → 항목 점수 → 모사 의심)를 따른다.
+ * 품질 불량 규칙에는 "나머지 필드는 null"을 덧붙였다. 출력 스키마가 모든 필드를 요구하기 때문이다.
  */
 export function buildSystemInstruction(questions: readonly string[]): string {
   const questionList = questions.map((question, index) => `${index + 1}. ${question}`).join("\n");
@@ -38,12 +39,13 @@ ${questionList}
 규칙
 1. 실제로 들린 것만 근거로 쓴다. 들리지 않은 표현을 지어내지 않는다.
 2. transcript는 들린 발음 그대로 적는다. 표준어로 고치지 않는다. question_transcripts는 문항 순서대로 각 문항의 답을 같은 방식으로 적은 ${count}개의 배열이다. 답하지 않은 문항은 빈 문자열로 둔다.
-3. regions는 여섯 권역의 확률이고 합은 100이다.
-4. scores는 어휘, 어미, 음운, 억양 각각 0~100이고, regions 1순위 권역의 특징이 얼마나 나타나는지로 매긴다. 다른 권역의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다.
-5. imitation_suspected는 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true, 같으면 false다.
-6. evidence의 question은 그 구절이 나온 문항 번호(1~${count})이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다.
-7. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, regions, scores, imitation_suspected, evidence는 null로 둔다.
-8. 욕설이나 혐오 표현이 들리면 flags에 profanity를, 실명이나 전화번호 같은 개인정보가 들리면 personal_info를 넣는다. 없으면 빈 배열로 둔다.`;
+3. evidence를 regions보다 먼저 정한다. 들린 방언 특징을 evidence에 모두 적고, 각 특징의 region에 그 특징이 가리키는 권역을 표시한다. 여러 권역에 공통인 특징이면 region은 common이다. 표준어에 가까운 서울경기 말씨의 특징도 들리면 seoul_gyeonggi로 적는다.
+4. evidence의 question은 그 구절이 나온 문항 번호(1~${count})이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다.
+5. regions는 evidence를 모두 적은 다음 그 근거를 종합해 정하는 여섯 권역의 확률이고 합은 100이다. 근거가 적거나 근거가 가리키는 권역이 엇갈리면 확률을 한 권역에 몰지 않는다. regions의 1순위는 common을 뺀 evidence가 가장 많이 가리키는 권역과 어긋나지 않아야 한다.
+6. scores는 어휘, 어미, 음운, 억양 각각 0~100이고, regions 1순위 권역의 특징이 얼마나 나타나는지로 매긴다. 다른 권역의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다.
+7. imitation_suspected는 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true, 같으면 false다.
+8. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, evidence, regions, scores, imitation_suspected는 null로 둔다.
+9. 욕설이나 혐오 표현이 들리면 flags에 profanity를, 실명이나 전화번호 같은 개인정보가 들리면 personal_info를 넣는다. 없으면 빈 배열로 둔다.`;
 }
 
 /** 오디오와 함께 보내는 사용자 입력 문장. */

@@ -23,6 +23,7 @@ import {
   MIXED_LABEL,
   MIXED_THRESHOLD,
   REGION_NAMES,
+  UNCERTAIN_MIN_TOP_EVIDENCE,
 } from "./rules";
 
 /**
@@ -161,6 +162,22 @@ export function decideRegion(probabilities: RegionProbabilities): {
   return { top, label: mixed ? MIXED_LABEL : `${REGION_NAMES[top]} 방언`, mixed };
 }
 
+/**
+ * 판정 유보 확인(명세 4장): 근거로 1순위 권역을 뒷받침하지 못하면 true.
+ * 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나,
+ * 다른 권역을 가리키는 것이 1순위 권역을 가리키는 것보다 많으면 유보한다.
+ * 여러 권역에 공통인 근거(common)와 권역을 알 수 없는 근거(null)는 어느 쪽에도 세지 않는다.
+ */
+export function isRegionUncertain(top: RegionKey, evidence: readonly Evidence[]): boolean {
+  let topCount = 0;
+  let otherCount = 0;
+  for (const item of evidence) {
+    if (item.region === top) topCount += 1;
+    else if (item.region !== null && item.region !== "common") otherCount += 1;
+  }
+  return topCount < UNCERTAIN_MIN_TOP_EVIDENCE || otherCount > topCount;
+}
+
 /** 네 항목 중 점수가 가장 높은 항목. 같으면 어휘, 어미, 음운, 억양 순으로 앞선 항목. */
 export function dominantPart(parts: PartScores): PartKey {
   let best: PartKey = PART_KEYS[0];
@@ -204,6 +221,7 @@ export interface IssueInfo {
  * 품질이 ok인 모델 출력으로 감정 결과 JSON을 만든다. questions는 녹음한 문항 세트(문항 순서)다.
  * 문항별 받아쓰기가 문항 수만큼 있으면 근거를 문항별로 검증하고 segments를 채운다.
  * 없으면 기존처럼 전체 받아쓰기로 검증하고 segments는 빈 배열이다.
+ * 검증을 통과한 근거가 1순위 권역을 뒷받침하지 못하면 region.uncertain을 true로 둔다.
  */
 export function buildJudgeResult(
   output: AcceptedModelOutput,
@@ -223,15 +241,17 @@ export function buildJudgeResult(
   const { grade, gradeName } = gradeFor(score);
   const questionTranscripts =
     output.question_transcripts?.length === questions.length ? output.question_transcripts : null;
+  // 판정 유보는 받아쓰기로 검증을 통과한 근거로만 센다.
+  const evidence = verifyEvidence(output.evidence, output.transcript, questionTranscripts);
 
   return {
     id: issue.id,
     certificateNo: issue.certificateNo,
     issuedAt: issue.issuedAt,
-    region: { ...region, probabilities },
+    region: { ...region, uncertain: isRegionUncertain(region.top, evidence), probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
     imitationSuspected,
-    evidence: verifyEvidence(output.evidence, output.transcript, questionTranscripts),
+    evidence,
     opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores, imitationSuspected }),
     transcript: output.transcript,
     segments: buildSegments(questions, questionTranscripts),

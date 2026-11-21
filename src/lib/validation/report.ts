@@ -13,6 +13,8 @@ export interface EvidenceCheck {
   /** 근거가 나온 문항 번호(모델이 준 값). 없거나 범위 밖이면 null */
   question?: number | null;
   type: string;
+  /** 그 특징이 가리키는 권역(여섯 권역이나 common). 모델이 정해 둔 값으로 주지 않았으면 null */
+  region?: string | null;
   quote: string;
   note: string;
   /** 그 문항의 받아쓰기(문항별 받아쓰기가 없으면 전체 받아쓰기)에 그대로 있어 근거 검증을 통과했는지 */
@@ -32,6 +34,8 @@ export interface RunRecord {
   quality?: string;
   top?: RegionKey;
   mixed?: boolean;
+  /** 판정 유보: 검증을 통과한 근거가 1순위 권역을 뒷받침하지 못함 */
+  uncertain?: boolean;
   score?: number;
   grade?: Grade;
   /** 모사 의심(true면 score는 이미 절반으로 낮춘 값) */
@@ -232,6 +236,7 @@ const RUN_COLUMNS = [
   "top",
   "correct",
   "mixed",
+  "uncertain",
   "score",
   "grade",
   "evidence_total",
@@ -267,6 +272,7 @@ export function toRunsCsv(records: readonly RunRecord[]): string {
         record.top,
         judged ? record.top === record.expected : "",
         record.mixed,
+        record.uncertain,
         record.score,
         record.grade,
         judged ? evidence.length : "",
@@ -389,7 +395,7 @@ export function toDetailsMarkdown(records: readonly RunRecord[]): string {
     lines.push(`- 정답: ${REGION_NAMES[record.expected]}`, `- 응답 시간: ${seconds(record.latencyMs)}`);
     if (record.status === "ok" && record.top) {
       lines.push(
-        `- 판정: ${REGION_NAMES[record.top]}${record.mixed ? " (혼합)" : ""}, 농도 ${record.score}점, ${record.grade}등급${record.imitationSuspected ? ", 모사 의심(농도 절반)" : ""}`,
+        `- 판정: ${REGION_NAMES[record.top]}${record.mixed ? " (혼합)" : ""}${record.uncertain ? " (판정 유보)" : ""}, 농도 ${record.score}점, ${record.grade}등급${record.imitationSuspected ? ", 모사 의심(농도 절반)" : ""}`,
         `- 받아쓰기: ${record.transcript ?? ""}`,
         ...(record.questionTranscripts
           ? [
@@ -402,7 +408,7 @@ export function toDetailsMarkdown(records: readonly RunRecord[]): string {
         "- 근거:",
         ...(record.evidence ?? []).map(
           (item) =>
-            `  - ${item.kept ? "✓" : "✗"} ${item.question ? `문항 ${item.question} ` : ""}[${item.type}] "${item.quote}" — ${item.note}`,
+            `  - ${item.kept ? "✓" : "✗"} ${item.question ? `문항 ${item.question} ` : ""}[${item.type}${item.region ? ` · ${item.region}` : ""}] "${item.quote}" — ${item.note}`,
         ),
       );
       if ((record.evidence ?? []).length === 0) lines.push("  - (없음)");

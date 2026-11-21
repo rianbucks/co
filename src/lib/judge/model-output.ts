@@ -1,16 +1,21 @@
 import { z } from "zod";
 import {
+  EVIDENCE_REGIONS,
   PART_KEYS,
   REGION_KEYS,
   REJECT_REASONS,
   type Evidence,
+  type EvidenceRegion,
   type PartScores,
   type RegionProbabilities,
   type RejectReason,
 } from "./contract";
 import { REGION_NAMES } from "./rules";
 
-/** 모델 출력 형식(명세 4장). */
+/**
+ * 모델 출력 형식(명세 4장). 근거를 먼저 쓰고 판정을 나중에 쓴다:
+ * transcript → question_transcripts → evidence → regions → scores → imitation_suspected.
+ */
 export const AUDIO_QUALITIES = ["ok", ...REJECT_REASONS] as const;
 export type AudioQuality = (typeof AUDIO_QUALITIES)[number];
 
@@ -27,12 +32,12 @@ export type AcceptedModelOutput = {
    * 이때 형식 오류로 실패시키지 않고 전체 받아쓰기와 근거 목록으로 보여 준다.
    */
   question_transcripts: string[] | null;
+  /** question은 1~문항 수의 정수가 아니면 null, region은 여섯 권역이나 common이 아니면 null이다. */
+  evidence: Evidence[];
   regions: RegionProbabilities;
   scores: PartScores;
   /** 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르다고 모델이 본 경우. 없거나 boolean이 아니면 false */
   imitation_suspected: boolean;
-  /** question은 1~문항 수의 정수가 아니면 null이다. */
-  evidence: Evidence[];
 };
 export type RejectedModelOutput = { audio_quality: RejectReason; flags: Flag[] };
 export type ModelOutput = AcceptedModelOutput | RejectedModelOutput;
@@ -48,6 +53,8 @@ const scoreProperty = (description: string) => ({
  * Gemini 구조화 출력에 넘기는 JSON 스키마. 문항별 받아쓰기의 길이와 근거의 문항 번호 범위는 문항 수로 정한다.
  * 공식 문서(Structured outputs)의 지원 목록에 있는 키워드만 쓴다(minItems, maxItems 포함).
  * 문서 권고대로 모든 필드를 required로 두고, 비울 수 있는 필드는 type에 "null"을 넣는다.
+ * 속성은 근거 먼저, 판정 나중 순서로 둔다(받아쓰기 → 근거 → 권역 확률 → 항목 점수 → 모사 의심).
+ * 근거 항목도 들린 구절을 먼저 쓰고 그 특징이 가리키는 권역을 정하는 순서다.
  */
 export function buildModelOutputSchema(questionCount: number): Record<string, unknown> {
   return {
@@ -76,9 +83,33 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
         minItems: questionCount,
         maxItems: questionCount,
       },
+      evidence: {
+        type: ["array", "null"],
+        description: "들린 방언 특징. regions를 정하기 전에 모두 적는다",
+        items: {
+          type: "object",
+          properties: {
+            question: {
+              type: "integer",
+              minimum: 1,
+              maximum: questionCount,
+              description: "근거 구절이 나온 문항 번호",
+            },
+            quote: { type: "string", description: "그 문항의 question_transcripts에 그대로 있는 구절" },
+            type: { type: "string", enum: [...PART_KEYS] },
+            region: {
+              type: "string",
+              enum: [...EVIDENCE_REGIONS],
+              description: "그 특징이 가리키는 권역. 여러 권역에 공통인 특징이면 common",
+            },
+            note: { type: "string", description: "근거 설명" },
+          },
+          required: ["question", "quote", "type", "region", "note"],
+        },
+      },
       regions: {
         type: ["object", "null"],
-        description: "여섯 권역의 확률. 합은 100",
+        description: "evidence를 종합해 정한 여섯 권역의 확률. 합은 100",
         properties: Object.fromEntries(
           REGION_KEYS.map((key) => [key, scoreProperty(REGION_NAMES[key])]),
         ),
@@ -100,35 +131,16 @@ export function buildModelOutputSchema(questionCount: number): Record<string, un
         type: ["boolean", "null"],
         description: "어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true",
       },
-      evidence: {
-        type: ["array", "null"],
-        description: "판정 근거",
-        items: {
-          type: "object",
-          properties: {
-            question: {
-              type: "integer",
-              minimum: 1,
-              maximum: questionCount,
-              description: "근거 구절이 나온 문항 번호",
-            },
-            type: { type: "string", enum: [...PART_KEYS] },
-            quote: { type: "string", description: "그 문항의 question_transcripts에 그대로 있는 구절" },
-            note: { type: "string", description: "근거 설명" },
-          },
-          required: ["question", "type", "quote", "note"],
-        },
-      },
     },
     required: [
       "audio_quality",
       "flags",
       "transcript",
       "question_transcripts",
+      "evidence",
       "regions",
       "scores",
       "imitation_suspected",
-      "evidence",
     ],
   };
 }
@@ -139,8 +151,19 @@ const rawOutputSchema = z.object({
   audio_quality: z.enum(AUDIO_QUALITIES),
   flags: z.array(z.enum(FLAGS)),
   transcript: z.string().nullish(),
-  // 문항별 받아쓰기와 근거의 문항 번호는 형식이 달라도 실패시키지 않는다(아래에서 따로 읽는다).
+  // 문항별 받아쓰기, 근거의 문항 번호와 권역은 형식이 달라도 실패시키지 않는다(아래에서 따로 읽는다).
   question_transcripts: z.unknown().optional(),
+  evidence: z
+    .array(
+      z.object({
+        question: z.unknown().optional(),
+        quote: z.string(),
+        type: z.enum(PART_KEYS),
+        region: z.unknown().optional(),
+        note: z.string(),
+      }),
+    )
+    .nullish(),
   regions: z
     .object({
       seoul_gyeonggi: score,
@@ -156,16 +179,6 @@ const rawOutputSchema = z.object({
     .nullish(),
   // 모사 의심은 형식이 달라도 실패시키지 않는다(true일 때만 true로 읽는다).
   imitation_suspected: z.unknown().optional(),
-  evidence: z
-    .array(
-      z.object({
-        question: z.unknown().optional(),
-        type: z.enum(PART_KEYS),
-        quote: z.string(),
-        note: z.string(),
-      }),
-    )
-    .nullish(),
 });
 
 /** 문항 수만큼의 문자열 배열이면 그대로, 아니면 null(전체 받아쓰기로 대신한다). */
@@ -182,6 +195,13 @@ export function readQuestionNumber(value: unknown, questionCount: number): numbe
     : null;
 }
 
+/** 여섯 권역이나 common이면 그대로, 아니면 null(그 근거는 어느 권역도 가리키지 않는 것으로 센다). */
+export function readEvidenceRegion(value: unknown): EvidenceRegion | null {
+  return typeof value === "string" && (EVIDENCE_REGIONS as readonly string[]).includes(value)
+    ? (value as EvidenceRegion)
+    : null;
+}
+
 /** 형식 오류의 종류. 로그에만 쓴다(출력 내용은 남기지 않는다). */
 export type OutputProblem =
   | "invalid_json"
@@ -195,8 +215,9 @@ export type ParseResult =
 
 /**
  * 모델이 돌려준 JSON 텍스트를 검증한다. 실패하면 형식 오류로 보고 재시도 대상이 된다.
- * 품질이 ok면 transcript, regions, scores, evidence가 모두 있어야 하고 확률 합이 0보다 커야 한다.
+ * 품질이 ok면 transcript, evidence, regions, scores가 모두 있어야 하고 확률 합이 0보다 커야 한다.
  * 문항별 받아쓰기(question_transcripts)는 문항 수만큼의 문자열 배열이 아니면 null로 두고 실패시키지 않는다.
+ * 근거의 권역(region)도 여섯 권역이나 common이 아니면 null로 두고 실패시키지 않는다.
  */
 export function parseModelOutput(text: string, questionCount: number): ParseResult {
   let json: unknown;
@@ -216,8 +237,8 @@ export function parseModelOutput(text: string, questionCount: number): ParseResu
     return { ok: true, value: { audio_quality: raw.audio_quality, flags: raw.flags } };
   }
 
-  const { transcript, regions, scores, evidence } = raw;
-  if (transcript == null || regions == null || scores == null || evidence == null) {
+  const { transcript, evidence, regions, scores } = raw;
+  if (transcript == null || evidence == null || regions == null || scores == null) {
     return { ok: false, problem: "missing_fields" };
   }
 
@@ -233,15 +254,16 @@ export function parseModelOutput(text: string, questionCount: number): ParseResu
       flags: raw.flags,
       transcript,
       question_transcripts: readQuestionTranscripts(raw.question_transcripts, questionCount),
+      evidence: evidence.map((item) => ({
+        question: readQuestionNumber(item.question, questionCount),
+        quote: item.quote,
+        type: item.type,
+        region: readEvidenceRegion(item.region),
+        note: item.note,
+      })),
       regions,
       scores,
       imitation_suspected: raw.imitation_suspected === true,
-      evidence: evidence.map((item) => ({
-        question: readQuestionNumber(item.question, questionCount),
-        type: item.type,
-        quote: item.quote,
-        note: item.note,
-      })),
     },
   };
 }

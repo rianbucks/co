@@ -54,11 +54,13 @@ describe("POST /api/judge", () => {
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
     });
     expect(body.imitationSuspected).toBe(false);
+    expect(body.region.uncertain).toBe(false);
     expect(body.evidence).toHaveLength(5);
     expect(body.evidence[0]).toEqual({
       question: 1,
-      type: "vocabulary",
       quote: "억수로",
+      type: "vocabulary",
+      region: "gyeongsang",
       note: "'아주'를 뜻하는 경상 방언 어휘",
     });
     expect(body.segments).toHaveLength(4);

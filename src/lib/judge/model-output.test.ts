@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PART_KEYS, REGION_KEYS } from "./contract";
+import { EVIDENCE_REGIONS, PART_KEYS, REGION_KEYS } from "./contract";
 import { SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { buildModelOutputSchema, parseModelOutput as parseWithCount } from "./model-output";
 
@@ -70,7 +70,7 @@ describe("parseModelOutput", () => {
     });
   });
 
-  it.each(["transcript", "regions", "scores", "evidence"])(
+  it.each(["transcript", "evidence", "regions", "scores"])(
     "품질이 ok인데 %s가 null이면 missing_fields",
     (field) => {
       const output = { ...example(), [field]: null };
@@ -116,10 +116,31 @@ describe("parseModelOutput", () => {
     ["소수", 1.5],
     ["문자열", "1"],
   ])("근거의 문항 번호가 1~4 정수가 아니면 실패하지 않고 null로 둔다: %s", (_name, question) => {
-    const evidence = [{ question, type: "endings", quote: "뭐 했노", note: "" }];
+    const evidence = [{ question, quote: "뭐 했노", type: "endings", region: "gyeongsang", note: "" }];
     const parsed = parseModelOutput(JSON.stringify({ ...example(), evidence }));
     expect(parsed.ok && parsed.value.audio_quality === "ok" && parsed.value.evidence).toEqual([
-      { question: null, type: "endings", quote: "뭐 했노", note: "" },
+      { question: null, quote: "뭐 했노", type: "endings", region: "gyeongsang", note: "" },
+    ]);
+  });
+
+  it.each([...EVIDENCE_REGIONS])("근거의 권역 '%s'를 그대로 읽는다", (region) => {
+    const evidence = [{ question: 2, quote: "뭐 했노", type: "endings", region, note: "" }];
+    const parsed = parseModelOutput(JSON.stringify({ ...example(), evidence }));
+    expect(parsed.ok && parsed.value.audio_quality === "ok" && parsed.value.evidence[0].region).toBe(region);
+  });
+
+  it.each([
+    ["없음", undefined],
+    ["null", null],
+    ["모르는 권역", "busan"],
+    ["대문자", "GYEONGSANG"],
+    ["한글 이름", "경상"],
+    ["숫자", 3],
+  ])("근거의 권역이 여섯 권역이나 common이 아니면 실패하지 않고 null로 둔다: %s", (_name, region) => {
+    const evidence = [{ question: 2, quote: "뭐 했노", type: "endings", region, note: "" }];
+    const parsed = parseModelOutput(JSON.stringify({ ...example(), evidence }));
+    expect(parsed.ok && parsed.value.audio_quality === "ok" && parsed.value.evidence).toEqual([
+      { question: 2, quote: "뭐 했노", type: "endings", region: null, note: "" },
     ]);
   });
 
@@ -195,8 +216,19 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
     });
   });
 
-  it("속성 이름이 4장 모델 출력 형식과 같다", () => {
+  it("근거 먼저, 판정 나중: 받아쓰기 → 근거 → 권역 확률 → 항목 점수 → 모사 의심 순서이고, 4장 모델 출력 형식과 같다", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
+    expect(Object.keys(properties)).toEqual([
+      "audio_quality",
+      "flags",
+      "transcript",
+      "question_transcripts",
+      "evidence",
+      "regions",
+      "scores",
+      "imitation_suspected",
+    ]);
+    expect(MODEL_OUTPUT_JSON_SCHEMA.required).toEqual(Object.keys(properties));
     expect(Object.keys(properties)).toEqual(Object.keys(SPEC_MODEL_OUTPUT_EXAMPLE));
     expect(Object.keys(properties.regions.properties as object)).toEqual([...REGION_KEYS]);
     expect(Object.keys(properties.scores.properties as object)).toEqual([...PART_KEYS]);
@@ -211,6 +243,10 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
     });
     const evidenceItem = (properties.evidence.items as SchemaNode).properties as Record<string, SchemaNode>;
     expect(evidenceItem.question).toMatchObject({ type: "integer", minimum: 1, maximum: 4 });
+    // 근거 항목도 들린 구절을 먼저 쓰고 그 특징이 가리키는 권역을 정한다.
+    expect(Object.keys(evidenceItem)).toEqual(["question", "quote", "type", "region", "note"]);
+    expect(evidenceItem.region).toMatchObject({ type: "string", enum: [...REGION_KEYS, "common"] });
+    expect(Object.keys(SPEC_MODEL_OUTPUT_EXAMPLE.evidence[0])).toEqual(Object.keys(evidenceItem));
 
     const three = buildModelOutputSchema(3).properties as Record<string, SchemaNode>;
     expect(three.question_transcripts).toMatchObject({ minItems: 3, maxItems: 3 });
@@ -218,7 +254,7 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
 
   it("품질 불량일 때 비우는 필드는 null을 허용한다", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
-    for (const field of ["transcript", "question_transcripts", "regions", "scores", "imitation_suspected", "evidence"]) {
+    for (const field of ["transcript", "question_transcripts", "evidence", "regions", "scores", "imitation_suspected"]) {
       expect(properties[field].type).toContain("null");
     }
     expect(properties.audio_quality.type).toBe("string");

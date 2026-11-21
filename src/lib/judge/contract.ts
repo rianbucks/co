@@ -22,11 +22,18 @@ export type PartScores = Record<PartKey, number>;
 
 export type Grade = 1 | 2 | 3 | 4 | 5;
 
+/** 근거가 가리키는 권역: 여섯 권역 중 하나, 여러 권역에 공통인 특징이면 common. */
+export const EVIDENCE_REGIONS = [...REGION_KEYS, "common"] as const;
+export type EvidenceRegion = (typeof EVIDENCE_REGIONS)[number];
+
 export interface Evidence {
   /** 근거가 나온 문항 번호(1부터). 문항별 받아쓰기가 없어 문항으로 확인하지 못했으면 null */
   question: number | null;
-  type: PartKey;
+  /** 받아쓰기에 그대로 있는 구절 */
   quote: string;
+  type: PartKey;
+  /** 그 특징이 가리키는 권역. 여러 권역에 공통이면 common. 모델이 정해 둔 값으로 주지 않았으면 null */
+  region: EvidenceRegion | null;
   note: string;
 }
 
@@ -48,6 +55,11 @@ export interface JudgeResult {
     top: RegionKey;
     label: string;
     mixed: boolean;
+    /**
+     * 판정 유보. 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나,
+     * 다른 권역을 가리키는 것이 더 많으면 true다. 화면은 '판정 유보 (추정: ○○ 방언)'으로 보여 준다.
+     */
+    uncertain: boolean;
     probabilities: RegionProbabilities;
   };
   intensity: {

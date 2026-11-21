@@ -3,6 +3,7 @@ import {
   PART_KEYS,
   REGION_KEYS,
   type Evidence,
+  type EvidenceRegion,
   type Grade,
   type PartKey,
   type PartScores,
@@ -19,6 +20,7 @@ import {
   dominantPart,
   gradeFor,
   halveIntensity,
+  isRegionUncertain,
   normalizeProbabilities,
   selectOpinion,
   verifyEvidence,
@@ -224,8 +226,9 @@ describe("verifyEvidence: 근거 검증", () => {
   const { transcript, question_transcripts: questionTranscripts } = SPEC_MODEL_OUTPUT_EXAMPLE;
   const evidence = (quote: string, question: number | null = null): Evidence => ({
     question,
-    type: "endings",
     quote,
+    type: "endings",
+    region: "gyeongsang",
     note: "메모",
   });
 
@@ -411,6 +414,8 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         top: "gyeongsang",
         label: "경상 방언",
         mixed: false,
+        // 검증을 통과한 근거 5개가 모두 경상을 가리킨다.
+        uncertain: false,
         probabilities: {
           seoul_gyeonggi: 4,
           gangwon: 3,
@@ -443,14 +448,26 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       ...acceptedSpecExample(),
       question_transcripts: null,
       evidence: [
-        { question: 3, type: "endings" as const, quote: "뭐 했노", note: "다른 문항이라도 전체에 있으면 남는다" },
-        { question: 1, type: "vocabulary" as const, quote: "밥 묵었나", note: "어디에도 없다" },
+        {
+          question: 3,
+          quote: "뭐 했노",
+          type: "endings" as const,
+          region: "gyeongsang" as const,
+          note: "다른 문항이라도 전체에 있으면 남는다",
+        },
+        { question: 1, quote: "밥 묵었나", type: "vocabulary" as const, region: "gyeongsang" as const, note: "어디에도 없다" },
       ],
     };
     const result = buildJudgeResult(output, issue, SET_A);
     expect(result.segments).toEqual([]);
     expect(result.evidence).toEqual([
-      { question: null, type: "endings", quote: "뭐 했노", note: "다른 문항이라도 전체에 있으면 남는다" },
+      {
+        question: null,
+        quote: "뭐 했노",
+        type: "endings",
+        region: "gyeongsang",
+        note: "다른 문항이라도 전체에 있으면 남는다",
+      },
     ]);
     expect(result.transcript).toBe(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
   });
@@ -488,7 +505,73 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       top: "seoul_gyeonggi",
       label: "혼합 방언",
       mixed: true,
+      // 근거 5개가 모두 경상을 가리켜 1순위(서울경기)를 뒷받침하지 못한다.
+      uncertain: true,
       probabilities: probs([34, 33, 33, 0, 0, 0]),
     });
+  });
+
+  it("전라 근거가 대부분인데 경상 95%로 답하면 판정 유보다. 확률, 농도, 등급, 근거는 그대로 둔다", () => {
+    const output: AcceptedModelOutput = {
+      ...acceptedSpecExample(),
+      evidence: [
+        { question: 1, quote: "웬일이고", type: "endings", region: "jeolla", note: "전라를 가리킨다고 본 근거" },
+        { question: 2, quote: "뭐 했노", type: "endings", region: "jeolla", note: "전라를 가리킨다고 본 근거" },
+        { question: 3, quote: "죽는데이", type: "endings", region: "jeolla", note: "전라를 가리킨다고 본 근거" },
+        { question: 4, quote: "묵을게예", type: "phonology", region: "gyeongsang", note: "경상을 가리킨다고 본 근거" },
+      ],
+      regions: probs([1, 1, 1, 95, 1, 1]),
+    };
+    const result = buildJudgeResult(output, issue, SET_A);
+    expect(result.region).toMatchObject({ top: "gyeongsang", label: "경상 방언", mixed: false, uncertain: true });
+    expect(result.region.probabilities.gyeongsang).toBe(95);
+    expect(result.intensity.score).toBe(68);
+    expect(result.evidence).toHaveLength(4);
+  });
+
+  it("판정 유보는 받아쓰기로 검증을 통과한 근거로만 센다", () => {
+    const output: AcceptedModelOutput = {
+      ...acceptedSpecExample(),
+      evidence: [
+        { question: 1, quote: "억수로", type: "vocabulary", region: "gyeongsang", note: "있음" },
+        { question: 2, quote: "억수로", type: "vocabulary", region: "gyeongsang", note: "다른 문항이라 버린다" },
+        { question: 3, quote: "지어낸 말", type: "endings", region: "gyeongsang", note: "없는 인용이라 버린다" },
+      ],
+    };
+    const result = buildJudgeResult(output, issue, SET_A);
+    expect(result.evidence).toHaveLength(1);
+    expect(result.region.uncertain).toBe(true);
+  });
+});
+
+describe("isRegionUncertain: 판정 유보", () => {
+  const items = (...regions: Array<EvidenceRegion | null>): Evidence[] =>
+    regions.map((region, index) => ({
+      question: (index % 4) + 1,
+      quote: `구절${index}`,
+      type: "endings",
+      region,
+      note: "",
+    }));
+
+  it("1순위 권역을 가리키는 근거가 2개 이상이고 다른 권역 근거가 그보다 많지 않으면 유보하지 않는다", () => {
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang", "gyeongsang"))).toBe(false);
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang", "gyeongsang", "jeolla", "jeju"))).toBe(false);
+  });
+
+  it("1순위 권역을 가리키는 근거가 2개 미만이면 유보한다(근거가 없어도 유보)", () => {
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang"))).toBe(true);
+    expect(isRegionUncertain("gyeongsang", items("jeolla", "jeolla"))).toBe(true);
+    expect(isRegionUncertain("seoul_gyeonggi", [])).toBe(true);
+  });
+
+  it("다른 권역을 가리키는 근거가 더 많으면 유보한다(다른 권역끼리 합쳐 센다)", () => {
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang", "gyeongsang", "jeolla", "jeolla", "jeolla"))).toBe(true);
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang", "gyeongsang", "jeolla", "chungcheong", "jeju"))).toBe(true);
+  });
+
+  it("여러 권역에 공통인 근거(common)와 권역을 알 수 없는 근거(null)는 어느 쪽에도 세지 않는다", () => {
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang", "gyeongsang", "common", "common", "common", null, null))).toBe(false);
+    expect(isRegionUncertain("gyeongsang", items("gyeongsang", "common", "common", null))).toBe(true);
   });
 });
