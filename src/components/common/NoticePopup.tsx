@@ -9,9 +9,10 @@ interface Props {
   onAction: () => void;
   rememberKey?: string;
   highlighted?: boolean;
+  compact?: boolean;
 }
 
-export default function NoticePopup({ title, action, onAction, rememberKey, highlighted = false }: Props) {
+export default function NoticePopup({ title, action, onAction, rememberKey, highlighted = false, compact = false }: Props) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     try {
@@ -28,13 +29,13 @@ export default function NoticePopup({ title, action, onAction, rememberKey, high
 
   if (!visible) return null;
   return (
-    <aside className={styles.space} aria-label="알림">
+    <aside className={compact ? `${styles.space} ${styles.compact}` : styles.space} aria-label={title}>
       <div className={highlighted ? `${styles.popup} ${styles.event}` : styles.popup}>
         {highlighted ? <span className={styles.beacon} aria-hidden="true" /> : <div className={styles.wave} aria-hidden="true"><i /><i /><i /><i /><i /></div>}
         <button className={styles.open} onClick={() => { dismiss(); onAction(); }}>
-          <strong>{title}</strong><span>{action} <span className="nav-chevron" aria-hidden="true">›</span></span>
+          {!compact && <strong>{title}</strong>}<span>{action} <span className="nav-chevron" aria-hidden="true">›</span></span>
         </button>
-        <button className={styles.close} onClick={dismiss} aria-label="알림 닫기">×</button>
+        <button className={styles.close} onClick={dismiss} aria-label={`${title} 알림 닫기`}>×</button>
       </div>
     </aside>
   );

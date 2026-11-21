@@ -375,7 +375,7 @@ body {
 .discard-actions { display: flex; gap: 8px; }
 .discard-actions button { flex: 1; padding: 8px; }
 @media (max-width: 760px) {
-  .intro-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 8px 12px; }
+  .intro-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 4px 18px 12px; }
   .intro-copy { padding: 12px; }
   .intro-info { padding: 0 4px; }
   .intro-copy .intro-primary-action { margin-top: 12px; }
@@ -561,8 +561,6 @@ body:has(.discard-dialog[open]) { overflow: hidden; }
 }
 .intro-masthead {
   justify-content: space-between;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--rule);
 }
 .intro-wordmark { gap: 12px; }
 .intro-seal {
@@ -580,7 +578,6 @@ body:has(.discard-dialog[open]) { overflow: hidden; }
 .intro-brand-subtitle, .intro-edition { color: var(--muted); font-size: 12px; }
 .intro-edition { gap: 12px; }
 .intro-edition span { padding-left: 12px; border-left: 1px solid var(--rule); color: var(--quiet); }
-.intro-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: clamp(32px, 7vw, 96px); padding: clamp(44px, 8vw, 104px) 0 64px; }
 .intro-copy { display: flex; flex-direction: column; align-items: flex-start; }
 .intro-eyebrow { color: var(--accent); font-size: 14px; font-weight: 500; }
 .intro-copy h1 { margin-top: 20px; font-size: clamp(30px, 4.5vw, 50px); font-weight: 500; line-height: 1.28; letter-spacing: -0.045em; }
@@ -614,12 +611,10 @@ body:has(.discard-dialog[open]) { overflow: hidden; }
 .intro-footer span + span { padding-left: 14px; border-left: 1px solid var(--rule); }
 
 @media (max-width: 760px) {
-  .intro-layout { grid-template-columns: 1fr; gap: 36px; padding-top: 48px; }
   .intro-regions { margin-top: 36px; }
   .intro-record { padding: 20px; }
 }
 @media (max-width: 480px) {
-  .intro-masthead { align-items: flex-start; }
   .intro-edition { display: block; padding-top: 5px; text-align: right; }
   .intro-edition span { display: block; margin: 5px 0 0; padding: 0; border: 0; }
   .intro-copy h1 { font-size: 30px; }

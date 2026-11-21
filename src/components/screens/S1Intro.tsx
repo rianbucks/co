@@ -2,7 +2,7 @@
 
 import BrandInfo from '@/components/common/BrandInfo';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import NoticePopup from '@/components/common/NoticePopup';
 import NicknameInvite from '@/components/common/NicknameInvite';
 import styles from './IntroHero.module.css';
@@ -65,6 +65,19 @@ function RegionDiagram({ miniature = false }: { miniature?: boolean }) {
 }
 
 export default function S1Intro({ onStartGyeongsang, onNext, onViewRanking, nickname, onNicknameChange }: S1IntroProps) {
+  const invite = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('co:gs-invite-seen')) return;
+    } catch { /* 저장소 없이도 초대 화면을 사용할 수 있다. */ }
+    const timer = window.setTimeout(() => {
+      if (document.hidden || document.activeElement !== document.body || document.querySelector('dialog[open]')) return;
+      invite.current?.showModal();
+      try { sessionStorage.setItem('co:gs-invite-seen', '1'); } catch {}
+    }, 1300);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const sheet = useRef<HTMLDialogElement>(null);
   const [panel, setPanel] = useState<'questions' | 'guide' | 'regions' | 'grades'>('questions');
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -116,10 +129,19 @@ export default function S1Intro({ onStartGyeongsang, onNext, onViewRanking, nick
             <span className={`nav-chevron ${styles.cardArrow}`} aria-hidden="true">›</span>
           </button>
         </section>
-        <button className="secondary-action-button" onClick={onStartGyeongsang}>경상 정밀 감정 받기</button>
         <DesktopIntroDetails onViewRanking={onViewRanking} onPreview={preview} />
       </div>
-      <NoticePopup highlighted title="어떤 질문이 나올까요?" action="첫 문항 미리보기" rememberKey="co:intro-preview-dismissed" onAction={() => preview(0)} />
+      <div className="home-notices">
+        <NoticePopup highlighted title="어떤 질문이 나올까요?" action="첫 문항 미리보기" rememberKey="co:intro-preview-dismissed" onAction={() => preview(0)} />
+      </div>
+      <dialog ref={invite} className={`discard-dialog ${styles.invite}`} aria-labelledby="gs-invite-title" aria-describedby="gs-invite-copy">
+        <h2 id="gs-invite-title">경상권이신가요?</h2>
+        <p id="gs-invite-copy">내 말투가 경북과 경남 중 어디에 더 가까운지 알아보세요.</p>
+        <div className={styles.inviteActions}>
+          <button type="button" className="secondary-action-button" onClick={() => invite.current?.close()}>괜찮아요</button>
+          <button type="button" className="intro-primary-action" onClick={() => { invite.current?.close(); onStartGyeongsang(); }}>경상권 정밀 감정 받기</button>
+        </div>
+      </dialog>
       <dialog ref={sheet} className="discard-dialog preview-sheet" aria-labelledby="preview-heading"
         onClick={event => {
           if (event.target !== event.currentTarget) return;
@@ -133,12 +155,14 @@ export default function S1Intro({ onStartGyeongsang, onNext, onViewRanking, nick
           <div className="sheet-guide">
             <ol className={styles.timeline}>{STEPS.map(([title, detail], index) => <li key={title}><b aria-hidden="true">{index + 1}</b><div><strong>{title}</strong><small>{detail}</small></div></li>)}</ol>
             <p><strong>녹음과 공개 범위</strong><br />동의하면 녹음이 Google Gemini로 전송돼요. 판정 후 이 서비스 서버에는 음성을 보관하지 않아요. 랭킹은 원할 때만 등록해요.</p>
+            <button className={styles.gradeLink} onClick={() => preview(0)}>문항 미리보기</button>
             <button className={styles.gradeLink} onClick={() => setPanel('grades')}>농도별 등급 기준 보기</button>
           </div>
         ) : panel === 'regions' ? (
           <div className="sheet-guide">
             <figure className={styles.regionDiagram}><RegionDiagram /></figure>
             <p>녹음한 말투를 이 여섯 지역의 표현과 비교해요. 두 지역의 특징이 비슷하면 ‘혼합 방언’으로 표시돼요.</p>
+            <button className={styles.gradeLink} onClick={() => { sheet.current?.close(); onStartGyeongsang(); }}>경상권 정밀 감정 받기</button>
           </div>
         ) : panel === 'grades' ? (
           <ul className="sheet-grades">{GRADE_TABLE.map(({grade, name, min, max}) => (
