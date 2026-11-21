@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
 import type { RankingEntryView, RankingList, RankingRegistered } from '@/lib/ranking/contract';
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
+import { GENERAL_QUESTIONS } from '@/lib/judge/questions';
 import { regionVerdictLabel } from '@/lib/judge/rules';
 import { REGION_KOREAN_NAMES } from '@/types/screen';
 
@@ -208,7 +209,8 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
               <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-black/50 p-5 text-center">
                 <p className="text-sm font-semibold text-zinc-200">감정을 받으면 랭킹에 등록할 수 있습니다</p>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-400">
-                  4개 문항에 평소 말투로 답하면 농도 점수가 나오고, 닉네임으로 랭킹에 오를 수 있습니다.
+                  {GENERAL_QUESTIONS.length}개 문항에 평소 말투로 답하면 농도 점수가 나오고, 닉네임으로 랭킹에 오를 수
+                  있습니다.
                 </p>
                 <button
                   onClick={onApply}

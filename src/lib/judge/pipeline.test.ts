@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { RateLimiter } from "../rate-limit";
 import type { AiClient, AiRequest } from "./ai-client";
 import { MAX_AUDIO_BYTES } from "./audio";
-import { SPEC_MODEL_OUTPUT_EXAMPLE, mockAiClient } from "./mock";
+import type { JudgeResult } from "./contract";
+import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE, mockAiClientFor } from "./mock";
 import { buildModelOutputSchema } from "./model-output";
 import { judge, type JudgeDeps, type JudgeInput } from "./pipeline";
 import { buildSystemInstruction, findQuestionSet, USER_TEXT } from "./prompt";
@@ -27,11 +28,12 @@ const fixedIssue = () => ({
 });
 
 function makeDeps(overrides: Partial<JudgeDeps> = {}): JudgeDeps {
-  return { ai: mockAiClient, rateLimiter: allowAll, issue: fixedIssue, log: () => {}, ...overrides };
+  return { ai: mockAiClientFor("set-b"), rateLimiter: allowAll, issue: fixedIssue, log: () => {}, ...overrides };
 }
 
 function makeInput(overrides: Partial<JudgeInput> = {}): JudgeInput {
-  return { audio: wavFile(), questionSetId: "set-a", clientIp: "203.0.113.7", ...overrides };
+  // 기본 세트 set-b(문항 6개)로 녹음한 요청
+  return { audio: wavFile(), questionSetId: "set-b", clientIp: "203.0.113.7", ...overrides };
 }
 
 /** 정해 둔 순서대로 응답하거나 예외를 던지는 가짜 AI. 받은 요청을 기록한다. */
@@ -50,7 +52,7 @@ function scriptedAi(...steps: Array<string | Error>) {
 }
 
 describe("judge: 성공", () => {
-  it("MOCK 클라이언트(4장 출력 예시)로 실제 후처리를 거친 200 결과를 낸다", async () => {
+  it("MOCK 클라이언트(4장 출력 예시, set-b)로 실제 후처리를 거친 200 결과를 낸다", async () => {
     const response = await judge(makeInput(), makeDeps());
 
     expect(response.status).toBe(200);
@@ -80,12 +82,33 @@ describe("judge: 성공", () => {
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
-      segments: findQuestionSet("set-a")!.map((prompt, index) => ({
+      segments: findQuestionSet("set-b")!.map((item, index) => ({
         question: index + 1,
-        prompt,
+        kind: item.kind,
+        prompt: item.situation,
         transcript: SPEC_MODEL_OUTPUT_EXAMPLE.question_transcripts[index],
       })),
     });
+  });
+
+  it("set-a로 녹음하면 set-a 문항 4개로 감정한다(NEXT_PUBLIC_QUESTION_SET=set-a로 되돌린 경우)", async () => {
+    const { ai, requests } = scriptedAi(JSON.stringify(SET_A_MODEL_OUTPUT_EXAMPLE));
+
+    const response = await judge(makeInput({ questionSetId: "set-a" }), makeDeps({ ai }));
+
+    expect(requests[0]).toMatchObject({
+      systemInstruction: buildSystemInstruction(findQuestionSet("set-a")!),
+      responseSchema: buildModelOutputSchema(4),
+    });
+    expect(response.status).toBe(200);
+    const body = response.body as JudgeResult;
+    expect(body.segments.map((segment) => [segment.question, segment.kind])).toEqual([
+      [1, "question"],
+      [2, "question"],
+      [3, "question"],
+      [4, "question"],
+    ]);
+    expect(body.evidence).toEqual(SET_A_MODEL_OUTPUT_EXAMPLE.evidence);
   });
 
   it("AI에 오디오, 지시문, 문항, 스키마를 넘기고 첫 시도 제한 시간은 20초다", async () => {
@@ -96,11 +119,11 @@ describe("judge: 성공", () => {
 
     expect(requests).toHaveLength(1);
     expect(requests[0]).toEqual({
-      systemInstruction: buildSystemInstruction(findQuestionSet("set-a")!),
+      systemInstruction: buildSystemInstruction(findQuestionSet("set-b")!),
       userText: USER_TEXT,
       audio: new Uint8Array(await audio.arrayBuffer()),
       mimeType: "audio/wav",
-      responseSchema: buildModelOutputSchema(4),
+      responseSchema: buildModelOutputSchema(6),
       timeoutMs: 20_000,
       useFallbackModel: false,
     });
@@ -138,7 +161,8 @@ describe("judge: 서버 검사", () => {
 
   it.each([
     ["없음", null],
-    ["등록되지 않은 ID", "set-b"],
+    ["등록되지 않은 ID", "set-c"],
+    ["경상 정밀 감정 ID(라우트에서 따로 처리)", "set-gs"],
     ["파일", new File(["set-a"], "id.txt")],
   ])("questionSetId가 %s → 400 invalid_request", async (_name, questionSetId) => {
     const { ai, requests } = scriptedAi();

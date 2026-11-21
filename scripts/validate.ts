@@ -21,7 +21,7 @@ import { createGeminiClient } from "../src/lib/gemini";
 import type { AiClient, AiUsage } from "../src/lib/judge/ai-client";
 import { MAX_AUDIO_BYTES, detectAudioFormat, type GeminiAudioMime } from "../src/lib/judge/audio";
 import { formatKstIso } from "../src/lib/judge/issue";
-import { mockAiClient } from "../src/lib/judge/mock";
+import { mockAiClientFor } from "../src/lib/judge/mock";
 import { buildModelOutputSchema, parseModelOutput } from "../src/lib/judge/model-output";
 import { buildJudgeResult, verifyEvidence } from "../src/lib/judge/postprocess";
 import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "../src/lib/judge/prompt";
@@ -33,6 +33,7 @@ import {
   type RunRecord,
 } from "../src/lib/validation/report";
 import { parseSamples, type SampleRow } from "../src/lib/validation/samples";
+import type { QuestionItem } from "../src/types/screen";
 
 const HELP = `정확도 검증 (명세 3장)
 
@@ -54,8 +55,8 @@ const HELP = `정확도 검증 (명세 3장)
 interface PreparedSample extends SampleRow {
   audio: Uint8Array;
   mimeType: GeminiAudioMime;
-  /** 녹음한 문항 세트(문항 순서) */
-  questions: readonly string[];
+  /** 녹음한 문항 세트(문항 순서). CSV의 questionSetId(set-a 또는 set-b)로 고른다. */
+  questions: readonly QuestionItem[];
   systemInstruction: string;
 }
 
@@ -111,7 +112,13 @@ async function runOnce(
   sample: PreparedSample,
   base: { model: string; run: number; timeoutMs: number },
 ): Promise<RunRecord> {
-  const record = { file: sample.file, expected: sample.expected, model: base.model, run: base.run };
+  const record = {
+    file: sample.file,
+    questionSetId: sample.questionSetId,
+    expected: sample.expected,
+    model: base.model,
+    run: base.run,
+  };
   let usage: AiUsage | undefined;
   const started = performance.now();
   let text: string;
@@ -228,6 +235,7 @@ async function main(): Promise<void> {
   if (!existsSync(values.csv)) fail([`정답 CSV가 없다: ${values.csv}`]);
   const parsed = parseSamples(readFileSync(values.csv, "utf8"));
   if (parsed.errors.length > 0) fail(parsed.errors);
+  for (const warning of parsed.warnings) console.warn(`주의: ${warning}`);
   const samples = prepareSamples(parsed.samples, values.samples);
 
   const startedAt = formatKstIso(new Date());
@@ -240,10 +248,10 @@ async function main(): Promise<void> {
 
   const records: RunRecord[] = [];
   for (const model of models) {
-    const client = dryRun
-      ? mockAiClient
-      : createGeminiClient({ apiKey, model, fallbackModel: model, thinkingLevel });
+    const gemini = dryRun ? null : createGeminiClient({ apiKey, model, fallbackModel: model, thinkingLevel });
     for (const sample of samples) {
+      // 가짜 응답은 그 샘플의 문항 세트(set-a 4문항, set-b 6문항)에 맞는 출력을 쓴다.
+      const client = gemini ?? mockAiClientFor(sample.questionSetId);
       for (let run = 1; run <= runs; run += 1) {
         if (records.length > 0 && delayMs > 0 && !dryRun) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));

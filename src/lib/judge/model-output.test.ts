@@ -1,21 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { EVIDENCE_REGIONS, PART_KEYS, REGION_KEYS } from "./contract";
-import { SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
+import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { buildModelOutputSchema, parseModelOutput as parseWithCount } from "./model-output";
 
-/** set-a는 문항 4개 */
+/** 검사는 set-a(문항 4개)의 가짜 출력으로 한다. 문항 수에 따른 동작은 따로 확인한다. */
 const QUESTION_COUNT = 4;
 const parseModelOutput = (text: string) => parseWithCount(text, QUESTION_COUNT);
 const MODEL_OUTPUT_JSON_SCHEMA = buildModelOutputSchema(QUESTION_COUNT);
 
-const example = () => JSON.parse(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE));
+const example = () => JSON.parse(JSON.stringify(SET_A_MODEL_OUTPUT_EXAMPLE));
 
 describe("parseModelOutput", () => {
-  it("4장 모델 출력 예시를 그대로 받아들인다", () => {
-    expect(parseModelOutput(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE))).toEqual({
+  it("set-a 가짜 출력(문항 4개)을 그대로 받아들인다", () => {
+    expect(parseModelOutput(JSON.stringify(SET_A_MODEL_OUTPUT_EXAMPLE))).toEqual({
       ok: true,
       value: example(),
     });
+  });
+
+  it("4장 모델 출력 예시(set-b, 문항 6개)는 문항 수 6으로 그대로 받아들인다", () => {
+    expect(parseWithCount(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE), 6)).toEqual({
+      ok: true,
+      value: JSON.parse(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE)),
+    });
+    // 문항 수가 다르면 문항별 받아쓰기만 null로 두고 실패시키지 않는다.
+    const four = parseWithCount(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE), 4);
+    expect(four.ok && four.value.audio_quality === "ok" && four.value.question_transcripts).toBeNull();
   });
 
   it("품질 불량이면 나머지가 null이어도 받아들이고 audio_quality와 flags만 남긴다", () => {
@@ -93,7 +103,7 @@ describe("parseModelOutput", () => {
     expect(parsed.ok).toBe(true);
     if (parsed.ok && parsed.value.audio_quality === "ok") {
       expect(parsed.value.question_transcripts).toBeNull();
-      expect(parsed.value.transcript).toBe(SPEC_MODEL_OUTPUT_EXAMPLE.transcript);
+      expect(parsed.value.transcript).toBe(SET_A_MODEL_OUTPUT_EXAMPLE.transcript);
     }
   });
 
@@ -230,6 +240,7 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
     ]);
     expect(MODEL_OUTPUT_JSON_SCHEMA.required).toEqual(Object.keys(properties));
     expect(Object.keys(properties)).toEqual(Object.keys(SPEC_MODEL_OUTPUT_EXAMPLE));
+    expect(Object.keys(properties)).toEqual(Object.keys(SET_A_MODEL_OUTPUT_EXAMPLE));
     expect(Object.keys(properties.regions.properties as object)).toEqual([...REGION_KEYS]);
     expect(Object.keys(properties.scores.properties as object)).toEqual([...PART_KEYS]);
   });
@@ -250,6 +261,11 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
 
     const three = buildModelOutputSchema(3).properties as Record<string, SchemaNode>;
     expect(three.question_transcripts).toMatchObject({ minItems: 3, maxItems: 3 });
+    // 기본 세트 set-b는 문항 6개
+    const six = buildModelOutputSchema(6).properties as Record<string, SchemaNode>;
+    expect(six.question_transcripts).toMatchObject({ minItems: 6, maxItems: 6 });
+    const sixEvidence = (six.evidence.items as SchemaNode).properties as Record<string, SchemaNode>;
+    expect(sixEvidence.question).toMatchObject({ minimum: 1, maximum: 6 });
   });
 
   it("품질 불량일 때 비우는 필드는 null을 허용한다", () => {

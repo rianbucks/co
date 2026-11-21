@@ -37,11 +37,29 @@ export interface Evidence {
   note: string;
 }
 
+/**
+ * 문항 종류(명세 8장).
+ * question: 상황을 보고 자유롭게 답한다. convert: 주어진 표준어 문장을 평소 말투로 바꿔 말한다.
+ */
+export const QUESTION_KINDS = ["question", "convert"] as const;
+export type QuestionKind = (typeof QUESTION_KINDS)[number];
+
 /** 문항별 받아쓰기(명세 7장). 문항 문구는 서버의 문항 세트에서 가져온다. */
 export interface Segment {
   /** 문항 번호(1부터) */
   question: number;
   /** 문항 문구 */
+  prompt: string;
+  /** 그 문항의 받아쓰기(공백 정리). 답하지 않은 문항은 빈 문자열 */
+  transcript: string;
+}
+
+/** 일반 감정의 문항별 받아쓰기. 문항 종류를 함께 싣는다. convert면 prompt는 바꿔 말할 표준어 문장이다. */
+export interface JudgeSegment {
+  /** 문항 번호(1부터) */
+  question: number;
+  kind: QuestionKind;
+  /** 문항 문구(상황 문구 또는 바꿔 말할 문장) */
   prompt: string;
   /** 그 문항의 받아쓰기(공백 정리). 답하지 않은 문항은 빈 문자열 */
   transcript: string;
@@ -81,7 +99,7 @@ export interface JudgeResult {
    * 문항별 받아쓰기(문항 순서). 모델이 문항 수만큼 주지 않았으면 빈 배열이고,
    * 이때 근거는 전체 받아쓰기로 검증하며 question은 null이다.
    */
-  segments: Segment[];
+  segments: JudgeSegment[];
 }
 
 /** 422 rejected의 reason. 모델 출력의 audio_quality 값(ok 제외)을 그대로 쓴다. */

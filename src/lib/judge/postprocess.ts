@@ -12,9 +12,12 @@ import {
   type PartScores,
   type RegionKey,
   type RegionProbabilities,
+  type JudgeSegment,
   type Segment,
 } from "./contract";
+import type { QuestionItem } from "@/types/screen";
 import type { AcceptedModelOutput } from "./model-output";
+import { questionKind } from "./questions";
 import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
 import {
   CONCEALMENT_SCORE_LIMIT,
@@ -226,7 +229,7 @@ export interface IssueInfo {
 export function buildJudgeResult(
   output: AcceptedModelOutput,
   issue: IssueInfo,
-  questions: readonly string[],
+  questions: readonly QuestionItem[],
 ): JudgeResult {
   const probabilities = normalizeProbabilities(output.regions);
   if (!probabilities) {
@@ -254,6 +257,23 @@ export function buildJudgeResult(
     evidence,
     opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores, imitationSuspected }),
     transcript: output.transcript,
-    segments: buildSegments(questions, questionTranscripts),
+    segments: buildJudgeSegments(questions, questionTranscripts),
   };
+}
+
+/** 일반 감정의 문항별 받아쓰기: 문항 번호, 문항 종류, 문항 문구, 받아쓰기. 없으면 빈 배열이다. */
+export function buildJudgeSegments(
+  questions: readonly QuestionItem[],
+  questionTranscripts: readonly string[] | null,
+): JudgeSegment[] {
+  const segments = buildSegments(
+    questions.map((question) => question.situation),
+    questionTranscripts,
+  );
+  return segments.map((segment, index) => ({
+    question: segment.question,
+    kind: questionKind(questions[index]),
+    prompt: segment.prompt,
+    transcript: segment.transcript,
+  }));
 }

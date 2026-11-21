@@ -1,37 +1,21 @@
+import type { QuestionKind } from '@/lib/judge/contract';
+
 export type ScreenStep = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7';
 
 /**
- * 녹음 문항(명세 8장). 서버의 set-a(src/lib/judge/prompt.ts)와 문구가 같아야 한다.
+ * 녹음 문항 하나(명세 8장). 일반 감정 문항 세트는 src/lib/judge/questions.ts, 경상 정밀 감정은
+ * src/lib/gyeongsang/questions.ts에 있고 녹음 화면(S3)과 서버 지시문이 같은 값을 쓴다.
  * 답변 예시는 넣지 않는다. 특정 지역 사투리 예시를 보여 주면 사용자가 따라 말해 판정과 근거가 오염된다.
  */
 export interface QuestionItem {
   id: number;
+  /** 대화 상대 */
   target: string;
+  /** question이면 상황 문구, convert면 바꿔 말할 표준어 문장 */
   situation: string;
+  /** 문항 종류. 없으면 question */
+  kind?: QuestionKind;
 }
-
-export const QUESTIONS: QuestionItem[] = [
-  {
-    id: 1,
-    target: "고향 친구",
-    situation: "오랜만에 고향 친구에게서 전화가 왔습니다. 받자마자 뭐라고 하시겠습니까?",
-  },
-  {
-    id: 2,
-    target: "친구",
-    situation: "친구가 약속에 한 시간 늦게 와서는 웃고 있습니다. 한마디 해 주십시오.",
-  },
-  {
-    id: 3,
-    target: "동생",
-    situation: "동생이 한겨울에 반팔만 입고 나가려 합니다. 말려 보십시오.",
-  },
-  {
-    id: 4,
-    target: "할머니",
-    situation: "할머니가 차려 주신 밥이 정말 맛있습니다. 할머니께 뭐라고 하시겠습니까?",
-  },
-];
 
 export const REGION_KOREAN_NAMES: Record<string, string> = {
   seoul_gyeonggi: "서울·경기",

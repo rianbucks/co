@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MAX_AUDIO_BYTES } from "@/lib/judge/audio";
-import { SPEC_MODEL_OUTPUT_EXAMPLE } from "@/lib/judge/mock";
+import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE } from "@/lib/judge/mock";
 import { GS_MOCK_MODEL_OUTPUT } from "@/lib/gyeongsang/mock";
 import { GS_QUESTION_TEXTS } from "@/lib/gyeongsang/questions";
 import { DAILY_IP_LIMIT } from "@/lib/rate-limit";
@@ -40,10 +40,10 @@ afterEach(() => {
 });
 
 describe("POST /api/judge", () => {
-  it("MOCK_AI=true면 Gemini 없이 4장 예시를 후처리한 200 결과를 돌려준다", async () => {
+  it("MOCK_AI=true면 Gemini 없이 4장 예시(기본 세트 set-b)를 후처리한 200 결과를 돌려준다", async () => {
     vi.stubEnv("MOCK_AI", "true");
 
-    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
+    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-b" }));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
@@ -55,23 +55,43 @@ describe("POST /api/judge", () => {
     });
     expect(body.imitationSuspected).toBe(false);
     expect(body.region.uncertain).toBe(false);
-    expect(body.evidence).toHaveLength(5);
+    expect(body.evidence).toHaveLength(7);
     expect(body.evidence[0]).toEqual({
       question: 1,
-      quote: "억수로",
-      type: "vocabulary",
+      quote: "어디고",
+      type: "endings",
       region: "gyeongsang",
-      note: "'아주'를 뜻하는 경상 방언 어휘",
+      note: "'어디야'를 의문사와 함께 쓰는 경상 방언 의문형 어미 '-고'로 바꿔 말함",
     });
-    expect(body.segments).toHaveLength(4);
+    expect(body.segments).toHaveLength(6);
     expect(body.segments[0]).toEqual({
       question: 1,
-      prompt: "오랜만에 고향 친구에게서 전화가 왔습니다. 받자마자 뭐라고 하시겠습니까?",
-      transcript: "어, 니가 웬일이고? 억수로 오랜만이네",
+      kind: "convert",
+      prompt: "너 어디야? 왜 이렇게 안 와? 언제 올 거야?",
+      transcript: "니 어디고? 와 이래 안 오노? 언제 올 끼고?",
     });
+    expect(body.segments[4]).toMatchObject({ question: 5, kind: "question" });
     expect(body.id).toMatch(/^j_[0-9a-f]{12}$/);
     expect(body.certificateNo).toMatch(/^제\d{4}-\d{6}호$/);
     expect(body.issuedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/);
+  });
+
+  it("MOCK_AI=true에서 set-a로 보내면 set-a 가짜 출력(문항 4개)으로 감정한다", async () => {
+    vi.stubEnv("MOCK_AI", "true");
+
+    const response = await POST(postForm({ audio: wavFile(), questionSetId: "set-a" }));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.transcript).toBe(SET_A_MODEL_OUTPUT_EXAMPLE.transcript);
+    expect(body.evidence).toHaveLength(5);
+    expect(body.segments).toHaveLength(4);
+    expect(body.segments[0]).toEqual({
+      question: 1,
+      kind: "question",
+      prompt: "오랜만에 고향 친구에게서 전화가 왔습니다. 받자마자 뭐라고 하시겠습니까?",
+      transcript: "어, 니가 웬일이고? 억수로 오랜만이네",
+    });
   });
 
   it("multipart가 아니면 400 invalid_audio", async () => {

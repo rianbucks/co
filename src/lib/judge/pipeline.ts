@@ -17,7 +17,8 @@ import {
 import { createIssueInfo } from "./issue";
 import { buildModelOutputSchema, parseModelOutput } from "./model-output";
 import { buildJudgeResult, type IssueInfo } from "./postprocess";
-import { USER_TEXT, buildSystemInstruction, findQuestionSet } from "./prompt";
+import { USER_TEXT, buildSystemInstruction } from "./prompt";
+import { findQuestionSet } from "./questions";
 
 /** 처음 1번은 주 모델, 재시도 1번은 대체 모델(명세 7장 502 ai_error, 11장). */
 export const MAX_AI_ATTEMPTS = 2;
@@ -137,7 +138,7 @@ export async function callAiWithRetry<T>(
 export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeResponse> {
   const { audio, questionSetId } = input;
 
-  // 서버 검사: 파일, 크기(2MB), 형식. 녹음 길이(합계 40초)는 화면에서 지키므로 검사하지 않는다.
+  // 서버 검사: 파일, 크기(2MB), 형식. 녹음 길이(문항당 10초, set-b 합계 60초)는 화면에서 지키므로 검사하지 않는다.
   if (audio === null || typeof audio === "string") return errorResponse("invalid_audio");
   if (audio.size > MAX_AUDIO_BYTES) return errorResponse("too_large");
 

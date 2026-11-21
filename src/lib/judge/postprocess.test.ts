@@ -9,11 +9,12 @@ import {
   type PartScores,
   type RegionProbabilities,
 } from "./contract";
-import { SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
+import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { parseModelOutput, type AcceptedModelOutput } from "./model-output";
 import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
 import {
   buildJudgeResult,
+  buildJudgeSegments,
   buildSegments,
   computeIntensity,
   decideRegion,
@@ -29,6 +30,7 @@ import { findQuestionSet } from "./prompt";
 import { INTENSITY_WEIGHTS, REGION_NAMES } from "./rules";
 
 const SET_A = findQuestionSet("set-a")!;
+const SET_B = findQuestionSet("set-b")!;
 
 /** 순서: 서울경기, 강원, 충청, 경상, 전라, 제주 */
 function probs(values: [number, number, number, number, number, number]): RegionProbabilities {
@@ -40,13 +42,18 @@ function sum(p: RegionProbabilities): number {
   return REGION_KEYS.reduce((total, key) => total + p[key], 0);
 }
 
-function acceptedSpecExample(): AcceptedModelOutput {
-  const parsed = parseModelOutput(JSON.stringify(SPEC_MODEL_OUTPUT_EXAMPLE), SET_A.length);
-  if (!parsed.ok) throw new Error(`4장 예시가 검증을 통과하지 못했다: ${parsed.problem}`);
+function accepted(example: unknown, questionCount: number): AcceptedModelOutput {
+  const parsed = parseModelOutput(JSON.stringify(example), questionCount);
+  if (!parsed.ok) throw new Error(`가짜 출력이 검증을 통과하지 못했다: ${parsed.problem}`);
   const value = parsed.value;
-  if (value.audio_quality !== "ok") throw new Error("4장 예시의 품질은 ok여야 한다");
+  if (value.audio_quality !== "ok") throw new Error("가짜 출력의 품질은 ok여야 한다");
   return value;
 }
+
+/** 4장 모델 출력 예시(기본 세트 set-b, 문항 6개) */
+const acceptedSpecExample = () => accepted(SPEC_MODEL_OUTPUT_EXAMPLE, SET_B.length);
+/** set-a 가짜 출력(문항 4개) */
+const acceptedSetAExample = () => accepted(SET_A_MODEL_OUTPUT_EXAMPLE, SET_A.length);
 
 describe("computeIntensity: 농도 가중 합", () => {
   it("7장 예시의 항목 점수로 68점을 낸다 (40×0.15 + 85×0.2 + 60×0.25 + 75×0.4 = 6 + 17 + 15 + 30)", () => {
@@ -223,7 +230,8 @@ describe("decideRegion: 판정 지역", () => {
 });
 
 describe("verifyEvidence: 근거 검증", () => {
-  const { transcript, question_transcripts: questionTranscripts } = SPEC_MODEL_OUTPUT_EXAMPLE;
+  // 문항 번호가 걸린 검사는 set-a 가짜 출력(문항 4개)의 받아쓰기로 한다.
+  const { transcript, question_transcripts: questionTranscripts } = SET_A_MODEL_OUTPUT_EXAMPLE;
   const evidence = (quote: string, question: number | null = null): Evidence => ({
     question,
     quote,
@@ -233,10 +241,12 @@ describe("verifyEvidence: 근거 검증", () => {
   });
 
   describe("문항별 받아쓰기가 있으면 그 문항에서 찾는다", () => {
-    it("4장 예시의 근거 5개는 모두 자기 문항 받아쓰기에 있으므로 남는다", () => {
-      expect(
-        verifyEvidence(SPEC_MODEL_OUTPUT_EXAMPLE.evidence, transcript, questionTranscripts),
-      ).toEqual(SPEC_MODEL_OUTPUT_EXAMPLE.evidence);
+    it("가짜 출력의 근거는 모두 자기 문항 받아쓰기에 있으므로 남는다(set-a 5개, set-b 7개)", () => {
+      for (const example of [SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE]) {
+        expect(verifyEvidence(example.evidence, example.transcript, example.question_transcripts)).toEqual(
+          example.evidence,
+        );
+      }
     });
 
     it("다른 문항에만 있는 인용은 버린다", () => {
@@ -310,6 +320,35 @@ describe("buildSegments: 문항별 받아쓰기", () => {
   it("문항별 받아쓰기가 없거나 문항 수와 다르면 빈 배열", () => {
     expect(buildSegments(["문항 하나", "문항 둘"], null)).toEqual([]);
     expect(buildSegments(["문항 하나", "문항 둘"], ["하나만"])).toEqual([]);
+  });
+});
+
+describe("buildJudgeSegments: 일반 감정의 문항별 받아쓰기", () => {
+  it("문항 종류를 함께 싣고, 바꿔 말하기 문항의 문구는 바꿔 말할 문장이다", () => {
+    const segments = buildJudgeSegments(SET_B, SPEC_MODEL_OUTPUT_EXAMPLE.question_transcripts);
+    expect(segments.map((segment) => segment.kind)).toEqual([
+      "convert",
+      "convert",
+      "convert",
+      "convert",
+      "question",
+      "question",
+    ]);
+    expect(segments[0]).toEqual({
+      question: 1,
+      kind: "convert",
+      prompt: "너 어디야? 왜 이렇게 안 와? 언제 올 거야?",
+      transcript: "니 어디고? 와 이래 안 오노? 언제 올 끼고?",
+    });
+    expect(Object.keys(segments[0])).toEqual(["question", "kind", "prompt", "transcript"]);
+  });
+
+  it("종류가 없는 문항은 question이고, 받아쓰기가 문항 수만큼 없으면 빈 배열이다", () => {
+    const items = [{ id: 1, target: "친구", situation: "상황" }];
+    expect(buildJudgeSegments(items, ["답"])).toEqual([
+      { question: 1, kind: "question", prompt: "상황", transcript: "답" },
+    ]);
+    expect(buildJudgeSegments(SET_B, SET_A_MODEL_OUTPUT_EXAMPLE.question_transcripts)).toEqual([]);
   });
 });
 
@@ -407,14 +446,14 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
     issuedAt: "2026-11-15T14:03:00+09:00",
   };
 
-  it("권역, 농도, 소견은 7장 예시와 같고, 근거 5개와 문항별 받아쓰기, 전체 받아쓰기가 함께 나간다", () => {
-    expect(buildJudgeResult(acceptedSpecExample(), issue, SET_A)).toEqual({
+  it("권역, 농도, 소견은 7장 예시와 같고, 근거 7개와 문항별 받아쓰기(종류 포함), 전체 받아쓰기가 함께 나간다", () => {
+    expect(buildJudgeResult(acceptedSpecExample(), issue, SET_B)).toEqual({
       ...issue,
       region: {
         top: "gyeongsang",
         label: "경상 방언",
         mixed: false,
-        // 검증을 통과한 근거 5개가 모두 경상을 가리킨다.
+        // 검증을 통과한 근거 7개가 모두 경상을 가리킨다.
         uncertain: false,
         probabilities: {
           seoul_gyeonggi: 4,
@@ -435,9 +474,10 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
-      segments: SET_A.map((prompt, index) => ({
+      segments: SET_B.map((item, index) => ({
         question: index + 1,
-        prompt,
+        kind: item.kind,
+        prompt: item.situation,
         transcript: SPEC_MODEL_OUTPUT_EXAMPLE.question_transcripts[index],
       })),
     });
@@ -458,7 +498,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         { question: 1, quote: "밥 묵었나", type: "vocabulary" as const, region: "gyeongsang" as const, note: "어디에도 없다" },
       ],
     };
-    const result = buildJudgeResult(output, issue, SET_A);
+    const result = buildJudgeResult(output, issue, SET_B);
     expect(result.segments).toEqual([]);
     expect(result.evidence).toEqual([
       {
@@ -478,7 +518,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
       imitation_suspected: true,
     };
-    const result = buildJudgeResult(output, issue, SET_A);
+    const result = buildJudgeResult(output, issue, SET_B);
     // 계산값 47 → 절반 23.5 → 24, 2등급
     expect(result.intensity).toMatchObject({ score: 24, grade: 2, gradeName: "고향 친구 전화 받으면 돌아옴" });
     expect(result.imitationSuspected).toBe(true);
@@ -492,7 +532,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
       imitation_suspected: false,
     };
-    const result = buildJudgeResult(output, issue, SET_A);
+    const result = buildJudgeResult(output, issue, SET_B);
     expect(result.intensity).toMatchObject({ score: 47, grade: 3 });
     expect(result.imitationSuspected).toBe(false);
     expect(result.opinion).toBe(OPINIONS[3].vocabulary);
@@ -500,12 +540,12 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
 
   it("확률 합이 100이 아니면 맞춘 값으로 판정한다", () => {
     const output = { ...acceptedSpecExample(), regions: probs([1, 1, 1, 0, 0, 0]) };
-    const result = buildJudgeResult(output, { id: "j_1", certificateNo: "c", issuedAt: "t" }, SET_A);
+    const result = buildJudgeResult(output, { id: "j_1", certificateNo: "c", issuedAt: "t" }, SET_B);
     expect(result.region).toEqual({
       top: "seoul_gyeonggi",
       label: "혼합 방언",
       mixed: true,
-      // 근거 5개가 모두 경상을 가리켜 1순위(서울경기)를 뒷받침하지 못한다.
+      // 근거 7개가 모두 경상을 가리켜 1순위(서울경기)를 뒷받침하지 못한다.
       uncertain: true,
       probabilities: probs([34, 33, 33, 0, 0, 0]),
     });
@@ -513,7 +553,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
 
   it("전라 근거가 대부분인데 경상 95%로 답하면 판정 유보다. 확률, 농도, 등급, 근거는 그대로 둔다", () => {
     const output: AcceptedModelOutput = {
-      ...acceptedSpecExample(),
+      ...acceptedSetAExample(),
       evidence: [
         { question: 1, quote: "웬일이고", type: "endings", region: "jeolla", note: "전라를 가리킨다고 본 근거" },
         { question: 2, quote: "뭐 했노", type: "endings", region: "jeolla", note: "전라를 가리킨다고 본 근거" },
@@ -531,7 +571,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
 
   it("판정 유보는 받아쓰기로 검증을 통과한 근거로만 센다", () => {
     const output: AcceptedModelOutput = {
-      ...acceptedSpecExample(),
+      ...acceptedSetAExample(),
       evidence: [
         { question: 1, quote: "억수로", type: "vocabulary", region: "gyeongsang", note: "있음" },
         { question: 2, quote: "억수로", type: "vocabulary", region: "gyeongsang", note: "다른 문항이라 버린다" },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
+import { GENERAL_QUESTION_SET_ID } from '@/lib/judge/questions';
 
 /** 심사 단계 표시. 경과 시간(2초, 6초, 12초)에 따라 4단계를 차례로 보여 준다. */
 export interface JudgingStep {
@@ -18,7 +19,10 @@ interface S4JudgingProps<T> {
   onReset: () => void;
   /** 오류로 멈췄는지 알린다(머리글에 '분석 중단'을 보여 주는 데 쓴다). */
   onFailedChange?: (failed: boolean) => void;
-  /** 요청의 questionSetId. 없으면 일반 감정(set-a). 경상 정밀 감정은 set-gs를 넘긴다. */
+  /**
+   * 요청의 questionSetId. 없으면 일반 감정 세트(기본 set-b, NEXT_PUBLIC_QUESTION_SET=set-a면 set-a).
+   * 경상 정밀 감정은 set-gs를 넘긴다.
+   */
   questionSetId?: string;
   /** 심사 단계 문구(4개). 없으면 일반 감정의 단계 */
   steps?: readonly JudgingStep[];
@@ -62,7 +66,7 @@ export default function S4Judging<T = JudgeResult>({
   onRetry,
   onReset,
   onFailedChange,
-  questionSetId = 'set-a',
+  questionSetId = GENERAL_QUESTION_SET_ID,
   steps = JUDGING_STEPS,
 }: S4JudgingProps<T>) {
   const [secElapsed, setSecElapsed] = useState(0);

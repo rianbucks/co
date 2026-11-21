@@ -24,6 +24,8 @@ export interface EvidenceCheck {
 /** 모델 호출 한 번의 결과 */
 export interface RunRecord {
   file: string;
+  /** 녹음한 문항 세트(set-a, set-b) */
+  questionSetId: string;
   expected: RegionKey;
   model: string;
   run: number;
@@ -228,6 +230,7 @@ export function summarize(records: readonly RunRecord[]): ModelSummary[] {
 
 const RUN_COLUMNS = [
   "file",
+  "question_set",
   "expected",
   "model",
   "run",
@@ -264,6 +267,7 @@ export function toRunsCsv(records: readonly RunRecord[]): string {
     lines.push(
       [
         record.file,
+        record.questionSetId,
         record.expected,
         record.model,
         record.run,
@@ -392,7 +396,11 @@ export function toDetailsMarkdown(records: readonly RunRecord[]): string {
   ];
   for (const record of records) {
     lines.push("", `## ${record.file} · ${record.model} · ${record.run}회`, "");
-    lines.push(`- 정답: ${REGION_NAMES[record.expected]}`, `- 응답 시간: ${seconds(record.latencyMs)}`);
+    lines.push(
+      `- 정답: ${REGION_NAMES[record.expected]}`,
+      `- 문항 세트: ${record.questionSetId}`,
+      `- 응답 시간: ${seconds(record.latencyMs)}`,
+    );
     if (record.status === "ok" && record.top) {
       lines.push(
         `- 판정: ${REGION_NAMES[record.top]}${record.mixed ? " (혼합)" : ""}${record.uncertain ? " (판정 유보)" : ""}, 농도 ${record.score}점, ${record.grade}등급${record.imitationSuspected ? ", 모사 의심(농도 절반)" : ""}`,

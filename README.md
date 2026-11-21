@@ -37,7 +37,8 @@ npm run dev
 | 이름 | 설명 | 기본값 |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | Gemini API 키. `.env.local`이나 배포 설정에만 둔다 | 없음 |
-| `MOCK_AI` | `true`면 Gemini를 부르지 않고 명세 4장 모델 출력 예시로 후처리까지 실행한다. 경상 정밀 감정(`set-gs`)은 경상 전용 가짜 출력(명세 12장)을 쓴다. 이 모드의 결과는 랭킹에 등록할 수 없다 | `false` |
+| `MOCK_AI` | `true`면 Gemini를 부르지 않고 명세 4장 모델 출력 예시로 후처리까지 실행한다. 녹음한 세트의 문항 수에 맞춰 `set-b`(6문항)나 `set-a`(4문항) 가짜 출력을 쓰고, 경상 정밀 감정(`set-gs`)은 경상 전용 가짜 출력(명세 12장)을 쓴다. 이 모드의 결과는 랭킹에 등록할 수 없다 | `false` |
+| `NEXT_PUBLIC_QUESTION_SET` | 일반 감정 문항 세트. 비우면 `set-b`(바꿔 말하기 4문항과 상황극 2문항, 60초), `set-a`면 이전 구성(상황극 4문항, 40초)으로 되돌린다. 빌드할 때 화면 코드에 들어가므로 바꾼 뒤 다시 빌드(배포)한다(명세 8장) | `set-b` |
 | `GEMINI_MODEL` | 판정 모델 | `gemini-3.8-flash` |
 | `GEMINI_FALLBACK_MODEL` | 첫 시도가 실패하면 재시도 1회에 쓰는 모델 | `gemini-3.5-flash-lite` |
 | `GEMINI_THINKING_LEVEL` | 사고 수준. `gemini-3.8-flash`는 `low`, `medium`, `high`만 지원한다 | `medium` |
@@ -59,7 +60,7 @@ npm run build
 MOCK 모드에서 API 호출 예:
 
 ```bash
-curl -F "audio=@recording.webm" -F "questionSetId=set-a" http://localhost:3000/api/judge
+curl -F "audio=@recording.webm" -F "questionSetId=set-b" http://localhost:3000/api/judge
 ```
 
 경상 정밀 감정은 `questionSetId`만 바꿉니다.
@@ -72,8 +73,9 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-gs" http://localhost:3000/
 
 `POST /api/judge`는 명세 7장의 요청, 응답, 오류 형식을 따릅니다.
 
-- 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`를 보냅니다. `set-a`는 일반 감정, `set-gs`는 경상 정밀 감정(명세 12장)입니다.
-- 녹음 길이(문항당 10초, 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
+- 요청은 multipart로 `audio`(녹음 파일)와 `questionSetId`를 보냅니다. `set-b`는 일반 감정 기본 세트(바꿔 말하기 4문항, 상황극 2문항), `set-a`는 일반 감정 이전 구성(상황극 4문항), `set-gs`는 경상 정밀 감정(명세 12장)입니다. 화면은 `NEXT_PUBLIC_QUESTION_SET`으로 정한 일반 감정 세트를 보냅니다.
+- 녹음 길이(문항당 10초, `set-b` 합계 60초, `set-a` 합계 40초)는 화면에서 지킵니다. 서버는 파일 크기(2MB)와 형식만 검사합니다.
+- `segments`에는 문항 종류 `kind`가 붙습니다. `convert`(바꿔 말하기)면 `prompt`는 바꿔 말할 표준어 문장이고, `question`(상황 답하기)이면 상황 문구입니다(명세 7장).
 - 성공 응답에는 전체 받아쓰기 `transcript`와 문항별 받아쓰기 `segments`가 들어가며, 둘 다 서버에 저장하지 않습니다. 근거(`evidence`)는 문항 번호 `question`을 달고 그 문항의 받아쓰기로 검증합니다. 모델이 문항별 받아쓰기를 문항 수만큼 주지 않으면 `segments`는 빈 배열이고 근거는 전체 받아쓰기로 검증합니다(명세 4장, 7장).
 - 모델은 근거를 먼저 적고 권역 확률을 나중에 정합니다. 근거마다 그 특징이 가리키는 권역(`evidence[].region`, 여러 권역에 공통이면 `common`)이 붙습니다. 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나 다른 권역을 가리키는 것이 더 많으면 `region.uncertain`이 true이고, 화면과 감정서는 "판정 유보 (추정: ○○ 방언)"으로 표시합니다(명세 4장). 유보 결과는 랭킹에 등록할 수 없습니다(403 `not_eligible`, `reason: "uncertain"`).
 - 감정에 성공하면 랭킹 등록 자격(농도, 1순위 권역, 등급, 가짜 응답 여부, flags 여부, 판정 유보 여부)을 감정 `id`로 1시간 저장합니다.
@@ -137,7 +139,8 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | `src/lib/judge/rules.ts` | 권역 이름, 판정 지역 표기(혼합 방언, 판정 유보), 농도 가중치, 등급표 |
 | `src/lib/judge/opinions.ts` | 소견 문구(등급 × 가장 높은 항목, 20개) |
 | `src/lib/judge/model-output.ts` | Gemini 출력 JSON 스키마와 검증 |
-| `src/lib/judge/prompt.ts` | 지시문과 문항 세트 |
+| `src/lib/judge/prompt.ts` | 지시문(바꿔 말하기 문항이 섞인 세트는 문항 종류와 바꿔 말하기 규칙을 넣는다) |
+| `src/lib/judge/questions.ts` | 일반 감정 문항 세트(`set-b` 기본, `set-a` 이전 구성)와 `NEXT_PUBLIC_QUESTION_SET`. 녹음 화면과 지시문이 함께 쓴다 |
 | `src/lib/judge/audio.ts` | 파일 크기와 형식 검사 |
 | `src/lib/gyeongsang/questions.ts` | 경상 정밀 감정 문항(`set-gs`). 지금은 임시 문구이고, 확정 문구는 이 파일만 고친다 |
 | `src/lib/gyeongsang/pipeline.ts` | 경상 정밀 감정 파이프라인: 서버 검사 → 호출 제한(일반 감정과 합산) → AI 호출과 재시도 → 후처리 |
