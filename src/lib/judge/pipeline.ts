@@ -56,8 +56,6 @@ export interface JudgmentSummary {
   /** 1순위 권역 */
   region: RegionKey;
   grade: Grade;
-  /** 모델이 flags(욕설, 개인정보)를 붙였는지 */
-  flagged: boolean;
   /** 판정 유보 결과인지(region.uncertain). 랭킹에 올릴 수 없다. */
   uncertain: boolean;
 }
@@ -180,7 +178,6 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
         intensity: result.intensity.score,
         region: result.region.top,
         grade: result.intensity.grade,
-        flagged: output.flags.length > 0,
         uncertain: result.region.uncertain,
       });
     } catch (error) {

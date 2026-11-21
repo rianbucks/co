@@ -78,7 +78,8 @@ function parseRegisterBody(body: unknown): { judgmentId: string; nickname: strin
 
 /**
  * POST /api/ranking. 본문에서는 judgmentId와 nickname만 쓰고, 점수 같은 다른 값은 무시한다.
- * 순서: 형식 → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답, flags, 판정 유보) → IP당 하루 한도 → 1회 등록
+ * 순서: 형식 → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답, 판정 유보) → IP당 하루 한도 → 1회 등록
+ * 음성과 받아쓰기는 저장하거나 공개하지 않으므로 녹음 내용으로는 등록을 막지 않는다.
  */
 export async function registerRanking(
   input: { body: unknown; clientIp: string | null },
@@ -95,7 +96,6 @@ export async function registerRanking(
   const record = await deps.store.getJudgment(request.judgmentId);
   if (!record) return rankingError({ error: "not_found" });
   if (record.mock) return rankingError({ error: "not_eligible", reason: "mock" });
-  if (record.flagged) return rankingError({ error: "not_eligible", reason: "flagged" });
   if (record.uncertain) return rankingError({ error: "not_eligible", reason: "uncertain" });
 
   const limit = await deps.rateLimiter.check({ ip: input.clientIp });

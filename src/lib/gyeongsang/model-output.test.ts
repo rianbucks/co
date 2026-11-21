@@ -15,7 +15,7 @@ describe("parseGsModelOutput", () => {
     expect(parse(GS_MOCK_MODEL_OUTPUT)).toEqual({ ok: true, value: example() });
   });
 
-  it("품질 불량이면 audio_quality와 flags만 남긴다", () => {
+  it("품질 불량이면 audio_quality만 남긴다(이전 형식으로 flags가 와도 무시한다)", () => {
     const value = {
       audio_quality: "noisy",
       flags: ["profanity"],
@@ -26,17 +26,16 @@ describe("parseGsModelOutput", () => {
       scores: null,
       evidence: null,
     };
-    expect(parse(value)).toEqual({ ok: true, value: { audio_quality: "noisy", flags: ["profanity"] } });
-    expect(parse({ audio_quality: "too_short", flags: [] })).toEqual({
+    expect(parse(value)).toEqual({ ok: true, value: { audio_quality: "noisy" } });
+    expect(parse({ audio_quality: "too_short" })).toEqual({
       ok: true,
-      value: { audio_quality: "too_short", flags: [] },
+      value: { audio_quality: "too_short" },
     });
   });
 
   it("not_gyeongsang이 true면 나머지 필드가 null이거나 없어도 받아들이고 경상 방언 미확인으로 남긴다", () => {
     const nulls = {
       audio_quality: "ok",
-      flags: [],
       transcript: "그래서 내가 거기 갔거든요",
       question_transcripts: null,
       not_gyeongsang: true,
@@ -44,15 +43,15 @@ describe("parseGsModelOutput", () => {
       scores: null,
       evidence: null,
     };
-    const expected = { ok: true, value: { audio_quality: "ok", flags: [], not_gyeongsang: true } };
+    const expected = { ok: true, value: { audio_quality: "ok", not_gyeongsang: true } };
     expect(parse(nulls)).toEqual(expected);
-    expect(parse({ audio_quality: "ok", flags: [], not_gyeongsang: true })).toEqual(expected);
+    expect(parse({ audio_quality: "ok", not_gyeongsang: true })).toEqual(expected);
   });
 
   it("not_gyeongsang이 true면 다른 필드가 채워져 있어도 정밀 감정하지 않는다", () => {
     expect(parse({ ...example(), not_gyeongsang: true })).toEqual({
       ok: true,
-      value: { audio_quality: "ok", flags: [], not_gyeongsang: true },
+      value: { audio_quality: "ok", not_gyeongsang: true },
     });
   });
 
@@ -75,7 +74,6 @@ describe("parseGsModelOutput", () => {
     ["성분 키 누락", { subregions: { gyeongbuk: 100 } }],
     ["범위를 벗어난 항목 점수", { scores: { vocabulary: -1, endings: 0, phonology: 0, intonation: 0 } }],
     ["인용이 문자열이 아닌 근거", { evidence: [{ question: 1, quote: 3, note: "설명" }] }],
-    ["알 수 없는 flags 값", { flags: ["spam"] }],
   ])("형식이 맞지 않으면 schema_mismatch: %s", (_, patch) => {
     expect(parse({ ...example(), ...patch })).toEqual({ ok: false, problem: "schema_mismatch" });
   });
@@ -176,7 +174,6 @@ describe("buildGsModelOutputSchema", () => {
     const properties = SCHEMA.properties as Record<string, SchemaNode>;
     expect(Object.keys(properties)).toEqual([
       "audio_quality",
-      "flags",
       "transcript",
       "question_transcripts",
       "not_gyeongsang",

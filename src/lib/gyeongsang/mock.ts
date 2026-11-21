@@ -7,7 +7,6 @@ import type { AiClient } from "../judge/ai-client";
  */
 export const GS_MOCK_MODEL_OUTPUT = {
   audio_quality: "ok",
-  flags: [],
   transcript:
     "엄마 내 지금 학교 앞이다, 금방 갈 끼라 니 내 과자 다 묵었나? 와 말도 없이 다 무뿟노 야 그거 무겁제? 이리 도, 내가 들어 주께 아지매 이 사과 얼만교? 쪼매만 깎아 주이소",
   question_transcripts: [

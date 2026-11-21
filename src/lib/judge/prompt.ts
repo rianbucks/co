@@ -45,7 +45,6 @@ export function buildSystemInstruction(questions: readonly QuestionItem[]): stri
     "scores는 어휘, 어미, 음운, 억양 각각 0~100이고, regions 1순위 권역의 특징이 얼마나 나타나는지로 매긴다. 다른 권역의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다.",
     "imitation_suspected는 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true, 같으면 false다.",
     "말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, evidence, regions, scores, imitation_suspected는 null로 둔다.",
-    "욕설이나 혐오 표현이 들리면 flags에 profanity를, 실명이나 전화번호 같은 개인정보가 들리면 personal_info를 넣는다. 없으면 빈 배열로 둔다.",
   ];
 
   return `너는 한국어 방언 감정위원이다. 첨부한 음성은 화자가 아래 문항에 순서대로 답한 녹음이다.

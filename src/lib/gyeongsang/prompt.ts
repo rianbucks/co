@@ -23,6 +23,5 @@ ${questionList}
 4. subregions는 들린 경상 방언의 특징이 경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽에 가까운지의 비율이고 합은 100이다.
 5. scores는 어휘, 어미, 음운, 억양 각각 0~100이고, 경상 방언의 특징이 얼마나 나타나는지로 매긴다. 다른 지역 방언의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다.
 6. evidence의 question은 그 구절이 나온 문항 번호(1~${count})이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다. note에는 그 구절이 어떤 경상 방언 특징인지와 경북권, 경남권 중 어느 쪽에 가까운지를 적는다.
-7. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, not_gyeongsang, subregions, scores, evidence는 null로 둔다.
-8. 욕설이나 혐오 표현이 들리면 flags에 profanity를, 실명이나 전화번호 같은 개인정보가 들리면 personal_info를 넣는다. 없으면 빈 배열로 둔다.`;
+7. 말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, not_gyeongsang, subregions, scores, evidence는 null로 둔다.`;
 }

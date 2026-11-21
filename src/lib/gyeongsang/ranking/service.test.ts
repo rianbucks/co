@@ -21,7 +21,7 @@ const ENTRY_ID = "gr_00000000000a";
 const CLIENT_IP = "203.0.113.7";
 const T0 = Date.parse("2026-11-20T14:00:00+09:00");
 
-const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false, flagged: false };
+const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false };
 
 let clock: number;
 let state: MemoryGsRankingState;
@@ -138,9 +138,9 @@ describe("registerGsRanking", () => {
     expect((await register(BODY)).body).toEqual({ error: "not_eligible", reason: "mock" });
   });
 
-  it("flags가 붙은 정밀 감정 결과는 403 not_eligible(flagged)", async () => {
-    await store.saveJudgment(JUDGMENT_ID, { ...RECORD, flagged: true });
-    expect((await register(BODY)).body).toEqual({ error: "not_eligible", reason: "flagged" });
+  it("녹음 내용으로는 막지 않는다: 이전에 flags가 붙어 저장된 기록도 등록된다", async () => {
+    await store.saveJudgment(JUDGMENT_ID, { ...RECORD, flagged: true } as GsJudgmentRecord);
+    expect((await register(BODY)).status).toBe(201);
   });
 
   it("감정 기록이 없거나 1시간이 지났으면 404 not_found", async () => {

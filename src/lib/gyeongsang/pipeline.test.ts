@@ -148,7 +148,7 @@ describe("judgeGyeongsang: 호출 제한", () => {
 
 describe("judgeGyeongsang: 반려", () => {
   it.each(["too_short", "no_speech", "noisy"] as const)("품질 불량(%s)이면 422 rejected", async (quality) => {
-    const { ai } = scriptedAi(JSON.stringify({ audio_quality: quality, flags: [] }));
+    const { ai } = scriptedAi(JSON.stringify({ audio_quality: quality }));
     expect(await judgeGyeongsang(makeInput(), makeDeps({ ai }))).toEqual({
       status: 422,
       body: { error: "rejected", reason: quality },
@@ -158,7 +158,6 @@ describe("judgeGyeongsang: 반려", () => {
   it("경상 방언으로 보기 어렵다고 표시하면 422 rejected, reason은 not_gyeongsang", async () => {
     const output = {
       audio_quality: "ok",
-      flags: [],
       transcript: "오랜만이야 잘 지냈어?",
       question_transcripts: null,
       not_gyeongsang: true,
@@ -225,7 +224,7 @@ describe("judgeGyeongsang: AI 실패와 재시도(일반 감정과 같은 규칙
 });
 
 describe("judgeGyeongsang: 정밀 랭킹 등록 자격 기록", () => {
-  it("성공하면 id, 경상 농도, 경북권 비율, flags 여부만 기록한다(신고 원산지와 받아쓰기는 없다)", async () => {
+  it("성공하면 id, 경상 농도, 경북권 비율만 기록한다(신고 원산지와 받아쓰기는 없다)", async () => {
     const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
     const response = await judgeGyeongsang(makeInput(), makeDeps({ recordJudgment }));
     expect(response.status).toBe(200);
@@ -234,22 +233,21 @@ describe("judgeGyeongsang: 정밀 랭킹 등록 자격 기록", () => {
       id: "g_000000000001",
       intensity: 69,
       gyeongbuk: 64,
-      flagged: false,
     });
   });
 
-  it("모델이 flags를 붙이면 flagged로 기록한다", async () => {
+  it("녹음 내용으로는 등록을 막지 않는다: 모델이 이전 형식으로 flags를 붙여도 기록에 남기지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
     const { ai } = scriptedAi(JSON.stringify({ ...GS_MOCK_MODEL_OUTPUT, flags: ["personal_info"] }));
     await judgeGyeongsang(makeInput(), makeDeps({ ai, recordJudgment }));
-    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ flagged: true }));
+    expect(recordJudgment).toHaveBeenCalledWith({ id: "g_000000000001", intensity: 69, gyeongbuk: 64 });
   });
 
   it("품질 불량, 경상 방언 미확인, AI 실패, 호출 제한이면 기록하지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
-    const notGyeongsang = JSON.stringify({ audio_quality: "ok", flags: [], not_gyeongsang: true });
+    const notGyeongsang = JSON.stringify({ audio_quality: "ok", not_gyeongsang: true });
     for (const ai of [
-      scriptedAi(JSON.stringify({ audio_quality: "noisy", flags: [] })).ai,
+      scriptedAi(JSON.stringify({ audio_quality: "noisy" })).ai,
       scriptedAi(notGyeongsang).ai,
       scriptedAi(new Error("1"), new Error("2")).ai,
     ]) {
