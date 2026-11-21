@@ -322,131 +322,149 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
         ? '문항을 읽고 녹음 시작을 눌러 주십시오'
         : '녹음 종료';
 
+  const target = currentQuestion.target;
+  const timerText = `00:${secLeft < 10 ? `0${secLeft}` : secLeft}`;
+
+  /*
+   * 배치: 휴대폰(한 열)은 안내 → 바꿔 말할 문장 → 타이머와 녹음 시작 버튼 → 주의 문구 순서다.
+   * 안내, 문장, 시작 버튼이 스크롤 없이 한 화면(375×667 이상)에 들어오도록 휴대폰에서는 여백과 파형을 줄인다.
+   * 넓은 화면(lg)은 왼쪽에 문항 카드와 주의 문구, 오른쪽에 파형·타이머·버튼을 둔다.
+   * 휴대폰은 flex로 쌓는다. 전역 CSS의 '.screen-glass > .grid { gap: 24px }'를 피해 간격을 줄이기 위해서다.
+   */
   return (
-    <div className="screen-glass p-5 sm:p-7 lg:p-10">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 items-stretch">
+    <div className="screen-glass p-4 sm:p-7 lg:p-10">
+      <div className="flex flex-col gap-3 sm:gap-6 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-6">
 
-        {/* Left Column: Situation Prompt & Instructions (scroll-mt: 고정 머리글 높이만큼 띄운다) */}
-        <div
+        {/* 문항 카드 (scroll-mt: 고정 머리글 높이만큼 띄운다) */}
+        <section
           ref={questionCardRef}
-          className="flex scroll-mt-36 flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/70 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:col-span-6"
+          aria-label={`문항 ${currentIdx + 1}`}
+          className="scroll-mt-[136px] rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-3.5 shadow-2xl backdrop-blur-xl sm:p-6 lg:col-span-6 lg:col-start-1 lg:row-start-1 lg:p-8"
         >
-          <div>
-            {/* Step Counter Pill & Reset */}
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="record-question-index">
-                  문항 {currentIdx + 1} / {questions.length}
-                </span>
-                <span className="text-xs font-medium text-zinc-400">
-                  {kind === 'convert' ? '바꿔 말하기' : '상황극 녹음'}
-                </span>
-              </div>
-
-              <button
-                onClick={handleReset}
-                className="rounded-full border border-zinc-700/60 bg-zinc-800/60 px-3 py-1 text-xs font-medium text-zinc-400 transition hover:bg-zinc-700 hover:text-white"
-              >
-                처음부터 다시
-              </button>
+          {/* 문항 번호, 종류, 처음부터 다시 */}
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="record-question-index">
+                문항 {currentIdx + 1} / {questions.length}
+              </span>
+              <span className="text-sm font-medium text-zinc-300">
+                {kind === 'convert' ? '바꿔 말하기' : '상황극 녹음'}
+              </span>
             </div>
 
-            {/* 형식 전환: 바꿔 말하기가 끝나고 상황극이 시작될 때 */}
-            {formatChanged && (
-              <div role="status" className="mt-6 break-keep rounded-2xl border border-[#416785] bg-[#202f3b] p-4">
-                <p className="text-xs font-semibold text-[#9bbbd5]">형식이 바뀝니다</p>
-                <p className="mt-1 text-base font-semibold text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                  문장을 바꿔 말하는 문항은 끝났습니다. 아래 상황에서 {currentQuestion.target}에게 직접 말하듯 답해 주십시오.
+            <button
+              onClick={handleReset}
+              className="rounded-full border border-zinc-700/60 bg-zinc-800/60 px-3 py-1 text-xs font-medium text-zinc-400 transition hover:bg-zinc-700 hover:text-white"
+            >
+              처음부터 다시
+            </button>
+          </div>
+
+          <div className="mt-3 break-keep sm:mt-4">
+            {kind === 'convert' ? (
+              <>
+                {/* ① 안내: 먼저 읽도록 위에 크게 둔다 */}
+                <p className="text-lg font-bold leading-snug text-white">
+                  아래 문장을 {target}에게 말하듯 평소 말투로 바꿔 말해 주십시오.
                 </p>
-              </div>
-            )}
+                <p className="mt-1 text-base font-medium text-zinc-300">글자 그대로 읽지 않으셔도 됩니다.</p>
 
-            {/* Target & Situation Card */}
-            <div className="mt-6 break-keep">
-              <p className="record-target">대화 상대 <strong>{currentQuestion.target}</strong></p>
-
-              {kind === 'convert' ? (
-                <>
-                  <p className="mt-4 text-sm leading-relaxed text-zinc-300">
-                    다음 문장을 {currentQuestion.target}에게 말하듯 평소 말투로 바꿔 말해 주십시오. 글자 그대로 읽지 않으셔도
-                    됩니다.
+                {/* ② 바꿔 말할 문장: 배경과 테두리로 구분한 인용 상자 */}
+                <figure className="mt-3 rounded-2xl border border-[#416785] bg-black/40 px-4 py-2.5 sm:py-3">
+                  <figcaption className="text-xs font-semibold text-[#9bbbd5]">바꿔 말할 문장</figcaption>
+                  <blockquote className="recording-prompt mt-1 text-balance text-xl font-bold leading-snug text-white">
+                    &ldquo;{currentQuestion.situation}&rdquo;
+                  </blockquote>
+                </figure>
+              </>
+            ) : (
+              <>
+                {/* 형식 전환: 바꿔 말하기가 끝나고 상황극이 시작될 때 */}
+                {formatChanged ? (
+                  <div role="status" className="rounded-2xl border border-[#416785] bg-[#202f3b] px-4 py-2.5 sm:py-3">
+                    <p className="text-xs font-semibold text-[#9bbbd5]">형식이 바뀝니다 · 바꿔 말하기는 끝났습니다</p>
+                    <p className="mt-1 text-lg font-bold leading-snug text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
+                  </div>
+                ) : (
+                  mixedKinds && (
+                    <p className="text-lg font-bold leading-snug text-white">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
+                  )
+                )}
+                {/*
+                  바꿔 말하기가 섞인 세트(set-b)는 상황 문장에 대화 상대가 나오므로 '대화 상대' 줄을 빼서
+                  휴대폰 한 화면에 안내, 상황 문장, 시작 버튼이 함께 들어오게 한다. 상황극만 있는 세트는 그대로 둔다.
+                */}
+                {!mixedKinds && (
+                  <p className="record-target">
+                    대화 상대 <strong>{target}</strong>
                   </p>
-                  <h3 className="recording-prompt mt-3 text-3xl font-bold leading-snug tracking-tight text-white">
-                    {currentQuestion.situation}
-                  </h3>
-                </>
-              ) : (
-                <>
-                  {mixedKinds && !formatChanged && (
-                    <p className="mt-4 text-sm leading-relaxed text-zinc-300">이번에는 상황에 맞게 자유롭게 말해 주십시오.</p>
-                  )}
-                  <h3 className="recording-prompt mt-4 text-xl font-bold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl">
-                    {currentQuestion.situation}
-                  </h3>
-                </>
-              )}
-            </div>
+                )}
+                {/* 상황 문장이 곧 안내다 */}
+                <h3
+                  className={`recording-prompt text-xl font-bold leading-snug tracking-tight text-white ${mixedKinds ? 'mt-3' : 'mt-1.5'}`}
+                >
+                  {currentQuestion.situation}
+                </h3>
+              </>
+            )}
           </div>
+        </section>
 
-          <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs font-medium text-amber-300/90">
-            ※ 설명하지 마시고, 실제로 그 사람에게 말하듯이 답변해 주십시오.
-          </div>
-        </div>
-
-        {/* Right Column: Studio Waveform & Controls */}
-        <div className="flex flex-col justify-between gap-6 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-6 backdrop-blur-xl sm:p-8 lg:col-span-6">
+        {/* 녹음 패널: 파형, 타이머, 버튼 */}
+        <div className="flex flex-col gap-3 rounded-3xl border border-zinc-800/80 bg-zinc-900/40 p-4 backdrop-blur-xl sm:gap-6 sm:p-6 lg:col-span-6 lg:col-start-7 lg:row-span-2 lg:row-start-1 lg:justify-between lg:p-8">
           <div>
-            {/* Large Audio Waveform Visualizer */}
-            <div className="mt-6 flex flex-col items-center justify-center rounded-3xl border border-zinc-800/80 bg-black/60 p-8 shadow-inner">
-              <div className="flex h-20 items-center justify-center gap-2">
-                {[...Array(16)].map((_, i) => {
-                  const active = phase === 'recording';
-                  const height = active ? Math.max(15, Math.min(100, audioLevel * (0.8 + (i % 4) * 0.25))) : 12;
-                  return (
-                    <div
-                      key={i}
-                      className={`w-1.5 rounded-full transition-all duration-75 ${
-                        active ? 'bg-gradient-to-t from-indigo-500 via-purple-400 to-pink-400 shadow-sm shadow-indigo-500/40' : 'bg-zinc-800'
-                      }`}
-                      style={{ height: `${height}%` }}
-                    />
-                  );
-                })}
+            <div className="rounded-2xl border border-zinc-800/80 bg-black/60 px-4 py-2.5 shadow-inner lg:rounded-3xl lg:p-8">
+              {/* 휴대폰: 파형과 타이머를 한 줄에 / 넓은 화면: 파형 아래에 타이머 */}
+              <div className="flex items-center justify-between gap-3 lg:flex-col lg:justify-center lg:gap-0">
+                <div className="flex h-6 items-center gap-1 lg:h-20 lg:justify-center lg:gap-2" aria-hidden="true">
+                  {[...Array(16)].map((_, i) => {
+                    const active = phase === 'recording';
+                    const height = active ? Math.max(15, Math.min(100, audioLevel * (0.8 + (i % 4) * 0.25))) : 12;
+                    return (
+                      <div
+                        key={i}
+                        className={`w-1 rounded-full transition-all duration-75 lg:w-1.5 ${
+                          active ? 'bg-gradient-to-t from-indigo-500 via-purple-400 to-pink-400 shadow-sm shadow-indigo-500/40' : 'bg-zinc-800'
+                        }`}
+                        style={{ height: `${height}%` }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* 남은 시간 */}
+                <div className="shrink-0 text-right lg:mt-6 lg:text-center">
+                  <div className="font-mono text-[26px] font-black leading-tight tracking-widest text-white lg:text-[36px]">
+                    {timerText}
+                  </div>
+                  <div className="mt-1 hidden text-[11px] font-medium text-zinc-500 lg:block">{timerHint}</div>
+                </div>
               </div>
 
-              {/* Digital Countdown Timer */}
-              <div className="mt-6 text-center">
-                <div className="font-mono text-3xl font-black tracking-widest text-white sm:text-4xl">
-                  00:{secLeft < 10 ? `0${secLeft}` : secLeft}
-                </div>
-                <div className="mt-1 text-[11px] font-medium text-zinc-500">
-                  {timerHint}
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mt-5 h-2 w-full max-w-xs overflow-hidden rounded-full bg-zinc-800">
+              {/* 진행 막대 */}
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-800 lg:mx-auto lg:mt-5 lg:max-w-xs">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${secLeft <= 3 ? 'bg-red-500' : 'bg-white'}`}
                   style={{ width: `${(secLeft / SECONDS_PER_QUESTION) * 100}%` }}
                 />
               </div>
+              {/* 휴대폰에서는 안내를 진행 막대 아래 한 줄에 둔다 */}
+              <div className="mt-1.5 text-[11px] font-medium text-zinc-500 lg:hidden">{timerHint}</div>
             </div>
 
             {errorMessage && (
-              <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300">
+              <div className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-3.5 text-sm text-red-300">
                 <p className="font-semibold">{errorMessage}</p>
               </div>
             )}
           </div>
 
-          {/* Action Buttons */}
+          {/* 버튼: 녹음 시작을 눌러야 타이머가 흐른다 */}
           <div className="space-y-3">
             {(phase === 'ready' || phase === 'paused') && (
               <button
                 onClick={phase === 'ready' ? handleStartFirstRecording : handleStartNextQuestion}
-                className="record-start-button flex w-full items-center justify-center rounded-full bg-white py-4 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98]"
+                className="record-start-button flex w-full items-center justify-center rounded-full bg-white py-3.5 text-sm font-bold text-black shadow-xl shadow-white/10 transition hover:bg-zinc-200 active:scale-[0.98] sm:py-4"
               >
                 <span>녹음 시작</span>
               </button>
@@ -466,7 +484,7 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
             )}
 
             {phase === 'processing' && (
-              <div className="flex items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-4 text-xs font-medium text-zinc-300">
+              <div className="flex items-center justify-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 py-4 text-sm font-medium text-zinc-300">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 <span>음성 데이터 처리 중...</span>
               </div>
@@ -480,6 +498,11 @@ export default function S3Recorder({ onComplete, onResetAll, questions = GENERAL
             </button>
           </div>
         </div>
+
+        {/* 주의 문구: 휴대폰에서는 버튼 아래, 넓은 화면에서는 왼쪽 문항 카드 아래 */}
+        <p className="break-keep rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm font-medium leading-relaxed text-amber-300/90 lg:col-span-6 lg:col-start-1 lg:row-start-2 lg:self-start">
+          ※ 설명하지 마시고, 실제로 그 사람에게 말하듯이 답변해 주십시오.
+        </p>
 
       </div>
     </div>
