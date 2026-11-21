@@ -22,6 +22,7 @@ const RECORD: JudgmentRecord = {
   grade: 4,
   mock: false,
   flagged: false,
+  uncertain: false,
 };
 
 function entry(overrides: Partial<RankingEntry> & Pick<RankingEntry, "id">): RankingEntry {
@@ -73,6 +74,11 @@ describe.each(implementations)("%s 랭킹 저장소", (_name, makeStore) => {
       ip: "203.0.113.7",
     } as JudgmentRecord);
     await expect(store.getJudgment("j_000000000001")).resolves.toEqual(RECORD);
+  });
+
+  it("판정 유보 여부도 그대로 남는다", async () => {
+    await store.saveJudgment("j_000000000002", { ...RECORD, uncertain: true });
+    await expect(store.getJudgment("j_000000000002")).resolves.toEqual({ ...RECORD, uncertain: true });
   });
 
   it("감정 1건당 한 번만 등록한다", async () => {
@@ -246,6 +252,16 @@ describe("Upstash 랭킹 저장소의 요청", () => {
       fetcher: async () => Response.json([{ error: "ERR something" }]),
     });
     await expect(commandError.getJudgment("j_000000000001")).rejects.toThrow("ERR something");
+  });
+
+  it("판정 유보 여부가 생기기 전에 남긴 기록은 유보가 아닌 것으로 읽는다", async () => {
+    const legacy = { intensity: 68, region: "gyeongsang", grade: 4, mock: false, flagged: false };
+    const store = createUpstashRankingStore({
+      url: "https://fake.upstash.io",
+      token: "test-token",
+      fetcher: async () => Response.json([{ result: JSON.stringify(legacy) }]),
+    });
+    await expect(store.getJudgment("j_000000000001")).resolves.toEqual({ ...legacy, uncertain: false });
   });
 
   it("저장된 값이 깨져 있으면 기록이 없는 것으로 본다", async () => {

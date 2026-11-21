@@ -33,9 +33,9 @@ function registerErrorMessage(error: unknown, reason: unknown): string {
     case 'not_found':
       return '등록 가능 시간(감정 후 1시간)이 지났거나 감정 기록을 찾을 수 없습니다. 새로 감정해 주십시오.';
     case 'not_eligible':
-      return reason === 'mock'
-        ? '가짜 응답 모드(MOCK)로 받은 결과는 랭킹에 등록할 수 없습니다.'
-        : '욕설이나 개인정보가 감지된 녹음의 결과는 랭킹에 등록할 수 없습니다.';
+      if (reason === 'mock') return '가짜 응답 모드(MOCK)로 받은 결과는 랭킹에 등록할 수 없습니다.';
+      if (reason === 'uncertain') return '판정 유보 결과는 랭킹에 등록할 수 없습니다.';
+      return '욕설이나 개인정보가 감지된 녹음의 결과는 랭킹에 등록할 수 없습니다.';
     case 'already_registered':
       return '이미 랭킹에 등록된 감정 결과입니다. 감정 1건당 한 번만 등록할 수 있습니다.';
     case 'rate_limited':
@@ -117,6 +117,8 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
   const listData = list.status === 'ready' ? list.data : null;
   const mine = listData?.me ?? (registered && registered.id === entryId ? registered : null);
   const entryMissing = Boolean(entryId) && !mine && list.status === 'ready';
+  /** 판정 유보 결과는 지역을 확정하지 못했으므로 등록할 수 없다(서버도 403으로 막는다). */
+  const uncertain = Boolean(result?.region.uncertain);
   const nicknameLength = [...nickname.trim()].length;
 
   const handleReload = () => {
@@ -126,7 +128,7 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!result || submitting || entryId || formError?.final) return;
+    if (!result || uncertain || submitting || entryId || formError?.final) return;
 
     const checked = checkNickname(nickname);
     if (!checked.ok) {
@@ -175,7 +177,7 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
                 사투리 농도 랭킹
               </p>
               <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
-                {!result ? '농도 랭킹' : mine ? '랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
+                {!result ? '농도 랭킹' : mine ? '랭킹 등록 완료' : uncertain ? '농도 랭킹' : '닉네임을 남겨 주십시오'}
               </h2>
               <p className="mt-2 text-xs leading-relaxed text-zinc-400">
                 농도 점수가 높은 순으로 상위 50명을 보여 드립니다. 점수가 같으면 먼저 등록한 분이 앞섭니다.
@@ -234,6 +236,14 @@ export default function S7Ranking({ result, entryId, onRegistered, onBack, onApp
             ) : entryId ? (
               <div className="mt-6 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-center text-xs text-zinc-400">
                 내 순위를 불러오는 중입니다...
+              </div>
+            ) : uncertain ? (
+              <div className="mt-6 break-keep rounded-2xl border border-zinc-800/80 bg-black/50 p-5 text-center">
+                <p className="text-balance text-sm font-semibold text-zinc-200">판정 유보 결과는 랭킹에 등록할 수 없습니다</p>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-400">
+                  확인된 근거가 1순위 권역을 충분히 뒷받침하지 않아 지역을 확정하지 못한 결과입니다. 다시 감정해
+                  판정이 나오면 등록할 수 있습니다.
+                </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="mt-6 space-y-3" noValidate>

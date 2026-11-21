@@ -41,7 +41,7 @@ export type RankingErrorBody =
   | { error: "invalid_request" }
   | { error: "invalid_nickname"; reason: "length" | "characters" }
   | { error: "not_found" }
-  | { error: "not_eligible"; reason: "mock" | "flagged" }
+  | { error: "not_eligible"; reason: "mock" | "flagged" | "uncertain" }
   | { error: "already_registered" }
   | { error: "rate_limited" }
   | { error: "unauthorized" }

@@ -277,7 +277,7 @@ describe("judge: AI 실패와 재시도", () => {
 });
 
 describe("judge: 랭킹 등록 자격 기록", () => {
-  it("성공하면 id, 농도, 1순위 권역, 등급, flags 여부만 기록한다", async () => {
+  it("성공하면 id, 농도, 1순위 권역, 등급, flags 여부, 판정 유보 여부만 기록한다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
 
     const response = await judge(makeInput(), makeDeps({ recordJudgment }));
@@ -290,6 +290,7 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       region: "gyeongsang",
       grade: 4,
       flagged: false,
+      uncertain: false,
     });
   });
 
@@ -307,6 +308,23 @@ describe("judge: 랭킹 등록 자격 기록", () => {
 
     expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 24, grade: 2 } });
     expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 24, grade: 2 }));
+  });
+
+  it("근거가 1순위 권역을 뒷받침하지 못하면 판정 유보로 기록한다(랭킹 등록을 막는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const { ai } = scriptedAi(
+      JSON.stringify({
+        ...SPEC_MODEL_OUTPUT_EXAMPLE,
+        evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence.map((item) => ({ ...item, region: "jeolla" })),
+      }),
+    );
+
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.body).toMatchObject({ region: { top: "gyeongsang", uncertain: true } });
+    expect(recordJudgment).toHaveBeenCalledWith(
+      expect.objectContaining({ region: "gyeongsang", uncertain: true }),
+    );
   });
 
   it("모델이 flags를 붙이면 flagged로 기록한다", async () => {
