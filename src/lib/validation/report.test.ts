@@ -191,7 +191,8 @@ describe("summarize", () => {
     );
     expect([flash.evidenceDropped, flash.evidenceTotal]).toEqual([1, 3]);
     expect(flash.latency).toEqual({ avg: 16_500, p50: 5_000, p95: 60_000, max: 60_000 });
-    expect(flash.overFirstAttemptLimit).toBe(2);
+    // 운영 첫 시도 제한(25초)을 넘긴 호출: 60초 1건(21초 호출은 제한 안이다)
+    expect(flash.overFirstAttemptLimit).toBe(1);
     expect(flash.avgUsage).toEqual(usage);
     expect(flash.avgCostUsd).toBeCloseTo(0.0045, 10);
     expect(unknown.avgCostUsd).toBeNull();

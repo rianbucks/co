@@ -77,7 +77,7 @@ describe("judgeGyeongsang: 성공", () => {
     });
   });
 
-  it("AI에 오디오, 경상 전용 지시문, 경상 전용 스키마를 넘기고 첫 시도 제한 시간은 20초다", async () => {
+  it("AI에 오디오, 경상 전용 지시문, 경상 전용 스키마를 넘기고 첫 시도 제한 시간은 25초다", async () => {
     const { ai, requests } = scriptedAi(MOCK_TEXT);
     const audio = wavFile(128);
 
@@ -90,7 +90,7 @@ describe("judgeGyeongsang: 성공", () => {
         audio: new Uint8Array(await audio.arrayBuffer()),
         mimeType: "audio/wav",
         responseSchema: buildGsModelOutputSchema(4),
-        timeoutMs: 20_000,
+        timeoutMs: 25_000,
         useFallbackModel: false,
       },
     ]);
@@ -194,18 +194,18 @@ describe("judgeGyeongsang: AI 실패와 재시도(일반 감정과 같은 규칙
     expect(requests).toHaveLength(2);
   });
 
-  it("재시도는 전체 25초 중 남은 시간만 쓴다", async () => {
+  it("재시도는 전체 40초 중 남은 시간만 쓴다", async () => {
     let clock = 0;
     const timeouts: number[] = [];
     const ai: AiClient = {
       async generate(request) {
         timeouts.push(request.timeoutMs);
-        clock += 20_000;
+        clock += 25_000;
         throw new Error("timeout");
       },
     };
     await judgeGyeongsang(makeInput(), makeDeps({ ai, now: () => clock }));
-    expect(timeouts).toEqual([20_000, 5_000]);
+    expect(timeouts).toEqual([25_000, 15_000]);
   });
 
   it("로그에는 받아쓰기와 모델 출력을 남기지 않는다", async () => {

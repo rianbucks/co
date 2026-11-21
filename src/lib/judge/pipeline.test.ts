@@ -111,7 +111,7 @@ describe("judge: 성공", () => {
     expect(body.evidence).toEqual(SET_A_MODEL_OUTPUT_EXAMPLE.evidence);
   });
 
-  it("AI에 오디오, 지시문, 문항, 스키마를 넘기고 첫 시도 제한 시간은 20초다", async () => {
+  it("AI에 오디오, 지시문, 문항, 스키마를 넘기고 첫 시도 제한 시간은 25초다", async () => {
     const { ai, requests } = scriptedAi(SPEC_OUTPUT_TEXT);
     const audio = wavFile(128);
 
@@ -124,7 +124,7 @@ describe("judge: 성공", () => {
       audio: new Uint8Array(await audio.arrayBuffer()),
       mimeType: "audio/wav",
       responseSchema: buildModelOutputSchema(6),
-      timeoutMs: 20_000,
+      timeoutMs: 25_000,
       useFallbackModel: false,
     });
   });
@@ -243,20 +243,20 @@ describe("judge: AI 실패와 재시도", () => {
     expect(requests).toHaveLength(2);
   });
 
-  it("재시도는 전체 25초 중 남은 시간만 쓴다", async () => {
+  it("재시도는 전체 40초 중 남은 시간만 쓴다", async () => {
     let clock = 0;
     const timeouts: number[] = [];
     const ai: AiClient = {
       async generate(request) {
         timeouts.push(request.timeoutMs);
-        clock += 20_000;
+        clock += 25_000;
         throw new Error("timeout");
       },
     };
 
     await judge(makeInput(), makeDeps({ ai, now: () => clock }));
 
-    expect(timeouts).toEqual([20_000, 5_000]);
+    expect(timeouts).toEqual([25_000, 15_000]);
   });
 
   it("남은 시간이 1초보다 적으면 재시도하지 않는다", async () => {
@@ -264,7 +264,8 @@ describe("judge: AI 실패와 재시도", () => {
     const events: string[] = [];
     const ai: AiClient = {
       async generate() {
-        clock += 24_500;
+        // 첫 시도가 제한(25초)을 넘겨 끝나 전체 40초 중 0.5초만 남은 경우
+        clock += 39_500;
         throw new Error("timeout");
       },
     };

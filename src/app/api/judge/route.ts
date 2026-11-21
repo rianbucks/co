@@ -20,7 +20,10 @@ import { rateLimiterFromEnv } from "@/lib/rate-limit";
 
 // runtime은 지정하지 않는다. Cache Components가 켜져 있으면 쓸 수 없고, 기본값이 Node.js다.
 
-/** 초 단위. AI 호출은 최대 25초 안에 끝나도록 잡았고, 업로드와 후처리 여유를 둔다. */
+/**
+ * 초 단위. 정적 값이어야 한다. AI 호출은 최대 40초(src/lib/judge/timing.ts의 AI_TOTAL_MS) 안에 끝나도록 잡았고,
+ * 업로드, 호출 제한, 후처리 여유로 20초를 더 둔다. AI 전체 제한보다 커야 한다(테스트로 확인한다).
+ */
 export const maxDuration = 60;
 
 /** multipart 본문에서 파일 외 부분(경계 문자열, 헤더, questionSetId)에 주는 여유 */
