@@ -6,7 +6,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
 import { INSTRUCTION_ATTEMPT_NOTICE } from '@/lib/judge/instruction-rule';
 import type { RankingEntryView, RankingList, RankingRegistered } from '@/lib/ranking/contract';
-import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
+import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname, renamedNotice } from '@/lib/ranking/nickname';
 import { regionVerdictLabel } from '@/lib/judge/rules';
 import RankingRow from '@/components/common/RankingRow';
 
@@ -71,6 +71,8 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
   const [formError, setFormError] = useState<{ message: string; final: boolean } | null>(null);
   /** 방금 등록한 항목. 목록을 다시 받기 전까지 내 순위를 보여 준다. */
   const [registered, setRegistered] = useState<RankingEntryView | null>(null);
+  /** 등록할 때 입력한 닉네임. 같은 닉네임이 있어 서버가 숫자를 붙였는지 알리는 데 쓴다. */
+  const [requestedNickname, setRequestedNickname] = useState<string | null>(null);
   const [list, setList] = useState<ListState>({ status: 'loading' });
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -140,6 +142,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
       }
 
       const { entry } = data as RankingRegistered;
+      setRequestedNickname(checked.value);
       setRegistered(entry);
       onRegistered(entry.id);
     } catch (err) {
@@ -152,6 +155,9 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
 
   const submitDisabled = submitting || Boolean(formError?.final);
   const ineligible = ineligibleNotice(result);
+  const renamed = registered && requestedNickname && mine?.id === registered.id
+    ? renamedNotice(requestedNickname, registered.nickname)
+    : null;
 
   return (
     <div className="screen-glass p-5 sm:p-7 lg:p-10">
@@ -195,6 +201,8 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
                   {listData && <span>전체 {listData.total.toLocaleString('ko-KR')}명 중 · </span>}
                   닉네임 <span className="font-semibold text-zinc-200">{mine.nickname}</span>
                 </div>
+                {/* 같은 닉네임이 있어 뒤에 숫자가 붙었으면 알린다 */}
+                {renamed && <p className="mt-2 text-xs leading-relaxed text-zinc-300">{renamed}</p>}
               </div>
             ) : entryMissing ? (
               <div className="mt-3 rounded-2xl border border-zinc-800/60 bg-black/40 p-4 text-xs leading-relaxed text-zinc-400">

@@ -60,6 +60,29 @@ beforeEach(async () => {
 });
 
 describe("registerRanking", () => {
+  it("같은 닉네임이 이미 있으면 뒤에 숫자를 붙여 등록하고, 응답에 최종 닉네임을 담는다", async () => {
+    await store.saveJudgment("j_00000000000a", RECORD);
+    await store.saveJudgment("j_00000000000b", RECORD);
+    const first = await register({ judgmentId: "j_00000000000a", nickname: "냥이" }, { newEntryId: () => "r_0000000000a1" });
+    const second = await register({ judgmentId: "j_00000000000b", nickname: "냥이" }, { newEntryId: () => "r_0000000000a2" });
+    expect(first).toMatchObject({ status: 201, body: { entry: { id: "r_0000000000a1", nickname: "냥이" } } });
+    expect(second).toMatchObject({ status: 201, body: { entry: { id: "r_0000000000a2", nickname: "냥이1" } } });
+    // 저장된 항목도 최종 닉네임이다(목록과 내 순위가 이 이름으로 나온다).
+    const page = await store.list(50, "r_0000000000a2");
+    expect(page.me?.entry.nickname).toBe("냥이1");
+  });
+
+  it("닉네임 검사는 입력 닉네임에만 한다: 10자 닉네임이 겹쳐 11자가 되어도 등록된다", async () => {
+    await store.saveJudgment("j_00000000000a", RECORD);
+    await store.saveJudgment("j_00000000000b", RECORD);
+    await register({ judgmentId: "j_00000000000a", nickname: "가나다라마바사아자차" }, { newEntryId: () => "r_0000000000a1" });
+    const second = await register(
+      { judgmentId: "j_00000000000b", nickname: "가나다라마바사아자차" },
+      { newEntryId: () => "r_0000000000a2" },
+    );
+    expect(second).toMatchObject({ status: 201, body: { entry: { nickname: "가나다라마바사아자차1" } } });
+  });
+
   it("감정할 때 서버가 남긴 농도, 지역, 등급으로 등록하고 201과 순위를 돌려준다", async () => {
     const outcome = await register({ judgmentId: JUDGMENT_ID, nickname: "경상도사람" });
 

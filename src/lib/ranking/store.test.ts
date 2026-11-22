@@ -82,7 +82,7 @@ describe.each(implementations)("%s 랭킹 저장소", (_name, makeStore) => {
   });
 
   it("감정 1건당 한 번만 등록한다", async () => {
-    await expect(store.register("j_000000000001", entry({ id: "r_000000000001" }))).resolves.toBe(1);
+    await expect(store.register("j_000000000001", entry({ id: "r_000000000001" }))).resolves.toMatchObject({ rank: 1 });
     await expect(
       store.register("j_000000000001", entry({ id: "r_000000000002", nickname: "다른이름" })),
     ).resolves.toBeNull();
@@ -95,25 +95,25 @@ describe.each(implementations)("%s 랭킹 저장소", (_name, makeStore) => {
   it("농도가 높은 순, 같으면 먼저 등록한 순으로 줄 세우고 등록 순위를 돌려준다", async () => {
     await expect(
       store.register("j_000000000001", entry({ id: "r_00000000000a", intensity: 50 })),
-    ).resolves.toBe(1);
+    ).resolves.toMatchObject({ rank: 1 });
     await expect(
       store.register(
         "j_000000000002",
         entry({ id: "r_00000000000b", intensity: 90, registeredAt: "2026-11-20T10:05:00+09:00" }),
       ),
-    ).resolves.toBe(1);
+    ).resolves.toMatchObject({ rank: 1 });
     await expect(
       store.register(
         "j_000000000003",
         entry({ id: "r_00000000000c", intensity: 50, registeredAt: "2026-11-20T09:59:00+09:00" }),
       ),
-    ).resolves.toBe(2);
+    ).resolves.toMatchObject({ rank: 2 });
     await expect(
       store.register(
         "j_000000000004",
         entry({ id: "r_00000000000d", intensity: 50, registeredAt: "2026-11-20T10:30:00+09:00" }),
       ),
-    ).resolves.toBe(4);
+    ).resolves.toMatchObject({ rank: 4 });
 
     const page = await store.list(50);
     expect(page.entries.map(({ rank, entry: item }) => [rank, item.id])).toEqual([
@@ -158,14 +158,16 @@ describe.each(implementations)("%s 랭킹 저장소", (_name, makeStore) => {
 
   it("지운 항목은 목록과 내 순위에서 빠지고, 같은 감정으로 다시 등록할 수 없다", async () => {
     await store.register("j_000000000001", entry({ id: "r_000000000001", intensity: 90 }));
-    await store.register("j_000000000002", entry({ id: "r_000000000002", intensity: 80 }));
+    await store.register("j_000000000002", entry({ id: "r_000000000002", nickname: "대구사람", intensity: 80 }));
 
     await expect(store.remove("r_000000000001")).resolves.toBe(true);
     await expect(store.remove("r_000000000001")).resolves.toBe(false);
 
     const page = await store.list(50, "r_000000000001");
     expect(page.total).toBe(1);
-    expect(page.entries).toEqual([{ rank: 1, entry: entry({ id: "r_000000000002", intensity: 80 }) }]);
+    expect(page.entries).toEqual([
+      { rank: 1, entry: entry({ id: "r_000000000002", nickname: "대구사람", intensity: 80 }) },
+    ]);
     expect(page.me).toBeNull();
 
     await expect(
@@ -234,6 +236,7 @@ describe("Upstash 랭킹 저장소의 요청", () => {
         RANKING_KEYS.claim("j_000000000001"),
         "co:ranking",
         "co:ranking:entries",
+        "co:ranking:names",
       ].sort(),
     );
   });

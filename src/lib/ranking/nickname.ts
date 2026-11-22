@@ -25,3 +25,36 @@ export function checkNickname(input: unknown): NicknameCheck {
   if (findBannedWord(value) !== null) return { ok: false, problem: "banned" };
   return { ok: true, value };
 }
+
+/** 닉네임 겹침 비교 키: NFC로 맞추고 영문 대소문자를 구분하지 않는다(Admin과 admin은 같은 이름). */
+export function nicknameKey(nickname: string): string {
+  return nickname.normalize("NFC").toLowerCase();
+}
+
+/**
+ * 겹치지 않는 최종 닉네임(명세 7장). 입력 닉네임이 쓰이고 있으면 뒤에 1부터 숫자를 붙이고,
+ * 붙일 이름도 쓰이고 있으면 다음 번호로 넘어간다. 예: 냥이 → 냥이, 냥이1, 냥이2.
+ * 표기는 입력 그대로 두고 비교만 nicknameKey로 한다. 숫자를 붙여 10자를 넘어도 된다(닉네임 검사는 입력 닉네임에만 한다).
+ * 메모리 저장소가 쓰고, Upstash 저장소는 같은 규칙을 등록 Lua 스크립트 안에서 한다(동시 등록에도 번호가 겹치지 않게).
+ */
+export function numberedNickname(
+  nickname: string,
+  isTaken: (key: string) => boolean,
+): { nickname: string; key: string } {
+  const baseKey = nicknameKey(nickname);
+  let candidate = nickname;
+  let key = baseKey;
+  for (let n = 1; isTaken(key); n += 1) {
+    candidate = `${nickname}${n}`;
+    key = `${baseKey}${n}`;
+  }
+  return { nickname: candidate, key };
+}
+
+/**
+ * 등록 완료 화면의 안내: 같은 닉네임이 있어 뒤에 숫자가 붙었으면 문구, 아니면 null(일반 랭킹, 정밀 감정 랭킹 공용).
+ * requested는 사용자가 입력한 닉네임(검사를 거친 값), registered는 서버가 돌려준 최종 닉네임이다.
+ */
+export function renamedNotice(requested: string, registered: string): string | null {
+  return registered === requested ? null : `같은 닉네임이 있어 '${registered}'(으)로 등록되었습니다.`;
+}

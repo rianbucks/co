@@ -74,6 +74,7 @@ function parseRegisterBody(body: unknown): { judgmentId: string; nickname: strin
 /**
  * POST /api/ranking. 본문에서는 judgmentId와 nickname만 쓰고, 점수 같은 다른 값은 무시한다.
  * 순서: 형식 → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답, 지시 발화, 판정 유보) → IP당 하루 한도 → 1회 등록
+ * 닉네임 검사(길이, 글자, 금칙어)는 입력 닉네임에만 한다. 겹치면 저장소가 붙이는 숫자로 10자를 넘어도 된다.
  * 음성과 받아쓰기는 저장하거나 공개하지 않으므로 욕설 같은 녹음 내용으로는 등록을 막지 않는다.
  * 다만 녹음이 감정 결과를 지시하려 했으면(instructionAttempt) 결과를 믿을 수 없으므로 등록을 막는다.
  */
@@ -106,10 +107,14 @@ export async function registerRanking(
     grade: gradeFor(record.intensity).grade,
     registeredAt: formatKstIso(deps.now ? deps.now() : new Date()),
   };
-  const rank = await deps.store.register(request.judgmentId, entry);
-  if (rank === null) return rankingError({ error: "already_registered" });
+  // 같은 닉네임이 이미 있으면 저장소가 뒤에 숫자를 붙인다. 응답에는 최종 닉네임을 담는다.
+  const registered = await deps.store.register(request.judgmentId, entry);
+  if (registered === null) return rankingError({ error: "already_registered" });
 
-  return { status: 201, body: { entry: toView({ rank, entry }) } };
+  return {
+    status: 201,
+    body: { entry: toView({ rank: registered.rank, entry: { ...entry, nickname: registered.nickname } }) },
+  };
 }
 
 export interface ListQuery {
