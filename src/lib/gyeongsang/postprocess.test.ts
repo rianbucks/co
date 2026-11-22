@@ -102,7 +102,7 @@ describe("buildGyeongsangResult", () => {
       intensity: {
         score: 69,
         grade: 2,
-        gradeName: "지역 말투가 뚜렷하게 들려요",
+        gradeName: "자막 필요",
         parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
       },
       evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
@@ -159,7 +159,7 @@ describe("buildGyeongsangResult", () => {
     expect(buildGyeongsangResult(output, ISSUE, GS_QUESTIONS).intensity).toMatchObject({
       score: 0,
       grade: 5,
-      gradeName: "지역 말투가 거의 드러나지 않아요",
+      gradeName: "서울 사람인 척하는 중",
     });
   });
 

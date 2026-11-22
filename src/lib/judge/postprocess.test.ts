@@ -120,21 +120,21 @@ describe("halveIntensity: 모사 의심 농도", () => {
 });
 
 describe("gradeFor: 등급 매핑", () => {
-  it("68점은 2등급 '지역 말투가 뚜렷하게 들려요'다", () => {
-    expect(gradeFor(68)).toEqual({ grade: 2, gradeName: "지역 말투가 뚜렷하게 들려요" });
+  it("68점은 2등급 '자막 필요'다", () => {
+    expect(gradeFor(68)).toEqual({ grade: 2, gradeName: "자막 필요" });
   });
 
   it.each([
-    [0, 5, "지역 말투가 거의 드러나지 않아요"],
-    [19, 5, "지역 말투가 거의 드러나지 않아요"],
-    [20, 4, "지역 말투가 가끔 들려요"],
-    [39, 4, "지역 말투가 가끔 들려요"],
-    [40, 3, "지역 말투가 여러 번 들려요"],
-    [59, 3, "지역 말투가 여러 번 들려요"],
-    [60, 2, "지역 말투가 뚜렷하게 들려요"],
-    [79, 2, "지역 말투가 뚜렷하게 들려요"],
-    [80, 1, "말하는 내내 지역 말투가 짙게 드러나요"],
-    [100, 1, "말하는 내내 지역 말투가 짙게 드러나요"],
+    [0, 5, "서울 사람인 척하는 중"],
+    [19, 5, "서울 사람인 척하는 중"],
+    [20, 4, "고향 친구 전화 받으면 돌아옴"],
+    [39, 4, "고향 친구 전화 받으면 돌아옴"],
+    [40, 3, "본인만 표준어라고 생각함"],
+    [59, 3, "본인만 표준어라고 생각함"],
+    [60, 2, "자막 필요"],
+    [79, 2, "자막 필요"],
+    [80, 1, "무형문화재 지정 검토 대상"],
+    [100, 1, "무형문화재 지정 검토 대상"],
   ])("%i점은 %i등급 '%s'", (score, grade, gradeName) => {
     expect(gradeFor(score)).toEqual({ grade, gradeName });
   });
@@ -467,7 +467,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
       intensity: {
         score: 68,
         grade: 2,
-        gradeName: "지역 말투가 뚜렷하게 들려요",
+        gradeName: "자막 필요",
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
       imitationSuspected: false,
@@ -520,7 +520,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
     };
     const result = buildJudgeResult(output, issue, SET_B);
     // 계산값 47 → 절반 23.5 → 24, 4등급
-    expect(result.intensity).toMatchObject({ score: 24, grade: 4, gradeName: "지역 말투가 가끔 들려요" });
+    expect(result.intensity).toMatchObject({ score: 24, grade: 4, gradeName: "고향 친구 전화 받으면 돌아옴" });
     expect(result.imitationSuspected).toBe(true);
     expect(result.opinion).toBe(`${OPINIONS[4].vocabulary} ${IMITATION_NOTE}`);
     expect(result.intensity.parts).toEqual(output.scores);

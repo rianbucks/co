@@ -72,7 +72,7 @@ describe("registerRanking", () => {
           intensity: 68,
           region: "gyeongsang",
           grade: 2,
-          gradeName: "지역 말투가 뚜렷하게 들려요",
+          gradeName: "자막 필요",
           registeredAt: "2026-11-20T14:03:00+09:00",
         },
       },
@@ -253,7 +253,7 @@ describe("listRanking", () => {
       intensity: 68,
       region: "gyeongsang",
       grade: 2,
-      gradeName: "지역 말투가 뚜렷하게 들려요",
+      gradeName: "자막 필요",
       registeredAt: "2026-11-20T14:03:00+09:00",
     };
     expect(outcome).toEqual({ status: 200, body: { entries: [view], total: 1, me: view } });
