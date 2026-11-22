@@ -2358,18 +2358,6 @@ body {
 .certificate-tools button:first-child {
   margin-right: auto;
 }
-.answer-detail {
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 4px;
-}
-.answer-detail summary {
-  cursor: pointer;
-  padding: 10px 2px;
-  font-size: 14px;
-}
-.answer-detail summary > span:first-child {
-  margin-right: 6px;
-}
 .app-shell main button.ranking-form-action {
   width: 100%;
   min-height: 44px;

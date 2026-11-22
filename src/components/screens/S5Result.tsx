@@ -229,12 +229,13 @@ export default function S5Result({
               <h3 className="text-sm font-bold tracking-tight text-zinc-200">
                 답변별 판정 근거
               </h3>
-              <div className="mt-1">
+              {/* 문항마다 카드 하나. 누르지 않아도 모두 보인다(경상 정밀 감정 결과의 문항 카드와 같은 모양) */}
+              <div className="mt-4 space-y-4">
                 {segments.map((segment) => {
                   const items = evidence.filter((item) => item.question === segment.question);
                   return (
-                    <details key={segment.question} className="answer-detail">
-                      <summary>
+                    <div key={segment.question} className="rounded-2xl border border-zinc-800/60 bg-black/40 p-4">
+                      <div className="flex items-start gap-2.5">
                         <span className="shrink-0 rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
                           문항 {segment.question}
                         </span>
@@ -246,7 +247,7 @@ export default function S5Result({
                           )}
                           <p className="text-xs font-semibold leading-relaxed text-zinc-300">{segment.prompt}</p>
                         </div>
-                      </summary>
+                      </div>
 
                       <div className="mt-3 rounded-xl border border-zinc-800/60 bg-black/50 p-3">
                         <div className="text-[11px] font-semibold text-zinc-400">받아쓰기</div>
@@ -270,7 +271,7 @@ export default function S5Result({
                       ) : (
                         <p className="mt-3 pl-1 text-[11px] text-zinc-500">이 문항에서 확인된 근거가 없습니다.</p>
                       )}
-                    </details>
+                    </div>
                   );
                 })}
               </div>
