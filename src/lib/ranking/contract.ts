@@ -39,7 +39,7 @@ export interface RankingList {
 
 export type RankingErrorBody =
   | { error: "invalid_request" }
-  | { error: "invalid_nickname"; reason: "length" | "characters" }
+  | { error: "invalid_nickname"; reason: "length" | "characters" | "banned" }
   | { error: "not_found" }
   | { error: "not_eligible"; reason: "mock" | "uncertain" | "instruction" }
   | { error: "already_registered" }

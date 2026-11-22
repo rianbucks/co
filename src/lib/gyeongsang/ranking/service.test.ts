@@ -119,6 +119,9 @@ describe("registerGsRanking", () => {
     ["열한글자닉네임입니다요", "length"],
     ["대구 토박이", "characters"],
     ["대구!", "characters"],
+    ["병1신", "banned"],
+    ["ㅂㅕㅇㅅㅣㄴ", "banned"],
+    ["김치녀", "banned"],
   ])("닉네임 '%s'는 기존 랭킹과 같은 규칙으로 400 invalid_nickname(%s)", async (nickname, reason) => {
     expect(await register({ ...BODY, nickname })).toEqual({
       status: 400,

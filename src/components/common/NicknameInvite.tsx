@@ -20,7 +20,13 @@ export default function NicknameInvite({ nickname, onStart, onStartGyeongsang }:
     if (!draft.trim()) return start('');
     const checked = checkNickname(draft);
     if (checked.ok) return start(checked.value);
-    setError(checked.problem === 'length' ? '닉네임은 2~10자로 입력해 주세요.' : '한글, 영문, 숫자만 쓸 수 있어요.');
+    setError(
+      checked.problem === 'length'
+        ? '닉네임은 2~10자로 입력해 주세요.'
+        : checked.problem === 'banned'
+          ? '쓸 수 없는 표현이 들어 있어요. 다른 닉네임을 입력해 주세요.'
+          : '한글, 영문, 숫자만 쓸 수 있어요.',
+    );
     input.current?.focus();
   }
 

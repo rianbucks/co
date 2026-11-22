@@ -137,6 +137,9 @@ describe("registerRanking", () => {
     ["가나다라마바사아자차카", "length"],
     ["홍 길동", "characters"],
     ["nick_name", "characters"],
+    ["시1발", "banned"],
+    ["ㅅㅂ", "banned"],
+    ["fuck", "banned"],
   ])("닉네임 규칙을 어기면 400 invalid_nickname: %s", async (nickname, reason) => {
     await expect(register({ judgmentId: JUDGMENT_ID, nickname })).resolves.toEqual({
       status: 400,
