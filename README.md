@@ -107,7 +107,9 @@ curl "http://localhost:3000/api/gyeongsang-ranking?area=gyeongbuk&limit=50&id=gr
 
 ## 랭킹 운영
 
-부적절한 닉네임은 조회 응답에서 항목 `id`를 찾아 지웁니다. 지운 감정 결과는 다시 등록할 수 없습니다.
+닉네임은 등록할 때 금칙어 목록(`src/lib/ranking/banned-words.ts`)으로 욕설과 비속어, 성적 표현, 혐오 표현을 막습니다(400 `invalid_nickname`, `reason: "banned"`, 일반 랭킹과 정밀 감정 랭킹 모두). 숫자를 끼우거나 자모로 풀어 쓴 변형도 걸러내고, 실명은 막지 않습니다(명세 7장 닉네임 금칙어). 목록을 고칠 때는 이 파일만 고칩니다.
+
+그래도 남은 부적절한 닉네임은 조회 응답에서 항목 `id`를 찾아 지웁니다. 지운 감정 결과는 다시 등록할 수 없습니다.
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://<배포 주소>/api/ranking/r_0123456789ab
@@ -153,7 +155,9 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | `src/lib/gemini.ts` | Gemini 호출. SDK는 이 파일에서만 쓴다 |
 | `src/lib/ranking/service.ts` | 랭킹 등록, 조회, 삭제 규칙과 운영자 토큰 확인 |
 | `src/lib/ranking/store.ts` | 랭킹 저장소: Upstash Redis와 로컬 메모리 |
-| `src/lib/ranking/nickname.ts` | 닉네임 규칙(서버와 화면이 함께 쓴다) |
+| `src/lib/ranking/nickname.ts` | 닉네임 규칙(서버와 화면이 함께 쓴다): 길이, 글자, 금칙어 |
+| `src/lib/ranking/banned-words.ts` | 닉네임 금칙어 목록(욕설과 비속어, 성적 표현, 혐오 표현). 목록은 이 파일 한 곳에서 고친다 |
+| `src/lib/ranking/nickname-filter.ts` | 금칙어 검사: 숫자를 빼고 풀어 쓴 자모를 글자로 모아 찾는다 |
 | `src/lib/ranking/contract.ts` | 랭킹 API 응답 타입과 오류 코드 |
 | `src/lib/rate-limit.ts` | 하루 호출 제한(감정, 랭킹 등록). Upstash Redis Lua, 로컬은 메모리 |
 | `src/lib/upstash.ts` | Upstash 연결 값 읽기(`UPSTASH_REDIS_REST_*`, `KV_REST_API_*`)와 REST pipeline 호출 |

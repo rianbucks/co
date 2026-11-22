@@ -41,6 +41,7 @@ const FINAL_ERRORS = new Set(['not_found', 'not_eligible', 'already_registered',
 function registerErrorMessage(error: unknown, reason: unknown): string {
   switch (error) {
     case 'invalid_nickname':
+      if (reason === 'banned') return '닉네임에 쓸 수 없는 표현이 들어 있습니다. 다른 닉네임을 입력해 주십시오.';
       return reason === 'length'
         ? `닉네임은 ${NICKNAME_MIN_LENGTH}~${NICKNAME_MAX_LENGTH}자로 입력해 주십시오.`
         : '닉네임에는 한글, 영문, 숫자만 쓸 수 있습니다. 띄어쓰기와 기호는 빼 주십시오.';
