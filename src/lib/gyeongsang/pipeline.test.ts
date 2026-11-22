@@ -66,6 +66,7 @@ describe("judgeGyeongsang: 성공", () => {
           gradeName: "자막 필요",
           parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
         },
+        intonationCapped: false,
         instructionAttempt: false,
         evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
         transcript: GS_MOCK_MODEL_OUTPUT.transcript,
@@ -237,6 +238,17 @@ describe("judgeGyeongsang: 정밀 랭킹 등록 자격 기록", () => {
       gyeongbuk: 64,
       instructionAttempt: false,
     });
+  });
+
+  it("억양 상한에 걸리면 낮춘 최종 경상 농도를 기록한다(일반 감정과 같은 규칙)", async () => {
+    const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
+    const scores = { vocabulary: 100, endings: 100, phonology: 100, intonation: 20 };
+    const { ai } = scriptedAi(JSON.stringify({ ...GS_MOCK_MODEL_OUTPUT, scores }));
+
+    const response = await judgeGyeongsang(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.body).toMatchObject({ intonationCapped: true, intensity: { score: 40, grade: 3 } });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 40 }));
   });
 
   it("녹음이 감정 결과를 지시하려 했으면 결과는 그대로 내고, 지시 발화로 기록한다(정밀 랭킹 등록을 막는다)", async () => {

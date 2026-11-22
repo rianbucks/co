@@ -11,14 +11,16 @@ import {
 } from "./contract";
 import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { parseModelOutput, type AcceptedModelOutput } from "./model-output";
-import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
+import { CONCEALMENT_NOTE, IMITATION_NOTE, INTONATION_CAP_NOTE, OPINIONS } from "./opinions";
 import {
   buildJudgeResult,
   buildJudgeSegments,
   buildSegments,
+  capByIntonation,
   computeIntensity,
   decideRegion,
   dominantPart,
+  finalIntensity,
   gradeFor,
   halveIntensity,
   isRegionUncertain,
@@ -27,7 +29,7 @@ import {
   verifyEvidence,
 } from "./postprocess";
 import { findQuestionSet } from "./prompt";
-import { INTENSITY_WEIGHTS, REGION_NAMES } from "./rules";
+import { INTENSITY_WEIGHTS, INTONATION_CAP_MARGIN, REGION_NAMES } from "./rules";
 
 const SET_A = findQuestionSet("set-a")!;
 const SET_B = findQuestionSet("set-b")!;
@@ -116,6 +118,60 @@ describe("halveIntensity: 모사 의심 농도", () => {
     expect(halveIntensity(100)).toBe(50);
     expect(halveIntensity(1)).toBe(1);
     expect(halveIntensity(0)).toBe(0);
+  });
+});
+
+describe("capByIntonation: 억양 상한", () => {
+  const parts = (vocabulary: number, endings: number, phonology: number, intonation: number): PartScores => ({
+    vocabulary,
+    endings,
+    phonology,
+    intonation,
+  });
+
+  it("상한 여유는 rules.ts의 상수 20이다", () => {
+    expect(INTONATION_CAP_MARGIN).toBe(20);
+  });
+
+  it("명세 예시: 어휘 100, 어미 100, 음운 100, 억양 20 → 가중 합 68 → 상한 40 → 농도 40", () => {
+    expect(computeIntensity(parts(100, 100, 100, 20))).toBe(68);
+    expect(capByIntonation(68, 20)).toEqual({ score: 40, capped: true });
+    expect(finalIntensity(parts(100, 100, 100, 20))).toEqual({ score: 40, intonationCapped: true });
+  });
+
+  it("명세 예시: 어휘 90, 어미 90, 음운 90, 억양 70 → 가중 합 82 → 상한 90 → 농도 82(변화 없음)", () => {
+    expect(computeIntensity(parts(90, 90, 90, 70))).toBe(82);
+    expect(finalIntensity(parts(90, 90, 90, 70))).toEqual({ score: 82, intonationCapped: false });
+  });
+
+  it.each([
+    [40, 20, 40, false],
+    [41, 20, 40, true],
+    [20, 0, 20, false],
+    [21, 0, 20, true],
+    [100, 80, 100, false],
+    [100, 79, 99, true],
+    [0, 0, 0, false],
+  ])("경계: 농도 %i, 억양 %i → %i (상한에 걸림: %s). 상한과 같으면 낮추지 않는다", (score, intonation, expected, capped) => {
+    expect(capByIntonation(score, intonation)).toEqual({ score: expected, capped });
+  });
+
+  it("경계(항목 점수): 가중 합이 억양 + 20과 같으면 그대로, 1 넘으면 낮춘다", () => {
+    // 100×0.15 + 100×0.2 + 60×0.25 + 50×0.4 = 70 = 50 + 20
+    expect(finalIntensity(parts(100, 100, 60, 50))).toEqual({ score: 70, intonationCapped: false });
+    // 100×0.15 + 100×0.2 + 64×0.25 + 50×0.4 = 71 > 70
+    expect(finalIntensity(parts(100, 100, 64, 50))).toEqual({ score: 70, intonationCapped: true });
+  });
+
+  it("억양이 80 이상이면 상한이 100 이상이라 걸리지 않는다", () => {
+    expect(finalIntensity(parts(100, 100, 100, 80))).toEqual({ score: 92, intonationCapped: false });
+    expect(finalIntensity(parts(100, 100, 100, 100))).toEqual({ score: 100, intonationCapped: false });
+  });
+
+  it("순서는 가중 합 → 억양 상한 → 모사 의심 절반이다(절반을 먼저 하면 34가 된다)", () => {
+    expect(finalIntensity(parts(100, 100, 100, 20), true)).toEqual({ score: 20, intonationCapped: true });
+    expect(halveIntensity(68)).toBe(34);
+    expect(finalIntensity(parts(90, 90, 90, 70), true)).toEqual({ score: 41, intonationCapped: false });
   });
 });
 
@@ -431,11 +487,22 @@ describe("selectOpinion: 소견", () => {
     );
   });
 
-  it("출신지 은폐 의심과 함께면 모사 의심이 맨 끝에 온다", () => {
+  it("출신지 은폐 의심과 함께면 모사 의심이 그 뒤에 온다", () => {
     const parts = partsLedBy("vocabulary");
     expect(
       selectOpinion({ grade: 5, top: "seoul_gyeonggi", score: 12, parts, imitationSuspected: true }),
     ).toBe(`${OPINIONS[5].vocabulary} ${CONCEALMENT_NOTE} ${IMITATION_NOTE}`);
+  });
+
+  it("억양 상한에 걸렸으면 소견 맨 끝에 억양 상한 안내를 붙인다(은폐 의심, 모사 의심 다음)", () => {
+    expect(INTONATION_CAP_NOTE).toBe("억양이 어휘와 어미만큼 따라오지 않아 농도를 낮춰 산정했습니다.");
+    const parts = partsLedBy("vocabulary");
+    expect(selectOpinion({ grade: 3, top: "gyeongsang", score: 40, parts, intonationCapped: true })).toBe(
+      `${OPINIONS[3].vocabulary} ${INTONATION_CAP_NOTE}`,
+    );
+    expect(
+      selectOpinion({ grade: 5, top: "seoul_gyeonggi", score: 10, parts, imitationSuspected: true, intonationCapped: true }),
+    ).toBe(`${OPINIONS[5].vocabulary} ${CONCEALMENT_NOTE} ${IMITATION_NOTE} ${INTONATION_CAP_NOTE}`);
   });
 });
 
@@ -471,6 +538,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
       imitationSuspected: false,
+      intonationCapped: false,
       instructionAttempt: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
@@ -516,13 +584,14 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
   it("모사 의심이면 농도를 계산값의 절반으로 낮추고 그 점수로 등급과 소견을 정한다", () => {
     const output = {
       ...acceptedSpecExample(),
-      scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+      scores: { vocabulary: 90, endings: 90, phonology: 40, intonation: 60 },
       imitation_suspected: true,
     };
     const result = buildJudgeResult(output, issue, SET_B);
-    // 계산값 47 → 절반 23.5 → 24, 4등급
-    expect(result.intensity).toMatchObject({ score: 24, grade: 4, gradeName: "고향 친구 전화 받으면 돌아옴" });
+    // 계산값 65.5 → 66(억양 상한 80에 걸리지 않음) → 절반 33, 4등급
+    expect(result.intensity).toMatchObject({ score: 33, grade: 4, gradeName: "고향 친구 전화 받으면 돌아옴" });
     expect(result.imitationSuspected).toBe(true);
+    expect(result.intonationCapped).toBe(false);
     expect(result.opinion).toBe(`${OPINIONS[4].vocabulary} ${IMITATION_NOTE}`);
     expect(result.intensity.parts).toEqual(output.scores);
   });
@@ -530,13 +599,44 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
   it("모사 의심이 아니면 계산값 그대로다", () => {
     const output = {
       ...acceptedSpecExample(),
-      scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+      scores: { vocabulary: 90, endings: 90, phonology: 40, intonation: 60 },
       imitation_suspected: false,
     };
     const result = buildJudgeResult(output, issue, SET_B);
-    expect(result.intensity).toMatchObject({ score: 47, grade: 3 });
+    expect(result.intensity).toMatchObject({ score: 66, grade: 2 });
     expect(result.imitationSuspected).toBe(false);
-    expect(result.opinion).toBe(OPINIONS[3].vocabulary);
+    expect(result.opinion).toBe(OPINIONS[2].vocabulary);
+  });
+
+  it("억양 상한에 걸리면 농도를 (억양 + 20)으로 낮추고 그 점수로 등급과 소견을 정하며, 소견 끝에 안내를 붙인다", () => {
+    const output = { ...acceptedSpecExample(), scores: { vocabulary: 100, endings: 100, phonology: 100, intonation: 20 } };
+    const result = buildJudgeResult(output, issue, SET_B);
+    // 가중 합 68 → 상한 40, 3등급
+    expect(result.intensity).toMatchObject({ score: 40, grade: 3, gradeName: "본인만 표준어라고 생각함" });
+    expect(result.intonationCapped).toBe(true);
+    expect(result.opinion).toBe(`${OPINIONS[3].vocabulary} ${INTONATION_CAP_NOTE}`);
+    // 항목 점수는 모델이 준 그대로다
+    expect(result.intensity.parts).toEqual(output.scores);
+  });
+
+  it("억양 상한 다음에 모사 의심 절반을 적용하고, 소견에는 모사 의심 다음에 억양 상한 안내가 온다", () => {
+    const output = {
+      ...acceptedSpecExample(),
+      scores: { vocabulary: 100, endings: 100, phonology: 100, intonation: 20 },
+      imitation_suspected: true,
+    };
+    const result = buildJudgeResult(output, issue, SET_B);
+    // 68 → 상한 40 → 절반 20, 4등급
+    expect(result.intensity).toMatchObject({ score: 20, grade: 4 });
+    expect(result.opinion).toBe(`${OPINIONS[4].vocabulary} ${IMITATION_NOTE} ${INTONATION_CAP_NOTE}`);
+  });
+
+  it("억양 상한에 걸리지 않으면 결과와 소견은 그대로다(명세 예시: 90, 90, 90, 70 → 82)", () => {
+    const output = { ...acceptedSpecExample(), scores: { vocabulary: 90, endings: 90, phonology: 90, intonation: 70 } };
+    const result = buildJudgeResult(output, issue, SET_B);
+    expect(result.intensity).toMatchObject({ score: 82, grade: 1 });
+    expect(result.intonationCapped).toBe(false);
+    expect(result.opinion).toBe(OPINIONS[1].vocabulary);
   });
 
   it("녹음이 감정 결과를 지시하려 했으면 instructionAttempt만 true이고 권역, 농도, 등급, 소견, 근거는 그대로다", () => {

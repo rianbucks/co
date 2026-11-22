@@ -164,7 +164,9 @@ function renderCertificate(result: JudgeResult): Promise<Blob> {
     context.fillText('감정관 종합 소견', 150, opinionTop + 8);
     context.fillStyle = '#3d4b5e';
     context.font = '24px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
-    wrapText(context, result.opinion, 650).slice(0, 3).forEach((line, index) => {
+    // 소견은 최대 5줄까지 그린다. 억양 상한 안내까지 붙으면 4줄이 되므로(24px, 폭 650) 한 줄 여유를 둔다.
+    // 5번째 줄(y 1454)도 직인(x 855부터)과 겹치지 않고 안쪽 테두리(y 1514) 안에 들어간다.
+    wrapText(context, result.opinion, 650).slice(0, 5).forEach((line, index) => {
       context.fillText(line, 150, opinionTop + 58 + index * 39);
     });
 

@@ -58,5 +58,8 @@ export const OPINIONS: Record<Grade, Record<PartKey, string>> = {
 /** 서울경기 1순위이면서 농도가 낮을 때 소견 끝에 한 칸 띄우고 붙이는 문구(명세 4장). */
 export const CONCEALMENT_NOTE = "출신지 은폐 의심.";
 
-/** 모델이 다른 권역 방언의 모사를 의심했을 때 소견 맨 끝에 한 칸 띄우고 붙이는 문구(명세 4장). */
+/** 모델이 다른 권역 방언의 모사를 의심했을 때 소견 끝에 한 칸 띄우고 붙이는 문구(명세 4장). */
 export const IMITATION_NOTE = "타 지역 방언 모사 의심.";
+
+/** 억양 상한에 걸려 농도를 낮췄을 때 소견 맨 끝에 한 칸 띄우고 붙이는 문구(명세 4장). 정밀 감정 결과 화면도 같은 문구를 쓴다. */
+export const INTONATION_CAP_NOTE = "억양이 어휘와 어미만큼 따라오지 않아 농도를 낮춰 산정했습니다.";

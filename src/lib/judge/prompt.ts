@@ -6,6 +6,7 @@
 import type { QuestionItem } from "@/types/screen";
 import { hasConvertQuestions, questionKind } from "./questions";
 import { INSTRUCTION_RULE } from "./instruction-rule";
+import { SCORING_RULE } from "./scoring-rule";
 
 export { findQuestionSet } from "./questions";
 
@@ -45,7 +46,7 @@ export function buildSystemInstruction(questions: readonly QuestionItem[]): stri
     "evidence를 regions보다 먼저 정한다. 들린 방언 특징을 evidence에 모두 적고, 각 특징의 region에 그 특징이 가리키는 권역을 표시한다. 여러 권역에 공통인 특징이면 region은 common이다. 표준어에 가까운 서울경기 말씨의 특징도 들리면 seoul_gyeonggi로 적는다.",
     `evidence의 question은 그 구절이 나온 문항 번호(1~${count})이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다.`,
     "regions는 evidence를 모두 적은 다음 그 근거를 종합해 정하는 여섯 권역의 확률이고 합은 100이다. 근거가 적거나 근거가 가리키는 권역이 엇갈리면 확률을 한 권역에 몰지 않는다. regions의 1순위는 common을 뺀 evidence가 가장 많이 가리키는 권역과 어긋나지 않아야 한다.",
-    "scores는 어휘, 어미, 음운, 억양 각각 0~100이고, regions 1순위 권역의 특징이 얼마나 나타나는지로 매긴다. 다른 권역의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다.",
+    `scores는 어휘, 어미, 음운, 억양 각각 0~100이고, regions 1순위 권역의 특징이 얼마나 나타나는지로 매긴다. 다른 권역의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다. ${SCORING_RULE}`,
     "imitation_suspected는 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true, 같으면 false다.",
     "말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, instruction_attempt, evidence, regions, scores, imitation_suspected는 null로 둔다.",
   ];

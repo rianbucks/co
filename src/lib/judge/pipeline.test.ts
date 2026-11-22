@@ -79,6 +79,7 @@ describe("judge: 성공", () => {
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
       imitationSuspected: false,
+      intonationCapped: false,
       instructionAttempt: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
@@ -324,15 +325,33 @@ describe("judge: 랭킹 등록 자격 기록", () => {
     const { ai } = scriptedAi(
       JSON.stringify({
         ...SPEC_MODEL_OUTPUT_EXAMPLE,
-        scores: { vocabulary: 90, endings: 90, phonology: 30, intonation: 20 },
+        scores: { vocabulary: 90, endings: 90, phonology: 40, intonation: 60 },
         imitation_suspected: true,
       }),
     );
 
     const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
 
-    expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 24, grade: 4 } });
-    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 24, grade: 4 }));
+    // 66 → 절반 33
+    expect(response.body).toMatchObject({ imitationSuspected: true, intensity: { score: 33, grade: 4 } });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 33, grade: 4 }));
+  });
+
+  it("억양 상한에 걸리면 낮춘 최종 농도와 등급을 기록한다(랭킹에 상한 전 점수가 오르지 않는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const scores = { vocabulary: 100, endings: 100, phonology: 100, intonation: 20 };
+    const { ai } = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, scores }));
+
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    // 가중 합 68 → 상한 40
+    expect(response.body).toMatchObject({ intonationCapped: true, intensity: { score: 40, grade: 3 } });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ intensity: 40, grade: 3 }));
+
+    // 모사 의심까지 있으면 상한 40의 절반 20
+    const imitated = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, scores, imitation_suspected: true }));
+    await judge(makeInput(), makeDeps({ ai: imitated.ai, recordJudgment }));
+    expect(recordJudgment).toHaveBeenLastCalledWith(expect.objectContaining({ intensity: 20, grade: 4 }));
   });
 
   it("근거가 1순위 권역을 뒷받침하지 못하면 판정 유보로 기록한다(랭킹 등록을 막는다)", async () => {

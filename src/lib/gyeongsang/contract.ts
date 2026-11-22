@@ -55,6 +55,10 @@ export interface GyeongsangResult {
     parts: PartScores;
   };
   /**
+   * 억양 상한에 걸렸는지(일반 감정과 같은 규칙). 정밀 감정에는 소견이 없으므로 결과 화면이 농도 옆에 억양 상한 안내를 보여 준다.
+   */
+  intonationCapped: boolean;
+  /**
    * 녹음이 감정 결과(점수, 지역, 등급)를 지시하려 했다고 모델이 본 경우. 결과는 그대로 보여 주고,
    * 정밀 감정 랭킹에는 등록할 수 없다(403 not_eligible, reason: "instruction").
    */

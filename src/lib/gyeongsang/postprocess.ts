@@ -4,7 +4,7 @@
  */
 import {
   buildJudgeSegments,
-  computeIntensity,
+  finalIntensity,
   gradeFor,
   normalizeQuoteText,
   type IssueInfo,
@@ -75,7 +75,7 @@ export function verifyGsEvidence(
 
 /**
  * 경상 방언으로 확인된 모델 출력으로 정밀 감정 결과를 만든다. questions는 녹음한 문항(문항 순서)이고 문항 수는 정해져 있지 않다.
- * 농도는 경상 방언 특징 기준의 항목 점수에 일반 감정과 같은 가중치를 매긴 값이고, 등급표도 같다.
+ * 농도는 경상 방언 특징 기준의 항목 점수에 일반 감정과 같은 가중치를 매긴 값이고, 억양 상한과 등급표도 같다.
  */
 export function buildGyeongsangResult(
   output: GsAcceptedOutput,
@@ -87,7 +87,7 @@ export function buildGyeongsangResult(
     throw new RangeError("성분 비율 합이 0이다. parseGsModelOutput에서 걸러졌어야 한다");
   }
 
-  const score = computeIntensity(output.scores);
+  const { score, intonationCapped } = finalIntensity(output.scores);
   const { grade, gradeName } = gradeFor(score);
   const questionTranscripts =
     output.question_transcripts?.length === questions.length ? output.question_transcripts : null;
@@ -98,6 +98,7 @@ export function buildGyeongsangResult(
     issuedAt: issue.issuedAt,
     subregions,
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
+    intonationCapped,
     instructionAttempt: output.instruction_attempt,
     evidence: verifyGsEvidence(output.evidence, output.transcript, questionTranscripts),
     transcript: output.transcript,
