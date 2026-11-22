@@ -105,6 +105,7 @@ describe("buildGyeongsangResult", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
       },
+      instructionAttempt: false,
       evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
       transcript: GS_MOCK_MODEL_OUTPUT.transcript,
       segments: GS_QUESTIONS.map((question, index) => ({

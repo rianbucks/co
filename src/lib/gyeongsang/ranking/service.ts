@@ -71,7 +71,7 @@ function parseRegisterBody(body: unknown): { judgmentId: string; nickname: strin
 
 /**
  * POST /api/gyeongsang-ranking. 본문에서는 judgmentId, nickname, origin만 쓰고, 점수 같은 다른 값은 무시한다.
- * 순서: 형식(신고 원산지 포함) → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답) → IP당 하루 한도 → 1회 등록
+ * 순서: 형식(신고 원산지 포함) → 닉네임 → 가짜 응답 모드 → 감정 기록(1시간) → 자격(가짜 응답, 지시 발화) → IP당 하루 한도 → 1회 등록
  */
 export async function registerGsRanking(
   input: { body: unknown; clientIp: string | null },
@@ -88,6 +88,7 @@ export async function registerGsRanking(
   const record = await deps.store.getJudgment(request.judgmentId);
   if (!record) return rankingError({ error: "not_found" });
   if (record.mock) return rankingError({ error: "not_eligible", reason: "mock" });
+  if (record.instructionAttempt) return rankingError({ error: "not_eligible", reason: "instruction" });
 
   const limit = await deps.rateLimiter.check({ ip: input.clientIp });
   if (!limit.allowed) return rankingError({ error: "rate_limited" });

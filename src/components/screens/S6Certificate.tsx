@@ -312,7 +312,7 @@ export default function S6Certificate({ result, onBack, onGoToRanking, onResetAl
           data-enter="3" onClick={onGoToRanking}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-3.5 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
         >
-          <span>{result.region.uncertain ? '농도 랭킹 보기' : '농도 랭킹 등록'}</span>
+          <span>{result.region.uncertain || result.instructionAttempt ? '농도 랭킹 보기' : '농도 랭킹 등록'}</span>
         </button>
         {message && <p role="status" className="mt-3 text-center text-sm text-amber-300">{message}</p>}
         <button onClick={onResetAll} className="mt-4 w-full py-3 text-sm text-zinc-400 underline underline-offset-4 hover:text-white">

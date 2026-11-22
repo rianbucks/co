@@ -167,6 +167,19 @@ describe("parseModelOutput", () => {
     expect(read(1)).toBe(false);
   });
 
+  it("지시 발화 여부(instruction_attempt)도 true일 때만 true로 읽고, 없거나 boolean이 아니면 실패하지 않고 false로 둔다", () => {
+    const read = (value: unknown) => {
+      const parsed = parseModelOutput(JSON.stringify({ ...example(), instruction_attempt: value }));
+      return parsed.ok && parsed.value.audio_quality === "ok" ? parsed.value.instruction_attempt : "실패";
+    };
+    expect(read(true)).toBe(true);
+    expect(read(false)).toBe(false);
+    expect(read(undefined)).toBe(false);
+    expect(read(null)).toBe(false);
+    expect(read("true")).toBe(false);
+    expect(read(1)).toBe(false);
+  });
+
   it("권역 확률이 모두 0이면 zero_probabilities", () => {
     const regions = Object.fromEntries(REGION_KEYS.map((key) => [key, 0]));
     expect(parseModelOutput(JSON.stringify({ ...example(), regions }))).toEqual({
@@ -226,12 +239,13 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
     });
   });
 
-  it("근거 먼저, 판정 나중: 받아쓰기 → 근거 → 권역 확률 → 항목 점수 → 모사 의심 순서이고, 4장 모델 출력 형식과 같다", () => {
+  it("근거 먼저, 판정 나중: 받아쓰기 → 지시 발화 여부 → 근거 → 권역 확률 → 항목 점수 → 모사 의심 순서이고, 4장 모델 출력 형식과 같다", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
     expect(Object.keys(properties)).toEqual([
       "audio_quality",
       "transcript",
       "question_transcripts",
+      "instruction_attempt",
       "evidence",
       "regions",
       "scores",
@@ -269,7 +283,7 @@ describe("MODEL_OUTPUT_JSON_SCHEMA", () => {
 
   it("품질 불량일 때 비우는 필드는 null을 허용한다", () => {
     const properties = MODEL_OUTPUT_JSON_SCHEMA.properties as Record<string, SchemaNode>;
-    for (const field of ["transcript", "question_transcripts", "evidence", "regions", "scores", "imitation_suspected"]) {
+    for (const field of ["transcript", "question_transcripts", "instruction_attempt", "evidence", "regions", "scores", "imitation_suspected"]) {
       expect(properties[field].type).toContain("null");
     }
     expect(properties.audio_quality.type).toBe("string");

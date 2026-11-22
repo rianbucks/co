@@ -5,7 +5,7 @@ import { POST as judgePOST } from "../judge/route";
 import { GET as generalGET } from "../ranking/route";
 import { GET, POST } from "./route";
 
-const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false };
+const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false, instructionAttempt: false };
 
 /** 테스트 환경(NODE_ENV=test)에서 라우트가 쓰는 메모리 저장소와 같은 저장소 */
 const localStore = () => gsRankingStoreFromEnv({ NODE_ENV: "test" });
@@ -169,6 +169,7 @@ describe("정밀 감정과 정밀 랭킹 연결", () => {
       intensity: 69,
       gyeongbuk: 64,
       mock: true,
+      instructionAttempt: false,
     });
 
     const response = await POST(postJson({ judgmentId: result.id, nickname: "가짜응답", origin: "daegu" }));

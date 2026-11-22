@@ -22,6 +22,7 @@ const RECORD: JudgmentRecord = {
   grade: 2,
   mock: false,
   uncertain: false,
+  instructionAttempt: false,
 };
 
 function entry(overrides: Partial<RankingEntry> & Pick<RankingEntry, "id">): RankingEntry {
@@ -260,7 +261,23 @@ describe("Upstash 랭킹 저장소의 요청", () => {
       token: "test-token",
       fetcher: async () => Response.json([{ result: JSON.stringify(legacy) }]),
     });
-    await expect(store.getJudgment("j_000000000001")).resolves.toEqual({ ...legacy, uncertain: false });
+    await expect(store.getJudgment("j_000000000001")).resolves.toEqual({
+      ...legacy,
+      uncertain: false,
+      instructionAttempt: false,
+    });
+  });
+
+  it("지시 발화 여부가 생기기 전에 남긴 기록은 지시 발화가 없던 것으로 읽고, 있으면 그 값을 그대로 읽는다", async () => {
+    const legacy = { intensity: 68, region: "gyeongsang", grade: 2, mock: false, uncertain: false };
+    const read = (value: object) =>
+      createUpstashRankingStore({
+        url: "https://fake.upstash.io",
+        token: "test-token",
+        fetcher: async () => Response.json([{ result: JSON.stringify(value) }]),
+      }).getJudgment("j_000000000001");
+    await expect(read(legacy)).resolves.toEqual({ ...legacy, instructionAttempt: false });
+    await expect(read({ ...legacy, instructionAttempt: true })).resolves.toEqual({ ...legacy, instructionAttempt: true });
   });
 
   it("flags 여부가 남은 이전 기록도 읽고 그 값은 버린다(녹음 내용으로는 등록을 막지 않는다)", async () => {

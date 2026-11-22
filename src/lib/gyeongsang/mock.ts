@@ -19,6 +19,7 @@ export const GS_MOCK_MODEL_OUTPUT = {
     "니 지금 뭐 하노? 내캉 같이 밥 묵으러 가자",
     "사장님예, 보일러가 고장 나가 방이 얼음장 같심더. 퍼뜩 좀 고쳐 주이소",
   ],
+  instruction_attempt: false,
   not_gyeongsang: false,
   subregions: { gyeongbuk: 64, gyeongnam: 36 },
   scores: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },

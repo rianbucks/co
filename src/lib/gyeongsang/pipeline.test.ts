@@ -66,6 +66,7 @@ describe("judgeGyeongsang: 성공", () => {
           gradeName: "자막 필요",
           parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
         },
+        instructionAttempt: false,
         evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
         transcript: GS_MOCK_MODEL_OUTPUT.transcript,
         segments: GS_QUESTIONS.map((question, index) => ({
@@ -225,7 +226,7 @@ describe("judgeGyeongsang: AI 실패와 재시도(일반 감정과 같은 규칙
 });
 
 describe("judgeGyeongsang: 정밀 랭킹 등록 자격 기록", () => {
-  it("성공하면 id, 경상 농도, 경북권 비율만 기록한다(신고 원산지와 받아쓰기는 없다)", async () => {
+  it("성공하면 id, 경상 농도, 경북권 비율, 지시 발화 여부만 기록한다(신고 원산지와 받아쓰기는 없다)", async () => {
     const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
     const response = await judgeGyeongsang(makeInput(), makeDeps({ recordJudgment }));
     expect(response.status).toBe(200);
@@ -234,14 +235,32 @@ describe("judgeGyeongsang: 정밀 랭킹 등록 자격 기록", () => {
       id: "g_000000000001",
       intensity: 69,
       gyeongbuk: 64,
+      instructionAttempt: false,
     });
+  });
+
+  it("녹음이 감정 결과를 지시하려 했으면 결과는 그대로 내고, 지시 발화로 기록한다(정밀 랭킹 등록을 막는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
+    const plain = await judgeGyeongsang(makeInput(), makeDeps());
+    const { ai } = scriptedAi(JSON.stringify({ ...GS_MOCK_MODEL_OUTPUT, instruction_attempt: true }));
+
+    const response = await judgeGyeongsang(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ...(plain.body as object), instructionAttempt: true });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ instructionAttempt: true }));
   });
 
   it("녹음 내용으로는 등록을 막지 않는다: 모델이 이전 형식으로 flags를 붙여도 기록에 남기지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<GsJudgeDeps["recordJudgment"]>>(async () => {});
     const { ai } = scriptedAi(JSON.stringify({ ...GS_MOCK_MODEL_OUTPUT, flags: ["personal_info"] }));
     await judgeGyeongsang(makeInput(), makeDeps({ ai, recordJudgment }));
-    expect(recordJudgment).toHaveBeenCalledWith({ id: "g_000000000001", intensity: 69, gyeongbuk: 64 });
+    expect(recordJudgment).toHaveBeenCalledWith({
+      id: "g_000000000001",
+      intensity: 69,
+      gyeongbuk: 64,
+      instructionAttempt: false,
+    });
   });
 
   it("품질 불량, 경상 방언 미확인, AI 실패, 호출 제한이면 기록하지 않는다", async () => {

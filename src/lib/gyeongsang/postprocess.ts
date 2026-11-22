@@ -98,6 +98,7 @@ export function buildGyeongsangResult(
     issuedAt: issue.issuedAt,
     subregions,
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
+    instructionAttempt: output.instruction_attempt,
     evidence: verifyGsEvidence(output.evidence, output.transcript, questionTranscripts),
     transcript: output.transcript,
     segments: buildJudgeSegments(questions, questionTranscripts),

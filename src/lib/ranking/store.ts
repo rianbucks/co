@@ -27,6 +27,8 @@ export interface JudgmentRecord {
   mock: boolean;
   /** 판정 유보 결과(근거가 1순위 권역을 뒷받침하지 못함). 지역을 확정하지 못했으므로 랭킹에 올릴 수 없다(명세 4장). */
   uncertain: boolean;
+  /** 녹음이 감정 결과를 지시하려 했다고 모델이 본 결과. 랭킹에 올릴 수 없다(명세 4장). */
+  instructionAttempt: boolean;
 }
 
 export interface RankedEntry {
@@ -79,6 +81,8 @@ const judgmentRecordSchema = z.object({
   mock: z.boolean(),
   // 이 필드가 생기기 전에 남긴 기록(배포 뒤 최대 1시간)은 유보가 아닌 것으로 읽는다.
   uncertain: z.boolean().default(false),
+  // 이 필드가 생기기 전에 남긴 기록(배포 뒤 최대 1시간)은 지시 발화가 없던 것으로 읽는다.
+  instructionAttempt: z.boolean().default(false),
 });
 
 const rankingEntrySchema = z.object({
@@ -92,8 +96,8 @@ const rankingEntrySchema = z.object({
 
 /** 정해 둔 필드만 남긴다. 호출부가 다른 값을 실어 보내도 저장되지 않는다. */
 function pickJudgment(record: JudgmentRecord): JudgmentRecord {
-  const { intensity, region, grade, mock, uncertain } = record;
-  return { intensity, region, grade, mock, uncertain };
+  const { intensity, region, grade, mock, uncertain, instructionAttempt } = record;
+  return { intensity, region, grade, mock, uncertain, instructionAttempt };
 }
 
 function pickEntry(entry: RankingEntry): RankingEntry {
