@@ -363,9 +363,6 @@ body {
 .certificate-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .certificate-tools button { padding-inline: 12px; }
 .certificate-tools button:first-child { margin-right: auto; }
-.answer-detail { border-bottom: 1px solid var(--rule); padding-bottom: 4px; }
-.answer-detail summary { cursor: pointer; padding: 10px 2px; font-size: 14px; }
-.answer-detail summary > span:first-child { margin-right: 6px; }
 .app-shell main button.ranking-form-action {
   width: 100%; min-height: 44px; padding: 10px 14px;
   font-size: 15px !important; font-weight: 600 !important; line-height: 1.4 !important;
