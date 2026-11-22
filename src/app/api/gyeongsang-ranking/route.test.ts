@@ -83,7 +83,7 @@ describe("POST /api/gyeongsang-ranking", () => {
       intensity: 69,
       gyeongbuk: 64,
       grade: 2,
-      gradeName: "지역 말투가 뚜렷하게 들려요",
+      gradeName: "자막 필요",
       matched: true,
     });
     expect(entry.id).toMatch(/^gr_[0-9a-f]{12}$/);

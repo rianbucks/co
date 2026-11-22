@@ -100,7 +100,7 @@ export default function S1Intro({ onStartGyeongsang, onNext, onViewRanking, nick
               <div><small>사투리 농도</small><strong>68<small> / 100</small></strong></div>
             </div>
             <div className={styles.gauge} aria-hidden="true" />
-            <p>2등급 · 지역 말투가 뚜렷하게 들려요</p>
+            <p>2등급 · 자막 필요</p>
           </figure>
         </section>
         <NicknameInvite onStartGyeongsang={value => { onNicknameChange(value); onStartGyeongsang(); }} nickname={nickname} onStart={value => { onNicknameChange(value); onNext(); }} />
