@@ -94,6 +94,17 @@ describe("verifyGsEvidence", () => {
 });
 
 describe("buildGyeongsangResult", () => {
+  it("억양 상한도 일반 감정과 같다: 어휘 100, 어미 100, 음운 100, 억양 20 → 가중 합 68 → 40, 3등급", () => {
+    const output = {
+      ...(parseGsModelOutput(JSON.stringify(GS_MOCK_MODEL_OUTPUT), GS_QUESTIONS.length) as { value: GsAcceptedOutput }).value,
+      scores: { vocabulary: 100, endings: 100, phonology: 100, intonation: 20 },
+    };
+    const result = buildGyeongsangResult(output, ISSUE, GS_QUESTIONS);
+    expect(result.intensity).toMatchObject({ score: 40, grade: 3, gradeName: "본인만 표준어라고 생각함" });
+    expect(result.intonationCapped).toBe(true);
+    expect(result.intensity.parts).toEqual(output.scores);
+  });
+
   it("가짜 출력으로 정밀 감정 결과를 만든다: 성분, 농도(가중치와 등급표는 일반 감정과 같다), 근거, 문항별 받아쓰기", () => {
     const expected: GyeongsangResult = {
       ...ISSUE,
@@ -105,6 +116,7 @@ describe("buildGyeongsangResult", () => {
         gradeName: "자막 필요",
         parts: { vocabulary: 55, endings: 80, phonology: 65, intonation: 70 },
       },
+      intonationCapped: false,
       instructionAttempt: false,
       evidence: GS_MOCK_MODEL_OUTPUT.evidence.map((item) => ({ ...item })),
       transcript: GS_MOCK_MODEL_OUTPUT.transcript,

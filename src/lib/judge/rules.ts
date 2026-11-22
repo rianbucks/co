@@ -28,6 +28,13 @@ export const INTENSITY_WEIGHTS: Record<PartKey, number> = {
   intonation: 40,
 };
 
+/**
+ * 억양 상한(명세 4장): 농도는 가중 합으로 계산한 뒤 (억양 점수 + 이 값)을 넘지 못한다.
+ * 어휘와 어미에 방언이 많아도 억양이 따라오지 않으면 고득점이 나오지 않게 한다. 일반 감정과 경상 정밀 감정이 같이 쓴다.
+ * 예: 어휘 100, 어미 100, 음운 100, 억양 20 → 가중 합 68 → 상한 40 → 농도 40.
+ */
+export const INTONATION_CAP_MARGIN = 20;
+
 /** 등급표(명세 4장). */
 export const GRADE_TABLE: ReadonlyArray<{
   grade: Grade;

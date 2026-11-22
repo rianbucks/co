@@ -9,6 +9,7 @@ import {
 } from '@/lib/gyeongsang/contract';
 import { ORIGIN_MATCH_THRESHOLD, ORIGIN_NAMES, judgeOriginMatch, type OriginKey } from '@/lib/gyeongsang/origin';
 import { splitHighlights } from '@/lib/judge/highlight';
+import { INTONATION_CAP_NOTE } from '@/lib/judge/opinions';
 import { PART_KOREAN_NAMES } from '@/types/screen';
 import SubregionBar from './SubregionBar';
 
@@ -122,6 +123,10 @@ export default function GsResult({ result, origin, onGoToCertificate, onGoToRank
               <p className="mt-3 text-sm font-medium text-zinc-300">
                 {intensity.grade}등급 <span className="mx-1 text-zinc-600">·</span> {intensity.gradeName}
               </p>
+              {/* 억양 상한에 걸려 농도를 낮췄으면 일반 감정 소견과 같은 안내를 보여 준다(정밀 감정에는 소견이 없다) */}
+              {result.intonationCapped && (
+                <p className="mt-2 text-xs leading-relaxed text-zinc-400">{INTONATION_CAP_NOTE}</p>
+              )}
             </div>
           </div>
 

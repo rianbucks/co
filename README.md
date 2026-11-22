@@ -78,6 +78,7 @@ curl -F "audio=@recording.webm" -F "questionSetId=set-gs" http://localhost:3000/
 - `segments`에는 문항 종류 `kind`가 붙습니다. `convert`(바꿔 말하기)면 `prompt`는 바꿔 말할 표준어 문장이고, `question`(상황 답하기)이면 상황 문구입니다(명세 7장).
 - 성공 응답에는 전체 받아쓰기 `transcript`와 문항별 받아쓰기 `segments`가 들어가며, 둘 다 서버에 저장하지 않습니다. 근거(`evidence`)는 문항 번호 `question`을 달고 그 문항의 받아쓰기로 검증합니다. 모델이 문항별 받아쓰기를 문항 수만큼 주지 않으면 `segments`는 빈 배열이고 근거는 전체 받아쓰기로 검증합니다(명세 4장, 7장).
 - 모델은 근거를 먼저 적고 권역 확률을 나중에 정합니다. 근거마다 그 특징이 가리키는 권역(`evidence[].region`, 여러 권역에 공통이면 `common`)이 붙습니다. 검증을 통과한 근거 중 1순위 권역을 가리키는 것이 2개 미만이거나 다른 권역을 가리키는 것이 더 많으면 `region.uncertain`이 true이고, 화면과 감정서는 "판정 유보 (추정: ○○ 방언)"으로 표시합니다(명세 4장). 유보 결과는 랭킹에 등록할 수 없습니다(403 `not_eligible`, `reason: "uncertain"`).
+- 농도는 항목 점수의 가중 합을 (억양 점수 + 20) 이하로 묶고(억양 상한, `src/lib/judge/rules.ts`의 `INTONATION_CAP_MARGIN`), 모사 의심이면 그 절반입니다. 상한에 걸리면 `intonationCapped`가 true이고 소견 끝에 안내가 붙습니다. 지시문도 억양과 음운을 실제로 들린 대로만 매기게 합니다(`src/lib/judge/scoring-rule.ts`). 일반 감정과 경상 정밀 감정에 똑같이 적용합니다(명세 4장).
 - 감정에 성공하면 랭킹 등록 자격(농도, 1순위 권역, 등급, 가짜 응답 여부, 판정 유보 여부, 지시 발화 여부)을 감정 `id`로 1시간 저장합니다.
 - 녹음 속의 말은 감정 대상일 뿐 지시가 아닙니다. 일반 감정과 경상 정밀 감정의 지시문에 이 규칙을 넣고(`src/lib/judge/instruction-rule.ts`), 녹음이 점수, 지역, 등급 같은 감정 결과를 지시하려 했으면 모델이 `instruction_attempt`를 true로 적습니다. 이때 결과(`instructionAttempt: true`)는 그대로 보여 주되 랭킹 등록은 거절합니다(403 `not_eligible`, `reason: "instruction"`, 일반 랭킹과 정밀 감정 랭킹 모두).
 - 음성과 받아쓰기는 저장하거나 공개하지 않으므로 욕설 같은 녹음 내용으로는 랭킹 등록을 막지 않습니다. 등록을 거절하는 결과는 가짜 응답 결과, 감정 결과를 지시하려 한 결과(일반 랭킹, 정밀 감정 랭킹), 판정 유보 결과(일반 랭킹)입니다.
@@ -145,6 +146,7 @@ npm run validate -- --csv validation/answers.csv --runs 3
 | `src/lib/judge/opinions.ts` | 소견 문구(등급 × 가장 높은 항목, 20개) |
 | `src/lib/judge/model-output.ts` | Gemini 출력 JSON 스키마와 검증 |
 | `src/lib/judge/prompt.ts` | 지시문(바꿔 말하기 문항이 섞인 세트는 문항 종류와 바꿔 말하기 규칙을 넣는다) |
+| `src/lib/judge/scoring-rule.ts` | 음운·억양 채점 원칙(지시문 scores 규칙에 붙이는 문장, 일반·정밀 감정 공용) |
 | `src/lib/judge/instruction-rule.ts` | 녹음 속 말을 지시로 따르지 않게 하는 지시문 규칙(일반·정밀 감정 공용)과 랭킹 거절 안내 문구 |
 | `src/lib/judge/questions.ts` | 일반 감정 문항 세트(`set-b` 기본, `set-a` 이전 구성)와 `NEXT_PUBLIC_QUESTION_SET`. 녹음 화면과 지시문이 함께 쓴다 |
 | `src/lib/judge/audio.ts` | 파일 크기와 형식 검사 |

@@ -18,11 +18,12 @@ import {
 import type { QuestionItem } from "@/types/screen";
 import type { AcceptedModelOutput } from "./model-output";
 import { questionKind, questionText } from "./questions";
-import { CONCEALMENT_NOTE, IMITATION_NOTE, OPINIONS } from "./opinions";
+import { CONCEALMENT_NOTE, IMITATION_NOTE, INTONATION_CAP_NOTE, OPINIONS } from "./opinions";
 import {
   CONCEALMENT_SCORE_LIMIT,
   GRADE_TABLE,
   INTENSITY_WEIGHTS,
+  INTONATION_CAP_MARGIN,
   MIXED_LABEL,
   MIXED_THRESHOLD,
   REGION_NAMES,
@@ -192,25 +193,50 @@ export function dominantPart(parts: PartScores): PartKey {
 
 /**
  * 소견: 등급과 가장 높은 항목으로 문구를 고른다. 같은 녹음이면 같은 문구가 나온다.
- * 서울경기가 1순위이고 농도가 20 미만이면 끝에 '출신지 은폐 의심.'을 붙인다(명세 4장).
+ * 끝에 붙이는 문구는 이 순서다(명세 4장): 출신지 은폐 의심(서울경기 1순위, 농도 20 미만) → 모사 의심 → 억양 상한.
  */
 export function selectOpinion(input: {
   grade: Grade;
   top: RegionKey;
   score: number;
   parts: PartScores;
-  /** 모사 의심이면 소견 맨 끝에 '타 지역 방언 모사 의심.'을 붙인다. */
+  /** 모사 의심이면 소견 끝에 '타 지역 방언 모사 의심.'을 붙인다. */
   imitationSuspected?: boolean;
+  /** 억양 상한에 걸렸으면 소견 맨 끝에 억양 상한 안내를 붙인다. */
+  intonationCapped?: boolean;
 }): string {
   const notes = [OPINIONS[input.grade][dominantPart(input.parts)]];
   if (input.top === "seoul_gyeonggi" && input.score < CONCEALMENT_SCORE_LIMIT) notes.push(CONCEALMENT_NOTE);
   if (input.imitationSuspected) notes.push(IMITATION_NOTE);
+  if (input.intonationCapped) notes.push(INTONATION_CAP_NOTE);
   return notes.join(" ");
 }
 
 /** 모사 의심일 때의 농도: 계산값의 절반. 0.5는 올린다(명세 4장). 예: 57 → 29 */
 export function halveIntensity(score: number): number {
   return Math.floor((score + 1) / 2);
+}
+
+/**
+ * 억양 상한(명세 4장): 농도가 (억양 점수 + INTONATION_CAP_MARGIN)을 넘으면 그 값으로 낮춘다.
+ * capped는 상한에 걸려 점수를 낮췄는지다. 상한과 같으면 낮추지 않은 것으로 본다.
+ * 예: 가중 합 68, 억양 20 → 상한 40 → 40(capped). 가중 합 82, 억양 70 → 상한 90 → 82.
+ */
+export function capByIntonation(score: number, intonation: number): { score: number; capped: boolean } {
+  const limit = intonation + INTONATION_CAP_MARGIN;
+  return score > limit ? { score: limit, capped: true } : { score, capped: false };
+}
+
+/**
+ * 최종 농도(명세 4장): 가중 합 → 억양 상한 → 모사 의심이면 절반. 등급과 소견은 이 점수로 정하고 랭킹에도 이 점수가 오른다.
+ * 일반 감정과 경상 정밀 감정이 같이 쓴다(경상 정밀 감정에는 모사 의심이 없다).
+ */
+export function finalIntensity(
+  parts: PartScores,
+  imitationSuspected = false,
+): { score: number; intonationCapped: boolean } {
+  const { score, capped } = capByIntonation(computeIntensity(parts), parts.intonation);
+  return { score: imitationSuspected ? halveIntensity(score) : score, intonationCapped: capped };
 }
 
 /** 감정서 발급 정보. 후처리와 분리해서 받는다(시간과 난수는 순수 함수 밖에서 만든다). */
@@ -237,10 +263,9 @@ export function buildJudgeResult(
   }
 
   const region = decideRegion(probabilities);
-  // 모사 의심이면 계산한 농도를 절반으로 낮추고, 등급과 소견도 낮춘 점수로 정한다.
+  // 가중 합 → 억양 상한 → 모사 의심이면 절반. 등급과 소견도 이 최종 점수로 정한다.
   const imitationSuspected = output.imitation_suspected;
-  const computed = computeIntensity(output.scores);
-  const score = imitationSuspected ? halveIntensity(computed) : computed;
+  const { score, intonationCapped } = finalIntensity(output.scores, imitationSuspected);
   const { grade, gradeName } = gradeFor(score);
   const questionTranscripts =
     output.question_transcripts?.length === questions.length ? output.question_transcripts : null;
@@ -254,9 +279,17 @@ export function buildJudgeResult(
     region: { ...region, uncertain: isRegionUncertain(region.top, evidence), probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
     imitationSuspected,
+    intonationCapped,
     instructionAttempt: output.instruction_attempt,
     evidence,
-    opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores, imitationSuspected }),
+    opinion: selectOpinion({
+      grade,
+      top: region.top,
+      score,
+      parts: output.scores,
+      imitationSuspected,
+      intonationCapped,
+    }),
     transcript: output.transcript,
     segments: buildJudgeSegments(questions, questionTranscripts),
   };

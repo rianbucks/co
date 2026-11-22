@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { INSTRUCTION_RULE } from "../judge/instruction-rule";
+import { SCORING_RULE } from "../judge/scoring-rule";
 import { buildSystemInstruction, findQuestionSet } from "../judge/prompt";
 import { recordingSeconds } from "../judge/questions";
 import { GS_MOCK_MODEL_OUTPUT } from "./mock";
@@ -140,6 +141,8 @@ describe("buildGsSystemInstruction", () => {
       "8. subregions는 들린 경상 방언의 특징이 경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽에 가까운지의 비율이고 합은 100이다. 아래 참고 기준을 함께 본다.",
     );
     expect(rules()[8]).toContain("경상 방언의 특징이 얼마나 나타나는지로 매긴다");
+    // 음운·억양 채점 원칙은 일반 감정과 같은 문장이다
+    expect(rules()[8].endsWith(` ${SCORING_RULE}`)).toBe(true);
     expect(rules()[9]).toContain("evidence의 question은 그 구절이 나온 문항 번호(1~6)");
     expect(rules()[9]).toContain("quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다");
     expect(rules()[10]).toBe(

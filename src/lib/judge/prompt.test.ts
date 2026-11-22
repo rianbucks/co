@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { QuestionItem } from "@/types/screen";
 import { INSTRUCTION_RULE } from "./instruction-rule";
+import { SCORING_RULE } from "./scoring-rule";
 import { SET_A_MODEL_OUTPUT_EXAMPLE, SPEC_MODEL_OUTPUT_EXAMPLE } from "./mock";
 import { buildSystemInstruction, findQuestionSet } from "./prompt";
 
@@ -142,6 +143,15 @@ describe("buildSystemInstruction: 상황극만 있는 세트(set-a)", () => {
     expect(instruction).toContain(
       "8. imitation_suspected는 어휘와 어미가 가리키는 권역과 음운과 억양이 가리키는 권역이 다르면 true, 같으면 false다.",
     );
+  });
+
+  it("scores 규칙 끝에 음운·억양 채점 원칙을 붙인다: 들린 음높이·장단·문장 끝 오르내림만으로, 어색하거나 꾸민 억양은 30 이하", () => {
+    const scoresRule = rules().find((line) => line.includes(". scores는"))!;
+    expect(scoresRule.endsWith(` ${SCORING_RULE}`)).toBe(true);
+    expect(scoresRule).toContain(
+      "억양 점수는 실제로 들린 음높이와 장단, 문장 끝의 오르내림만으로 매긴다. 어휘나 어미에 방언이 많다는 이유로 억양 점수를 올리지 않는다. 억양이 그 권역 화자의 자연스러운 억양과 다르거나, 과장되거나, 일부러 꾸민 듯하거나, 문항마다 들쭉날쭉하면 30 이하로 준다. 표준어 억양이면 0에 가깝게 준다.",
+    );
+    expect(scoresRule).toContain("음운 점수도 같은 원칙으로, 글자로 옮긴 표현이 아니라 실제로 들린 발음으로 매기고");
   });
 
   it("문항별 받아쓰기를 문항 수만큼 요구하고, 문항 사이에 쉬는 구간이 없을 수 있다고 알린다", () => {

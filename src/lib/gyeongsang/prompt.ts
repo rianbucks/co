@@ -9,6 +9,7 @@
  * 지어내지 않도록 '참고 예시이고, 들린 것만 근거로 쓴다. 예시에 없는 표현도 근거가 될 수 있다'를 함께 적는다.
  */
 import { INSTRUCTION_RULE } from "../judge/instruction-rule";
+import { SCORING_RULE } from "../judge/scoring-rule";
 import { questionKind, questionText } from "../judge/questions";
 import type { QuestionItem } from "@/types/screen";
 
@@ -62,7 +63,7 @@ export function buildGsSystemInstruction(questions: readonly QuestionItem[]): st
       : []),
     "not_gyeongsang은 경상 방언의 특징이 들리지 않거나 다른 지역 방언으로 들려 경상 방언으로 보기 어려우면 true, 경상 방언의 특징이 들리면 false다. true면 subregions, scores, evidence는 null로 둔다.",
     "subregions는 들린 경상 방언의 특징이 경북권(대구·경북)과 경남권(부산·울산·경남) 중 어느 쪽에 가까운지의 비율이고 합은 100이다. 아래 참고 기준을 함께 본다.",
-    "scores는 어휘, 어미, 음운, 억양 각각 0~100이고, 경상 방언의 특징이 얼마나 나타나는지로 매긴다. 다른 지역 방언의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다.",
+    `scores는 어휘, 어미, 음운, 억양 각각 0~100이고, 경상 방언의 특징이 얼마나 나타나는지로 매긴다. 다른 지역 방언의 특징은 점수에 넣지 않는다. 표준어와 차이가 없으면 0에 가깝게 준다. ${SCORING_RULE}`,
     `evidence의 question은 그 구절이 나온 문항 번호(1~${count})이고, quote는 그 문항의 question_transcripts에 그대로 있는 구절이어야 한다. note에는 그 구절이 어떤 경상 방언 특징인지와 경북권, 경남권 중 어느 쪽에 가까운지를 적는다.`,
     "말소리가 없거나 3초 미만이거나 주변 소음으로 판정할 수 없으면 audio_quality만 채운다. 이때 transcript, question_transcripts, instruction_attempt, not_gyeongsang, subregions, scores, evidence는 null로 둔다.",
   ];
