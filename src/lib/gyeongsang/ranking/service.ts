@@ -101,10 +101,14 @@ export async function registerGsRanking(
     gyeongbuk: record.gyeongbuk,
     registeredAt: formatKstIso(deps.now ? deps.now() : new Date()),
   };
-  const rank = await deps.store.register(request.judgmentId, entry);
-  if (rank === null) return rankingError({ error: "already_registered" });
+  // 같은 닉네임이 이 랭킹에 이미 있으면 저장소가 뒤에 숫자를 붙인다(기존 농도 랭킹과 따로 센다). 응답에는 최종 닉네임을 담는다.
+  const registered = await deps.store.register(request.judgmentId, entry);
+  if (registered === null) return rankingError({ error: "already_registered" });
 
-  return { status: 201, body: { entry: toGsView({ rank, entry }) } };
+  return {
+    status: 201,
+    body: { entry: toGsView({ rank: registered.rank, entry: { ...entry, nickname: registered.nickname } }) },
+  };
 }
 
 export interface GsListQuery {

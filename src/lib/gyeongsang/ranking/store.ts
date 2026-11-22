@@ -8,11 +8,23 @@
  * - co:gs:ranking:entries                 해시. 항목 id → 항목 JSON(닉네임, 신고 원산지, 경상 농도, 경북권 비율, 등록 시각)
  * - co:gs:ranking                         정렬 집합(전체). 경상 농도 순, 같으면 먼저 등록한 순
  * - co:gs:ranking:gyeongbuk, co:gs:ranking:gyeongnam  정렬 집합(보기). 신고 원산지가 대구·경북이면 앞, 부산·울산·경남이면 뒤
+ * - co:gs:ranking:names                   집합. 쓰이고 있는 닉네임의 비교 키. 기존 농도 랭킹(co:ranking:names)과 따로 센다
  *
  * 음성, 받아쓰기, IP는 저장하지 않는다.
  */
 import { z } from "zod";
-import { JUDGMENT_TTL_SECONDS, rankingScore } from "../../ranking/store";
+import { nicknameKey, numberedNickname } from "../../ranking/nickname";
+import {
+  JUDGMENT_TTL_SECONDS,
+  NAME_NUMBERING_LUA,
+  NAME_RELEASE_LUA,
+  memoryNames,
+  parseRegisterReply,
+  rankingScore,
+  releaseMemoryName,
+  splitEntryJson,
+  type RegisteredRank,
+} from "../../ranking/store";
 import { upstashConfigFromEnv, upstashPipeline, type Fetcher, type UpstashConfig } from "../../upstash";
 import { ORIGIN_KEYS, ORIGIN_SUBREGION } from "../origin";
 import type { GsRankingArea, GsRankingEntry } from "./contract";
@@ -42,11 +54,14 @@ export interface GsRankingStore {
   saveJudgment(judgmentId: string, record: GsJudgmentRecord): Promise<void>;
   /** 없거나 1시간이 지났으면 null */
   getJudgment(judgmentId: string): Promise<GsJudgmentRecord | null>;
-  /** 감정 1건당 한 번만 등록한다. 등록했으면 전체 순위(1부터), 이미 등록한 감정이면 null */
-  register(judgmentId: string, entry: GsRankingEntry): Promise<number | null>;
+  /**
+   * 감정 1건당 한 번만 등록한다. 등록했으면 전체 순위(1부터)와 최종 닉네임, 이미 등록한 감정이면 null.
+   * 같은 닉네임이 이 랭킹에 이미 있으면 뒤에 1부터 숫자를 붙인다(기존 농도 랭킹과 따로 센다).
+   */
+  register(judgmentId: string, entry: GsRankingEntry): Promise<RegisteredRank | null>;
   /** 그 보기의 상위 limit개와 항목 수. meId를 주면 그 보기 안에서의 그 항목과 순위도 */
   list(area: GsRankingArea, limit: number, meId?: string | null): Promise<GsRankingPage>;
-  /** 지웠으면 true, 없던 항목이면 false */
+  /** 지웠으면 true, 없던 항목이면 false. 그 닉네임은 다시 쓸 수 있게 이름 집합에서도 지운다. */
   remove(entryId: string): Promise<boolean>;
 }
 
@@ -54,6 +69,7 @@ export const GS_RANKING_KEYS = {
   judgment: (judgmentId: string) => `co:gs:judgment:${judgmentId}`,
   claim: (judgmentId: string) => `co:gs:judgment:${judgmentId}:ranked`,
   entries: "co:gs:ranking:entries",
+  names: "co:gs:ranking:names",
   order: (area: GsRankingArea) => (area === "all" ? "co:gs:ranking" : `co:gs:ranking:${area}`),
 } as const;
 
@@ -108,15 +124,33 @@ function parseStored<T>(schema: z.ZodType<T>, raw: unknown): T | null {
 }
 
 /**
- * 등록 표시(SET NX), 항목 저장, 전체와 보기 정렬 집합 추가를 한 번에 한다. 표시가 이미 있으면 0, 등록했으면 전체 순위(1부터).
- * KEYS: 등록 표시, 항목 해시, 전체 정렬 집합, 보기 정렬 집합 / ARGV: 항목 id, 항목 JSON, 정렬 점수, 표시 만료(초)
+ * 등록 표시(SET NX), 닉네임 번호 매기기, 항목 저장, 전체와 보기 정렬 집합 추가를 한 번에 한다(기존 랭킹 스크립트와 같은 방식).
+ * 표시가 이미 있으면 {0, ''}, 등록했으면 {전체 순위(1부터), 최종 닉네임}.
+ * KEYS: 등록 표시, 항목 해시, 전체 정렬 집합, 보기 정렬 집합, 이름 집합
+ * ARGV: 항목 id, 항목 JSON 앞부분, 항목 JSON 뒷부분, 정렬 점수, 표시 만료(초), 입력 닉네임, 입력 닉네임의 비교 키
  */
 export const GS_REGISTER_SCRIPT = `
-if not redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[4]) then return 0 end
-redis.call('HSET', KEYS[2], ARGV[1], ARGV[2])
-redis.call('ZADD', KEYS[3], ARGV[3], ARGV[1])
-redis.call('ZADD', KEYS[4], ARGV[3], ARGV[1])
-return redis.call('ZREVRANK', KEYS[3], ARGV[1]) + 1
+if not redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[5]) then return {0, ''} end
+local names, entries, base, baseKey = KEYS[5], KEYS[2], ARGV[6], ARGV[7]
+${NAME_NUMBERING_LUA}
+redis.call('HSET', KEYS[2], ARGV[1], ARGV[2] .. name .. ARGV[3])
+redis.call('ZADD', KEYS[3], ARGV[4], ARGV[1])
+redis.call('ZADD', KEYS[4], ARGV[4], ARGV[1])
+return {redis.call('ZREVRANK', KEYS[3], ARGV[1]) + 1, name}
+`;
+
+/**
+ * 항목 삭제: 세 정렬 집합과 항목 해시에서 지우고, 그 닉네임을 이름 집합에서도 지운다(남은 항목이 같은 이름을 쓰면 둔다).
+ * 지운 개수를 돌려준다.
+ * KEYS: 전체·경북권·경남권 정렬 집합, 항목 해시, 이름 집합 / ARGV: 항목 id
+ */
+export const GS_REMOVE_SCRIPT = `
+local names, entries = KEYS[5], KEYS[4]
+local raw = redis.call('HGET', entries, ARGV[1])
+local removed = redis.call('ZREM', KEYS[1], ARGV[1]) + redis.call('ZREM', KEYS[2], ARGV[1])
+  + redis.call('ZREM', KEYS[3], ARGV[1]) + redis.call('HDEL', entries, ARGV[1])
+${NAME_RELEASE_LUA}
+return removed
 `;
 
 export function createUpstashGsRankingStore({
@@ -147,26 +181,27 @@ export function createUpstashGsRankingStore({
 
     async register(judgmentId, entry) {
       const stored = pickEntry(entry);
+      const [head, tail] = splitEntryJson(stored);
       const [result] = await run([
         [
           "EVAL",
           GS_REGISTER_SCRIPT,
-          "4",
+          "5",
           GS_RANKING_KEYS.claim(judgmentId),
           GS_RANKING_KEYS.entries,
           GS_RANKING_KEYS.order("all"),
           GS_RANKING_KEYS.order(areaOf(stored)),
+          GS_RANKING_KEYS.names,
           stored.id,
-          JSON.stringify(stored),
+          head,
+          tail,
           String(rankingScore(stored)),
           String(JUDGMENT_TTL_SECONDS),
+          stored.nickname,
+          nicknameKey(stored.nickname),
         ],
       ]);
-      const rank = Number(result);
-      if (!Number.isInteger(rank) || rank < 0) {
-        throw new Error("Upstash gyeongsang ranking store returned an invalid register response");
-      }
-      return rank === 0 ? null : rank;
+      return parseRegisterReply(result, "Upstash gyeongsang ranking store");
     },
 
     async list(area, limit, meId) {
@@ -197,13 +232,20 @@ export function createUpstashGsRankingStore({
     },
 
     async remove(entryId) {
-      const results = await run([
-        ["ZREM", GS_RANKING_KEYS.order("all"), entryId],
-        ["ZREM", GS_RANKING_KEYS.order("gyeongbuk"), entryId],
-        ["ZREM", GS_RANKING_KEYS.order("gyeongnam"), entryId],
-        ["HDEL", GS_RANKING_KEYS.entries, entryId],
+      const [removed] = await run([
+        [
+          "EVAL",
+          GS_REMOVE_SCRIPT,
+          "5",
+          GS_RANKING_KEYS.order("all"),
+          GS_RANKING_KEYS.order("gyeongbuk"),
+          GS_RANKING_KEYS.order("gyeongnam"),
+          GS_RANKING_KEYS.entries,
+          GS_RANKING_KEYS.names,
+          entryId,
+        ],
       ]);
-      return results.some((count) => Number(count) > 0);
+      return Number(removed) > 0;
     },
   };
 }
@@ -213,10 +255,12 @@ export interface MemoryGsRankingState {
   /** 정밀 감정 id → 등록 표시 만료 시각 */
   claims: Map<string, number>;
   entries: Map<string, { entry: GsRankingEntry; score: number }>;
+  /** 쓰이고 있는 닉네임의 비교 키(기존 농도 랭킹과 따로). 비어 있거나 없으면 등록할 때 항목의 닉네임으로 채운다. */
+  names?: Set<string>;
 }
 
 export function createMemoryGsRankingState(): MemoryGsRankingState {
-  return { judgments: new Map(), claims: new Map(), entries: new Map() };
+  return { judgments: new Map(), claims: new Map(), entries: new Map(), names: new Set() };
 }
 
 /** 개발 서버가 파일을 다시 읽어도 기록이 남도록 전역에 둔다(기존 랭킹과 다른 자리). */
@@ -260,9 +304,15 @@ export function createMemoryGsRankingStore({
       const claimedUntil = state.claims.get(judgmentId);
       if (claimedUntil !== undefined && claimedUntil > now()) return null;
       state.claims.set(judgmentId, now() + ttlMs);
-      const stored = pickEntry(entry);
+      const names = (state.names = memoryNames(
+        state.names,
+        [...state.entries.values()].map((item) => item.entry.nickname),
+      ));
+      const { nickname, key } = numberedNickname(entry.nickname, (candidate) => names.has(candidate));
+      names.add(key);
+      const stored = pickEntry({ ...entry, nickname });
       state.entries.set(stored.id, { entry: stored, score: rankingScore(stored) });
-      return sorted("all").findIndex((item) => item.entry.id === stored.id) + 1;
+      return { rank: sorted("all").findIndex((item) => item.entry.id === stored.id) + 1, nickname };
     },
 
     async list(area, limit, meId) {
@@ -277,7 +327,11 @@ export function createMemoryGsRankingStore({
     },
 
     async remove(entryId) {
-      return state.entries.delete(entryId);
+      const item = state.entries.get(entryId);
+      if (!item) return false;
+      state.entries.delete(entryId);
+      releaseMemoryName(state.names, item.entry.nickname, [...state.entries.values()].map((other) => other.entry.nickname));
+      return true;
     },
   };
 }

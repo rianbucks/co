@@ -80,26 +80,26 @@ describe.each(implementations)("%s 정밀 랭킹 저장소", (_name, makeStore) 
   });
 
   it("감정 1건당 한 번만 등록한다", async () => {
-    expect(await store.register("g_000000000001", entry({ id: "gr_000000000001" }))).toBe(1);
+    expect(await store.register("g_000000000001", entry({ id: "gr_000000000001" }))).toMatchObject({ rank: 1 });
     expect(await store.register("g_000000000001", entry({ id: "gr_000000000002" }))).toBeNull();
     const page = await store.list("all", 50);
     expect(page.entries.map((item) => item.entry.id)).toEqual(["gr_000000000001"]);
   });
 
   it("농도가 높은 순, 같으면 먼저 등록한 순으로 줄 세우고 전체 순위를 돌려준다", async () => {
-    expect(await store.register("g_000000000001", entry({ id: "gr_000000000001", intensity: 50 }))).toBe(1);
+    expect(await store.register("g_000000000001", entry({ id: "gr_000000000001", intensity: 50 }))).toMatchObject({ rank: 1 });
     expect(
       await store.register(
         "g_000000000002",
         entry({ id: "gr_000000000002", intensity: 80, origin: "busan", registeredAt: "2026-11-20T10:01:00+09:00" }),
       ),
-    ).toBe(1);
+    ).toMatchObject({ rank: 1 });
     expect(
       await store.register(
         "g_000000000003",
         entry({ id: "gr_000000000003", intensity: 50, registeredAt: "2026-11-20T10:02:00+09:00" }),
       ),
-    ).toBe(3);
+    ).toMatchObject({ rank: 3 });
     const page = await store.list("all", 50);
     expect(page.entries.map((item) => [item.rank, item.entry.id])).toEqual([
       [1, "gr_000000000002"],
@@ -191,11 +191,12 @@ describe("Upstash 정밀 랭킹 저장소의 요청", () => {
         "co:gs:ranking",
         "co:gs:ranking:gyeongnam",
         "co:gs:ranking:entries",
+        "co:gs:ranking:names",
       ].sort(),
     );
     // 기존 농도 랭킹의 키와 겹치지 않는다.
     for (const key of fake.keys()) {
-      expect([RANKING_KEYS.entries, RANKING_KEYS.order]).not.toContain(key);
+      expect([RANKING_KEYS.entries, RANKING_KEYS.order, RANKING_KEYS.names]).not.toContain(key);
       expect(key.startsWith("co:gs:")).toBe(true);
     }
   });

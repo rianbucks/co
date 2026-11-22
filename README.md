@@ -110,7 +110,9 @@ curl "http://localhost:3000/api/gyeongsang-ranking?area=gyeongbuk&limit=50&id=gr
 
 닉네임은 등록할 때 금칙어 목록(`src/lib/ranking/banned-words.ts`)으로 욕설과 비속어, 성적 표현, 혐오 표현을 막습니다(400 `invalid_nickname`, `reason: "banned"`, 일반 랭킹과 정밀 감정 랭킹 모두). 숫자를 끼우거나 자모로 풀어 쓴 변형도 걸러내고, 실명은 막지 않습니다(명세 7장 닉네임 금칙어). 목록을 고칠 때는 이 파일만 고칩니다.
 
-그래도 남은 부적절한 닉네임은 조회 응답에서 항목 `id`를 찾아 지웁니다. 지운 감정 결과는 다시 등록할 수 없습니다.
+같은 랭킹에 같은 닉네임이 이미 있으면 뒤에 숫자를 붙여 등록합니다(냥이 → 냥이1 → 냥이2). 겹침은 영문 대소문자를 구분하지 않고 비교하고, 일반 랭킹과 정밀 감정 랭킹은 따로 셉니다. 번호는 등록 Lua 스크립트 안에서 정하므로 동시에 등록해도 겹치지 않습니다(명세 7장 닉네임 겹침, Redis 키 `co:ranking:names`, `co:gs:ranking:names`).
+
+그래도 남은 부적절한 닉네임은 조회 응답에서 항목 `id`를 찾아 지웁니다. 지운 감정 결과는 다시 등록할 수 없고, 지운 항목의 닉네임은 다시 쓸 수 있습니다.
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" https://<배포 주소>/api/ranking/r_0123456789ab

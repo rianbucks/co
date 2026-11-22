@@ -54,6 +54,24 @@ beforeEach(async () => {
 });
 
 describe("registerGsRanking", () => {
+  it("같은 닉네임이 정밀 랭킹에 이미 있으면 뒤에 숫자를 붙이고 응답에 최종 닉네임을 담는다", async () => {
+    await store.saveJudgment("g_00000000000a", RECORD);
+    await store.saveJudgment("g_00000000000b", RECORD);
+    const first = await register({ ...BODY, judgmentId: "g_00000000000a" }, { newEntryId: () => "gr_0000000000a1" });
+    const second = await register({ ...BODY, judgmentId: "g_00000000000b" }, { newEntryId: () => "gr_0000000000a2" });
+    expect(first).toMatchObject({ status: 201, body: { entry: { nickname: "대구토박이" } } });
+    expect(second).toMatchObject({ status: 201, body: { entry: { nickname: "대구토박이1" } } });
+  });
+
+  it("10자 닉네임이 겹쳐 11자가 되어도 등록된다(닉네임 검사는 입력에만)", async () => {
+    await store.saveJudgment("g_00000000000a", RECORD);
+    await store.saveJudgment("g_00000000000b", RECORD);
+    const nickname = "가나다라마바사아자차";
+    await register({ ...BODY, judgmentId: "g_00000000000a", nickname }, { newEntryId: () => "gr_0000000000a1" });
+    const second = await register({ ...BODY, judgmentId: "g_00000000000b", nickname }, { newEntryId: () => "gr_0000000000a2" });
+    expect(second).toMatchObject({ status: 201, body: { entry: { nickname: "가나다라마바사아자차1" } } });
+  });
+
   it("정밀 감정할 때 서버가 남긴 경상 농도와 경북권 비율, 요청의 신고 원산지로 등록하고 201과 순위를 돌려준다", async () => {
     expect(await register(BODY)).toEqual({
       status: 201,
