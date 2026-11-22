@@ -4,6 +4,7 @@ import RankingForm from '@/components/common/RankingForm';
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { JudgeResult } from '@/lib/judge/contract';
+import { INSTRUCTION_ATTEMPT_NOTICE } from '@/lib/judge/instruction-rule';
 import type { RankingEntryView, RankingList, RankingRegistered } from '@/lib/ranking/contract';
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
 import { regionVerdictLabel } from '@/lib/judge/rules';
@@ -30,6 +31,15 @@ type ListState = { status: 'loading' } | { status: 'ready'; data: RankingList } 
 /** 다시 눌러도 결과가 같은 등록 오류. 등록 버튼을 잠근다. */
 const FINAL_ERRORS = new Set(['not_found', 'not_eligible', 'already_registered', 'rate_limited']);
 
+const UNCERTAIN_NOTICE = '판정 유보 결과는 랭킹에 등록할 수 없습니다.';
+
+/** 등록할 수 없는 결과의 안내. 서버가 거절하는 순서(지시 발화 → 판정 유보)와 같다. 등록할 수 있으면 null */
+function ineligibleNotice(result: JudgeResult | null): string | null {
+  if (result?.instructionAttempt) return INSTRUCTION_ATTEMPT_NOTICE;
+  if (result?.region.uncertain) return UNCERTAIN_NOTICE;
+  return null;
+}
+
 function registerErrorMessage(error: unknown, reason: unknown): string {
   switch (error) {
     case 'invalid_nickname':
@@ -39,7 +49,8 @@ function registerErrorMessage(error: unknown, reason: unknown): string {
     case 'not_found':
       return '등록 가능 시간(감정 후 1시간)이 지났거나 감정 기록을 찾을 수 없습니다. 새로 감정해 주십시오.';
     case 'not_eligible':
-      if (reason === 'uncertain') return '판정 유보 결과는 랭킹에 등록할 수 없습니다.';
+      if (reason === 'instruction') return INSTRUCTION_ATTEMPT_NOTICE;
+      if (reason === 'uncertain') return UNCERTAIN_NOTICE;
       return reason === 'mock'
         ? '가짜 응답 모드(MOCK)로 받은 결과는 랭킹에 등록할 수 없습니다.'
         : '이 감정 결과는 랭킹에 등록할 수 없습니다.';
@@ -94,7 +105,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (result?.region.uncertain || submitting || entryId || formError?.final) return;
+    if (ineligibleNotice(result) || submitting || entryId || formError?.final) return;
 
     if (!result && !nickname.trim()) {
       onApply();
@@ -139,6 +150,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
   };
 
   const submitDisabled = submitting || Boolean(formError?.final);
+  const ineligible = ineligibleNotice(result);
 
   return (
     <div className="screen-glass p-5 sm:p-7 lg:p-10">
@@ -171,7 +183,7 @@ export default function S7Ranking({ nickname, onNicknameChange, result, entryId,
               </div>
             )}
 
-            {result?.region.uncertain ? <p>판정 유보 결과는 랭킹에 등록할 수 없습니다.</p> : mine ? (
+            {ineligible ? <p>{ineligible}</p> : mine ? (
               <div ref={myRankPanel} tabIndex={-1} className="ranking-glow mt-3 p-4 text-left" data-mine>
                 <div className="text-xs font-semibold text-indigo-300">내 순위</div>
                 <div className="mt-1 text-5xl font-black tracking-tight text-white">

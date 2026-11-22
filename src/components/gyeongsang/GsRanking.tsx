@@ -14,6 +14,7 @@ import {
   type GsRankingRegistered,
 } from '@/lib/gyeongsang/ranking/contract';
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, checkNickname } from '@/lib/ranking/nickname';
+import { INSTRUCTION_ATTEMPT_NOTICE } from '@/lib/judge/instruction-rule';
 
 interface GsRankingProps {
   nickname: string;
@@ -46,6 +47,7 @@ function registerErrorMessage(error: unknown, reason: unknown): string {
     case 'not_found':
       return '등록 가능 시간(정밀 감정 후 1시간)이 지났거나 감정 기록을 찾을 수 없습니다. 새로 정밀 감정을 받아 주십시오.';
     case 'not_eligible':
+      if (reason === 'instruction') return INSTRUCTION_ATTEMPT_NOTICE;
       return reason === 'mock'
         ? '가짜 응답 모드(MOCK)로 받은 결과는 랭킹에 등록할 수 없습니다.'
         : '이 감정 결과는 랭킹에 등록할 수 없습니다.';
@@ -149,7 +151,7 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting || entryId || formError?.final) return;
+    if (result?.instructionAttempt || submitting || entryId || formError?.final) return;
 
     if (!result && !nickname.trim()) return onApply();
     const checked = checkNickname(nickname);
@@ -202,7 +204,7 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
         <div className="relative flex flex-col justify-between rounded-3xl border border-zinc-800/80 bg-zinc-900/90 p-6 sm:p-8 lg:col-span-5">
           <div>
             <h2 className="ranking-card-title">
-              {!result ? '정밀 감정 신청' : entryId ? '정밀 랭킹 등록 완료' : '닉네임을 남겨 주십시오'}
+              {!result ? '정밀 감정 신청' : entryId ? '정밀 랭킹 등록 완료' : result.instructionAttempt ? '정밀 랭킹 등록' : '닉네임을 남겨 주십시오'}
             </h2>
 
             {result && origin && myMatch && (
@@ -228,7 +230,8 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
               </div>
             )}
 
-            {mine ? (
+            {/* 녹음이 감정 결과를 지시하려 한 결과는 등록할 수 없다(서버도 not_eligible로 거절한다) */}
+            {result?.instructionAttempt ? <p>{INSTRUCTION_ATTEMPT_NOTICE}</p> : mine ? (
               <div className="ranking-glow mt-3 p-4 text-left" data-mine>
                 <div className="text-sm font-medium text-indigo-300">
                   내 순위 · {GS_RANKING_AREA_NAMES[area]}

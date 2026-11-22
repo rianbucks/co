@@ -23,6 +23,8 @@ export interface GsJudgmentRecord {
   gyeongbuk: number;
   /** 가짜 응답 모드(MOCK_AI)의 결과. 랭킹에 올릴 수 없다. */
   mock: boolean;
+  /** 녹음이 감정 결과를 지시하려 했다고 모델이 본 결과. 랭킹에 올릴 수 없다. */
+  instructionAttempt: boolean;
 }
 
 export interface GsRankedEntry {
@@ -66,6 +68,8 @@ const judgmentRecordSchema = z.object({
   intensity: ratioSchema,
   gyeongbuk: ratioSchema,
   mock: z.boolean(),
+  // 이 필드가 생기기 전에 남긴 기록(배포 뒤 최대 1시간)은 지시 발화가 없던 것으로 읽는다.
+  instructionAttempt: z.boolean().default(false),
 });
 
 const entrySchema = z.object({
@@ -79,8 +83,8 @@ const entrySchema = z.object({
 
 /** 정해 둔 필드만 남긴다. 호출부가 다른 값을 실어 보내도 저장되지 않는다. */
 function pickJudgment(record: GsJudgmentRecord): GsJudgmentRecord {
-  const { intensity, gyeongbuk, mock } = record;
-  return { intensity, gyeongbuk, mock };
+  const { intensity, gyeongbuk, mock, instructionAttempt } = record;
+  return { intensity, gyeongbuk, mock, instructionAttempt };
 }
 
 function pickEntry(entry: GsRankingEntry): GsRankingEntry {

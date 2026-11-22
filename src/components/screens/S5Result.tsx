@@ -163,7 +163,7 @@ export default function S5Result({
               onClick={onGoToRanking}
               className="flex w-full items-center justify-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 py-2 text-sm font-bold text-indigo-200 transition hover:bg-indigo-500/25 active:scale-[0.98]"
             >
-              <span>{region.uncertain ? '농도 랭킹 보기' : '농도 랭킹 등록'}</span>
+              <span>{region.uncertain || result.instructionAttempt ? '농도 랭킹 보기' : '농도 랭킹 등록'}</span>
             </button>
 
             <button

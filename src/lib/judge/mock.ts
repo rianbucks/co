@@ -18,6 +18,7 @@ export const SET_A_MODEL_OUTPUT_EXAMPLE = {
     "그래 입고 나가모 얼어 죽는데이",
     "할매 이거 진짜 맛있네예, 한 그릇 더 묵을게예",
   ],
+  instruction_attempt: false,
   evidence: [
     {
       question: 1,
@@ -80,6 +81,7 @@ export const SPEC_MODEL_OUTPUT_EXAMPLE = {
     "어, 니가 웬일이고? 억수로 오랜만이네",
     "니 지금 웃음이 나오나? 퍼뜩 안 오고 뭐 했노",
   ],
+  instruction_attempt: false,
   evidence: [
     {
       question: 1,

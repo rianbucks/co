@@ -254,6 +254,7 @@ export function buildJudgeResult(
     region: { ...region, uncertain: isRegionUncertain(region.top, evidence), probabilities },
     intensity: { score, grade, gradeName, parts: { ...output.scores } },
     imitationSuspected,
+    instructionAttempt: output.instruction_attempt,
     evidence,
     opinion: selectOpinion({ grade, top: region.top, score, parts: output.scores, imitationSuspected }),
     transcript: output.transcript,

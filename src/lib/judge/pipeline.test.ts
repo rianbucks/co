@@ -79,6 +79,7 @@ describe("judge: 성공", () => {
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
       imitationSuspected: false,
+      instructionAttempt: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
@@ -301,7 +302,7 @@ describe("judge: AI 실패와 재시도", () => {
 });
 
 describe("judge: 랭킹 등록 자격 기록", () => {
-  it("성공하면 id, 농도, 1순위 권역, 등급, 판정 유보 여부만 기록한다", async () => {
+  it("성공하면 id, 농도, 1순위 권역, 등급, 판정 유보 여부, 지시 발화 여부만 기록한다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
 
     const response = await judge(makeInput(), makeDeps({ recordJudgment }));
@@ -314,6 +315,7 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       region: "gyeongsang",
       grade: 2,
       uncertain: false,
+      instructionAttempt: false,
     });
   });
 
@@ -350,6 +352,19 @@ describe("judge: 랭킹 등록 자격 기록", () => {
     );
   });
 
+  it("녹음이 감정 결과를 지시하려 했으면 결과는 그대로 내고, 지시 발화로 기록한다(랭킹 등록을 막는다)", async () => {
+    const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
+    const plain = await judge(makeInput(), makeDeps());
+    const { ai } = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, instruction_attempt: true }));
+
+    const response = await judge(makeInput(), makeDeps({ ai, recordJudgment }));
+
+    expect(response.status).toBe(200);
+    // 권역, 농도, 등급, 소견, 근거는 지시 발화가 없을 때와 같다(결과는 정상적으로 보여 준다).
+    expect(response.body).toEqual({ ...(plain.body as object), instructionAttempt: true });
+    expect(recordJudgment).toHaveBeenCalledWith(expect.objectContaining({ instructionAttempt: true }));
+  });
+
   it("녹음 내용으로는 등록을 막지 않는다: 모델이 이전 형식으로 flags를 붙여도 기록에 남기지 않는다", async () => {
     const recordJudgment = vi.fn<NonNullable<JudgeDeps["recordJudgment"]>>(async () => {});
     const { ai } = scriptedAi(JSON.stringify({ ...SPEC_MODEL_OUTPUT_EXAMPLE, flags: ["profanity"] }));
@@ -363,6 +378,7 @@ describe("judge: 랭킹 등록 자격 기록", () => {
       region: "gyeongsang",
       grade: 2,
       uncertain: false,
+      instructionAttempt: false,
     });
   });
 

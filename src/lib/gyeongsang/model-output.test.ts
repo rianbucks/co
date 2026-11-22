@@ -92,6 +92,20 @@ describe("parseGsModelOutput", () => {
     });
   });
 
+  it("지시 발화 여부(instruction_attempt)는 true일 때만 true로 읽고, 없거나 boolean이 아니면 실패하지 않고 false로 둔다", () => {
+    const read = (value: unknown) => {
+      const parsed = parseGsModelOutput(JSON.stringify({ ...example(), instruction_attempt: value }), QUESTION_COUNT);
+      return parsed.ok && parsed.value.audio_quality === "ok" && !parsed.value.not_gyeongsang
+        ? parsed.value.instruction_attempt
+        : "실패";
+    };
+    expect(read(true)).toBe(true);
+    expect(read(false)).toBe(false);
+    expect(read(undefined)).toBe(false);
+    expect(read(null)).toBe(false);
+    expect(read("true")).toBe(false);
+  });
+
   it("문항별 받아쓰기가 문항 수만큼의 문자열 배열이 아니면 null로 두고 실패시키지 않는다", () => {
     for (const value of [null, undefined, ["하나", "둘"], ["가", "나", "다", 4], "문자열"]) {
       const result = parse({ ...example(), question_transcripts: value });
@@ -170,12 +184,13 @@ describe("buildGsModelOutputSchema", () => {
     });
   });
 
-  it("받아쓰기 다음에 경상 방언 여부와 성분을 쓰고, 속성 이름은 가짜 출력과 같다", () => {
+  it("받아쓰기 다음에 지시 발화 여부, 경상 방언 여부와 성분을 쓰고, 속성 이름은 가짜 출력과 같다", () => {
     const properties = SCHEMA.properties as Record<string, SchemaNode>;
     expect(Object.keys(properties)).toEqual([
       "audio_quality",
       "transcript",
       "question_transcripts",
+      "instruction_attempt",
       "not_gyeongsang",
       "subregions",
       "scores",
@@ -215,6 +230,7 @@ describe("buildGsModelOutputSchema", () => {
     for (const field of [
       "transcript",
       "question_transcripts",
+      "instruction_attempt",
       "not_gyeongsang",
       "subregions",
       "scores",
@@ -223,5 +239,6 @@ describe("buildGsModelOutputSchema", () => {
       expect(properties[field].type).toContain("null");
     }
     expect(properties.not_gyeongsang.type).toEqual(["boolean", "null"]);
+    expect(properties.instruction_attempt.type).toEqual(["boolean", "null"]);
   });
 });

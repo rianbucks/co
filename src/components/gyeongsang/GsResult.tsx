@@ -133,7 +133,7 @@ export default function GsResult({ result, origin, onGoToCertificate, onGoToRank
               정밀 감정서 발급
             </button>
             <button onClick={onGoToRanking} className="secondary-action-button w-full text-center transition">
-              정밀 랭킹 등록
+              {result.instructionAttempt ? '정밀 랭킹 보기' : '정밀 랭킹 등록'}
             </button>
             <button onClick={onRestart} className="secondary-action-button w-full text-center transition">
               다시 정밀 감정받기

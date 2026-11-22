@@ -59,6 +59,8 @@ export interface JudgmentSummary {
   grade: Grade;
   /** 판정 유보 결과인지(region.uncertain). 랭킹에 올릴 수 없다. */
   uncertain: boolean;
+  /** 녹음이 감정 결과를 지시하려 했는지(instructionAttempt). 랭킹에 올릴 수 없다. */
+  instructionAttempt: boolean;
 }
 
 export interface JudgeDeps {
@@ -180,6 +182,7 @@ export async function judge(input: JudgeInput, deps: JudgeDeps): Promise<JudgeRe
         region: result.region.top,
         grade: result.intensity.grade,
         uncertain: result.region.uncertain,
+        instructionAttempt: result.instructionAttempt,
       });
     } catch (error) {
       (deps.log ?? defaultLog)("judgment_record_failed", describeError(error));

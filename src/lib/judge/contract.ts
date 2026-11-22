@@ -91,6 +91,11 @@ export interface JudgeResult {
    * 소견 끝에 '타 지역 방언 모사 의심.'이 붙는다.
    */
   imitationSuspected: boolean;
+  /**
+   * 녹음이 감정 결과(점수, 지역, 등급)를 지시하려 했다고 모델이 본 경우. 결과는 그대로 보여 주고,
+   * 랭킹에는 등록할 수 없다(명세 7장 403 not_eligible, reason: "instruction").
+   */
+  instructionAttempt: boolean;
   evidence: Evidence[];
   opinion: string;
   /** 전체 받아쓰기 */

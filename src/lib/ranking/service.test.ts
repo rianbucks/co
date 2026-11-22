@@ -28,6 +28,7 @@ const RECORD: JudgmentRecord = {
   grade: 2,
   mock: false,
   uncertain: false,
+  instructionAttempt: false,
 };
 
 let clock: number;
@@ -179,6 +180,24 @@ describe("registerRanking", () => {
     });
     expect(limiter.check).not.toHaveBeenCalled();
     expect(state.entries.size).toBe(0);
+  });
+
+  it("녹음이 감정 결과를 지시하려 한 결과는 403 not_eligible(instruction)이고 한도를 쓰지 않는다", async () => {
+    await store.saveJudgment("j_00000000000e", { ...RECORD, instructionAttempt: true });
+    await expect(register({ judgmentId: "j_00000000000e", nickname: "닉네임" })).resolves.toEqual({
+      status: 403,
+      body: { error: "not_eligible", reason: "instruction" },
+    });
+    expect(limiter.check).not.toHaveBeenCalled();
+    expect(state.entries.size).toBe(0);
+  });
+
+  it("판정 유보이면서 지시 발화도 있으면 지시 발화(instruction)로 거절한다", async () => {
+    await store.saveJudgment("j_00000000000f", { ...RECORD, uncertain: true, instructionAttempt: true });
+    expect((await register({ judgmentId: "j_00000000000f", nickname: "닉네임" })).body).toEqual({
+      error: "not_eligible",
+      reason: "instruction",
+    });
   });
 
   it("감정 기록이 없거나 1시간이 지났으면 404 not_found", async () => {

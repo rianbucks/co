@@ -186,7 +186,7 @@ export default function GsCertificate({ result, origin, onBack, onGoToRanking, o
           </button>
         </div>
         <button onClick={onGoToRanking} className="secondary-action-button mt-3 w-full text-center transition">
-          정밀 랭킹 등록
+          {result.instructionAttempt ? '정밀 랭킹 보기' : '정밀 랭킹 등록'}
         </button>
         {message && (
           <p role="status" className="mt-3 text-center text-sm text-amber-300">

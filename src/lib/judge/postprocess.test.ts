@@ -471,6 +471,7 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
         parts: { vocabulary: 40, endings: 85, phonology: 60, intonation: 75 },
       },
       imitationSuspected: false,
+      instructionAttempt: false,
       evidence: SPEC_MODEL_OUTPUT_EXAMPLE.evidence,
       opinion: "어미 사용이 현저하여 표준어 전환이 곤란한 것으로 사료됨.",
       transcript: SPEC_MODEL_OUTPUT_EXAMPLE.transcript,
@@ -536,6 +537,12 @@ describe("buildJudgeResult: 4장 모델 출력 예시 → 결과 JSON", () => {
     expect(result.intensity).toMatchObject({ score: 47, grade: 3 });
     expect(result.imitationSuspected).toBe(false);
     expect(result.opinion).toBe(OPINIONS[3].vocabulary);
+  });
+
+  it("녹음이 감정 결과를 지시하려 했으면 instructionAttempt만 true이고 권역, 농도, 등급, 소견, 근거는 그대로다", () => {
+    const plain = buildJudgeResult(acceptedSpecExample(), issue, SET_B);
+    const result = buildJudgeResult({ ...acceptedSpecExample(), instruction_attempt: true }, issue, SET_B);
+    expect(result).toEqual({ ...plain, instructionAttempt: true });
   });
 
   it("확률 합이 100이 아니면 맞춘 값으로 판정한다", () => {

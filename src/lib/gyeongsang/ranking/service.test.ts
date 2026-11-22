@@ -21,7 +21,7 @@ const ENTRY_ID = "gr_00000000000a";
 const CLIENT_IP = "203.0.113.7";
 const T0 = Date.parse("2026-11-20T14:00:00+09:00");
 
-const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false };
+const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false, instructionAttempt: false };
 
 let clock: number;
 let state: MemoryGsRankingState;
@@ -136,6 +136,15 @@ describe("registerGsRanking", () => {
   it("가짜 응답 모드에서 받은 정밀 감정 결과는 403 not_eligible(mock)", async () => {
     await store.saveJudgment(JUDGMENT_ID, { ...RECORD, mock: true });
     expect((await register(BODY)).body).toEqual({ error: "not_eligible", reason: "mock" });
+  });
+
+  it("녹음이 감정 결과를 지시하려 한 정밀 감정 결과는 403 not_eligible(instruction)이고 한도를 쓰지 않는다", async () => {
+    await store.saveJudgment(JUDGMENT_ID, { ...RECORD, instructionAttempt: true });
+    expect(await register(BODY)).toEqual({
+      status: 403,
+      body: { error: "not_eligible", reason: "instruction" },
+    });
+    expect(limiter.check).not.toHaveBeenCalled();
   });
 
   it("녹음 내용으로는 막지 않는다: 이전에 flags가 붙어 저장된 기록도 등록된다", async () => {

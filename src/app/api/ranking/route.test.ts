@@ -9,6 +9,7 @@ const RECORD: JudgmentRecord = {
   grade: 2,
   mock: false,
   uncertain: false,
+  instructionAttempt: false,
 };
 
 /** 테스트 환경(NODE_ENV=test)에서 라우트가 쓰는 메모리 저장소와 같은 저장소 */
@@ -167,6 +168,7 @@ describe("감정과 랭킹 연결", () => {
       grade: 2,
       mock: true,
       uncertain: false,
+      instructionAttempt: false,
     });
 
     const response = await POST(postJson({ judgmentId: result.id, nickname: "가짜응답" }));

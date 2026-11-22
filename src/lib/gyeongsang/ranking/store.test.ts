@@ -16,7 +16,7 @@ import {
 const T0 = Date.parse("2026-11-20T10:00:00+09:00");
 const HOUR_MS = 60 * 60 * 1000;
 
-const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false };
+const RECORD: GsJudgmentRecord = { intensity: 69, gyeongbuk: 64, mock: false, instructionAttempt: false };
 
 function entry(overrides: Partial<GsRankingEntry> & Pick<GsRankingEntry, "id">): GsRankingEntry {
   return {
@@ -207,6 +207,18 @@ describe("Upstash 정밀 랭킹 저장소의 요청", () => {
       fetcher: async () => Response.json([{ result: JSON.stringify({ ...RECORD, flagged: true }) }]),
     });
     await expect(store.getJudgment("g_000000000001")).resolves.toEqual(RECORD);
+  });
+
+  it("지시 발화 여부가 생기기 전에 남긴 기록은 지시 발화가 없던 것으로 읽고, 있으면 그 값을 그대로 읽는다", async () => {
+    const legacy = { intensity: 69, gyeongbuk: 64, mock: false };
+    const read = (value: object) =>
+      createUpstashGsRankingStore({
+        url: "https://fake.upstash.io",
+        token: "test-token",
+        fetcher: async () => Response.json([{ result: JSON.stringify(value) }]),
+      }).getJudgment("g_000000000001");
+    await expect(read(legacy)).resolves.toEqual({ ...legacy, instructionAttempt: false });
+    await expect(read({ ...legacy, instructionAttempt: true })).resolves.toEqual({ ...legacy, instructionAttempt: true });
   });
 
   it("HTTP 오류는 예외로 올리고, 깨진 값은 기록이 없는 것으로 본다", async () => {
