@@ -3245,6 +3245,9 @@ body:has(.discard-dialog[open]) {
   main > div:not([hidden]) > .screen-glass {
     animation: tab-reveal 280ms ease-out both;
   }
+  .preview-question-content {
+    animation: tab-reveal 280ms ease-out both;
+  }
   @keyframes tab-reveal {
     from {
       opacity: .35;

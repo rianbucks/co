@@ -663,6 +663,7 @@ body:has(.discard-dialog[open]) { overflow: hidden; }
   .app-shell .smooth-selection button { transition: color 220ms ease, opacity 160ms ease; }
   .app-shell .smooth-selection button:active { transform: none; opacity: .75; }
   main > div:not([hidden]) > .screen-glass { animation: tab-reveal 280ms ease-out both; }
+  .preview-question-content { animation: tab-reveal 280ms ease-out both; }
   @keyframes tab-reveal { from { opacity: .35; translate: 0 6px; } to { opacity: 1; translate: 0 0; } }
 }
 .gs-area-filter { display: grid; grid-template-columns: .7fr 1fr 1.4fr; gap: 5px; margin-top: 8px; }

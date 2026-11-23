@@ -1,5 +1,7 @@
 'use client';
 
+import SelectionIndicator from '@/components/common/SelectionIndicator';
+
 import BrandInfo from '@/components/common/BrandInfo';
 
 import { useRef, useState } from 'react';
@@ -150,10 +152,11 @@ export default function S1Intro({ onStartGyeongsang, onNext, onViewRanking, nick
             <li key={grade}><strong>{grade}등급</strong><span>{name}</span><small>{min}~{max}점</small></li>
           ))}</ul>
         ) : <>
-        <div className="question-picker" aria-label="문항 선택" role="group">
+        <div className="question-picker smooth-selection" aria-label="문항 선택" role="group">
+          <SelectionIndicator active={String(questionIndex)} />
           {QUESTIONS.map(({ id }, index) => <button key={id} aria-pressed={index === questionIndex} onClick={() => setQuestionIndex(index)}>{id}번</button>)}
         </div>
-        <div className="preview-prompt" aria-live="polite"><strong>{question.target}에게 · {question.kind === 'convert' ? '평소 말투로 바꿔 말하기' : '상황에 답하기'}</strong><p>{question.situation}</p></div>
+        <div className="preview-prompt" aria-live="polite"><div key={question.id} className="preview-question-content"><strong>{question.target}에게 · {question.kind === 'convert' ? '평소 말투로 바꿔 말하기' : '상황에 답하기'}</strong><p>{question.situation}</p></div></div>
         </>}
         <button className="intro-primary-action" onClick={() => { sheet.current?.close(); onNext(); }}>감정 신청</button>
       </dialog>
