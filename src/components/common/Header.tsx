@@ -1,5 +1,7 @@
 'use client';
 
+import SelectionIndicator from '@/components/common/SelectionIndicator';
+
 /** 머리글 탭: 일반 감정(S1~S7)과 경상 정밀 감정. */
 export type HeaderTab = 'general' | 'gyeongsang';
 
@@ -75,8 +77,9 @@ export default function Header({
       {onTabChange && (
         <nav
           aria-label={rankingView ? "랭킹 종류" : "감정 종류"}
-          className="app-header-tabs mx-auto mt-3 grid max-w-5xl grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
+          className="smooth-selection app-header-tabs mx-auto mt-3 grid max-w-5xl grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
         >
+          <SelectionIndicator active={activeTab} />
           {TABS.map((tab) => {
             const active = tab.key === activeTab;
             const disabled = tabsDisabled && !active;

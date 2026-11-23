@@ -1,5 +1,7 @@
 'use client';
 
+import SelectionIndicator from '@/components/common/SelectionIndicator';
+
 import RankingForm from '@/components/common/RankingForm';
 
 import { FormEvent, useEffect, useState } from 'react';
@@ -302,7 +304,8 @@ export default function GsRanking({ nickname, onNicknameChange, result, origin, 
         <div className={result ? "space-y-6 lg:col-span-7" : "ranking-first space-y-6 lg:col-span-7"}>
           <section aria-labelledby="gs-area-heading" className="rounded-3xl border border-zinc-800/80 bg-zinc-900/60 p-6 sm:p-7">
             <h1 className="ranking-card-title" id="gs-area-heading">경상 정밀 감정 랭킹</h1>
-            <div role="group" aria-label="출신 지역 필터" className="gs-area-filter">
+            <div role="group" aria-label="출신 지역 필터" className="smooth-selection gs-area-filter">
+              <SelectionIndicator active={area} />
               {GS_RANKING_AREAS.map(key => (
                 <button key={key} type="button" aria-pressed={key === area} onClick={() => changeArea(key)}>
                   {GS_RANKING_AREA_NAMES[key]}
